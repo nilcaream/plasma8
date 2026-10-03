@@ -51,8 +51,8 @@ function main(): void {
   const seedText = formatSeed(seed);
   const rng = createRng(seed);
   let warned = false;
-  const make = (intensity: number): Running => {
-    const { def, unknown } = chooseAlgorithm(params.algo, intensity, rng);
+  const make = (intensity: number, running?: AlgorithmDef): Running => {
+    const { def, unknown } = chooseAlgorithm(params.algo, intensity, rng, running);
     if (unknown && !warned) {
       warned = true;
       console.warn(`[plasma8] unknown algorithm "${params.algo}", picking at random`);
@@ -116,7 +116,7 @@ function main(): void {
     // Changes: the next algorithm is made a bar ahead, and takes over on beat 1.
     const step = sequencer.update(r.beats, r.run, slider);
     if (step.prepare) {
-      incoming = make(slider);
+      incoming = make(slider, current.def);
       look = drawTransitionLook(rng);
       pending = describeChange(sequencer.change, look) ?? 'change';
     }

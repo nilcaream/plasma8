@@ -18,9 +18,20 @@ export function pickWeight(home: number, intensity: number): number {
   return WEIGHT_FLOOR + (1 - WEIGHT_FLOOR) * Math.exp(-0.5 * d * d);
 }
 
-/** One of `items`, drawn with the weights of their homes against `intensity`. */
-export function pickByIntensity<T extends { readonly home: number }>(items: readonly T[], intensity: number, rng: Rng): T {
-  const weights = items.map((item) => pickWeight(item.home, intensity));
+/** The running algorithm's weight is multiplied by this: it comes back less often, never banned. */
+export const RUNNING_WEIGHT = 0.25;
+
+/**
+ * One of `items`, drawn with the weights of their homes against `intensity`;
+ * `running`, the one on screen now, if given, weighs RUNNING_WEIGHT as much.
+ */
+export function pickByIntensity<T extends { readonly home: number }>(
+  items: readonly T[],
+  intensity: number,
+  rng: Rng,
+  running?: T,
+): T {
+  const weights = items.map((item) => pickWeight(item.home, intensity) * (item === running ? RUNNING_WEIGHT : 1));
   const total = weights.reduce((a, b) => a + b, 0);
   let r = rng.next() * total;
   for (let i = 0; i < items.length; i++) {

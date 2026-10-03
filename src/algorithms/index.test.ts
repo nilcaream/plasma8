@@ -3,10 +3,10 @@ import { createRng } from '../rng';
 import { ALGORITHMS, chooseAlgorithm } from './index';
 
 describe('chooseAlgorithm', () => {
-  it('returns the algorithm asked for by name, every time', () => {
+  it('returns the algorithm asked for by name, every time, even while it runs', () => {
     const rng = createRng(1);
     for (const def of ALGORITHMS) {
-      for (let i = 0; i < 5; i++) expect(chooseAlgorithm(def.name, 0.5, rng)).toEqual({ def, unknown: false });
+      for (let i = 0; i < 5; i++) expect(chooseAlgorithm(def.name, 0.5, rng, def)).toEqual({ def, unknown: false });
     }
   });
 

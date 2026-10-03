@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { WEIGHT_FLOOR, pickByIntensity, pickWeight } from './pick';
+import { RUNNING_WEIGHT, WEIGHT_FLOOR, pickByIntensity, pickWeight } from './pick';
 import { createRng } from './rng';
 
 describe('pickWeight', () => {
@@ -50,6 +50,21 @@ describe('pickByIntensity', () => {
   it('still picks the farthest one now and then', () => {
     expect(counts(0).hard).toBeGreaterThan(0);
     expect(counts(1).soft).toBeGreaterThan(0);
+  });
+
+  it('picks the running one a quarter as often, but still picks it', () => {
+    const rng = createRng(9);
+    let free = 0;
+    let damped = 0;
+    for (let i = 0; i < 8000; i++) {
+      if (pickByIntensity(items, 0.1, rng).name === 'soft') free++;
+      if (pickByIntensity(items, 0.1, rng, items[0]).name === 'soft') damped++;
+    }
+    const w = items.map((i) => pickWeight(i.home, 0.1));
+    const expected = (RUNNING_WEIGHT * w[0]!) / (RUNNING_WEIGHT * w[0]! + w[1]! + w[2]!);
+    expect(damped / 8000).toBeCloseTo(expected, 1);
+    expect(damped).toBeGreaterThan(0);
+    expect(damped).toBeLessThan(free);
   });
 
   it('follows the weights in proportion', () => {
