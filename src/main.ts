@@ -84,15 +84,16 @@ function main(): void {
     if (key === 'metronome') metronome.setEnabled(live.metronome);
   });
 
-  // Taps: pointer down and key down, anywhere except the reserved corner.
+  // Taps: pointer down and key down, anywhere except the reserved corner. A tap
+  // is timed when the event happened, not when a busy page got round to it.
   window.addEventListener('pointerdown', (e) => {
     if (corner.contains(e.target) || !isTapPointer(e)) return;
-    clock.tap(performance.now());
+    clock.tap(e.timeStamp);
   });
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && corner.isOpen()) corner.setOpen(false);
     if (corner.contains(e.target) || !isTapKey(e)) return;
-    clock.tap(performance.now());
+    clock.tap(e.timeStamp);
   });
 
   const start = performance.now();
