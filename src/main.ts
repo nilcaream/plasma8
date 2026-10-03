@@ -10,6 +10,7 @@ import { loadSettings, saveSettings, type Settings } from './settings';
 import { softening } from './soften';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
 import { FlashGate, flashLevel } from './strobe';
+import { BeatTravel } from './travel';
 import { Corner, DebugOverlay, Metronome, showFatal } from './ui';
 
 interface Running {
@@ -65,6 +66,7 @@ function main(): void {
   const stage = new Stage(gl);
   const sequencer = new Sequencer(rng);
   const gate = new FlashGate();
+  const travel = new BeatTravel();
   let current = make(live.intensity);
   let incoming: Running | undefined;
   let look: TransitionLook | undefined;
@@ -154,6 +156,7 @@ function main(): void {
         beatPhase: r.beatPhase,
         barPhase: r.barPhase,
         barCount: r.bar,
+        travel: travel.update(r.beats),
         intensity,
         width,
         height,

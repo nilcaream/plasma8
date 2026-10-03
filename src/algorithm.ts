@@ -11,6 +11,8 @@ export interface FrameInputs {
   barPhase: number;
   /** Bars completed so far; 0 during the first bar. */
   barCount: number;
+  /** Beats travelled, front-loaded after each beat; never goes back, even when a tap starts a fresh count. */
+  travel: number;
   /** 0 soft … 1 hard. */
   intensity: number;
   /** Size of the drawing surface in pixels. */

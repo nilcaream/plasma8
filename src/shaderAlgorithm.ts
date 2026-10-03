@@ -15,6 +15,7 @@ uniform float u_time;
 uniform float u_beatPhase;
 uniform float u_barPhase;
 uniform float u_barCount;
+uniform float u_travel;
 uniform float u_intensity;
 out vec4 fragColor;
 
@@ -46,7 +47,7 @@ void main() {
 }
 `;
 
-const COMMON_UNIFORMS = ['u_resolution', 'u_time', 'u_beatPhase', 'u_barPhase', 'u_barCount', 'u_intensity'] as const;
+const COMMON_UNIFORMS = ['u_resolution', 'u_time', 'u_beatPhase', 'u_barPhase', 'u_barCount', 'u_travel', 'u_intensity'] as const;
 
 /**
  * Programs by shader body: every change makes a new instance with new
@@ -97,6 +98,7 @@ export class ShaderAlgorithm implements Algorithm {
     gl.uniform1f(c.get('u_beatPhase') ?? null, inputs.beatPhase);
     gl.uniform1f(c.get('u_barPhase') ?? null, inputs.barPhase);
     gl.uniform1f(c.get('u_barCount') ?? null, inputs.barCount);
+    gl.uniform1f(c.get('u_travel') ?? null, inputs.travel);
     gl.uniform1f(c.get('u_intensity') ?? null, inputs.intensity);
     for (const { location, value } of this.params) setUniform(gl, location, value);
     gl.drawArrays(gl.TRIANGLES, 0, 3);

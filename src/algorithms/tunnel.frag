@@ -10,7 +10,7 @@ uniform float u_sides;     // 0 round, else the polygon's sides
 uniform vec2 u_bend;       // how far the path swings, x and y
 uniform vec2 u_bendFreq;
 uniform float u_speed;     // forward, units per second
-uniform float u_surge;     // extra forward per beat, front-loaded
+uniform float u_surge;     // extra forward per beat, front-loaded (u_travel never goes back)
 uniform float u_ringGap;
 uniform float u_ribs;
 uniform float u_twist;     // ribs spiral along the tube
@@ -50,9 +50,7 @@ vec3 shade(vec2 uv) {
   float t = u_time;
   float bars = barStep();
 
-  float beats = u_barCount * 4.0 + u_barPhase * 4.0;
-  float shove = floor(beats) + 1.0 - pow(1.0 - fract(beats), 3.0);
-  float camZ = t * u_speed + u_surge * shove;
+  float camZ = t * u_speed + u_surge * u_travel;
 
   vec3 ro = vec3(path(camZ), camZ);
   vec3 ta = vec3(path(camZ + 1.5), camZ + 1.5);
