@@ -9,6 +9,10 @@ export interface FrameInputs {
   beatPhase: number;
   /** 0..1 inside the current 4/4 bar. */
   barPhase: number;
+  /** The beat envelope (src/envelope.ts): 1 on the beat, a swell when soft, a sharp hit when hard. */
+  beatPulse: number;
+  /** The same envelope over the bar: 1 on beat 1. */
+  barPulse: number;
   /** Bars completed so far; 0 during the first bar. */
   barCount: number;
   /** Beats travelled, front-loaded after each beat; never goes back, even when a tap starts a fresh count. */

@@ -14,6 +14,8 @@ uniform vec2 u_resolution;
 uniform float u_time;
 uniform float u_beatPhase;
 uniform float u_barPhase;
+uniform float u_beatPulse;
+uniform float u_barPulse;
 uniform float u_barCount;
 uniform float u_travel;
 uniform float u_intensity;
@@ -26,9 +28,9 @@ float hash12(vec2 p) {
   return fract((p3.x + p3.y) * p3.z);
 }
 
-// 1 on the beat, falling away over it; 1 on beat 1, falling away over the bar
-float beatPulse() { return pow(1.0 - u_beatPhase, 3.0); }
-float barPulse() { return pow(1.0 - u_barPhase, 5.0); }
+// the shared beat envelope, 1 on the beat: a swell when soft, a sharp hit when hard; the same over the bar
+float beatPulse() { return u_beatPulse; }
+float barPulse() { return u_barPulse; }
 
 // a count that steps up by one at every bar start, eased over the first eighth of the bar, up to half of it when softened
 float barStep() { return u_barCount + smoothstep(0.0, mix(0.125, 0.5, u_soft), u_barPhase); }
@@ -48,7 +50,7 @@ void main() {
 }
 `;
 
-const COMMON_UNIFORMS = ['u_resolution', 'u_time', 'u_beatPhase', 'u_barPhase', 'u_barCount', 'u_travel', 'u_intensity', 'u_soft'] as const;
+const COMMON_UNIFORMS = ['u_resolution', 'u_time', 'u_beatPhase', 'u_barPhase', 'u_beatPulse', 'u_barPulse', 'u_barCount', 'u_travel', 'u_intensity', 'u_soft'] as const;
 
 /**
  * Programs by shader body: every change makes a new instance with new
@@ -98,6 +100,8 @@ export class ShaderAlgorithm implements Algorithm {
     gl.uniform1f(c.get('u_time') ?? null, inputs.time);
     gl.uniform1f(c.get('u_beatPhase') ?? null, inputs.beatPhase);
     gl.uniform1f(c.get('u_barPhase') ?? null, inputs.barPhase);
+    gl.uniform1f(c.get('u_beatPulse') ?? null, inputs.beatPulse);
+    gl.uniform1f(c.get('u_barPulse') ?? null, inputs.barPulse);
     gl.uniform1f(c.get('u_barCount') ?? null, inputs.barCount);
     gl.uniform1f(c.get('u_travel') ?? null, inputs.travel);
     gl.uniform1f(c.get('u_intensity') ?? null, inputs.intensity);

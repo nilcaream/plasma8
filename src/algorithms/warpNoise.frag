@@ -32,8 +32,8 @@ float fbm(vec2 p) {
 }
 
 vec3 shade(vec2 uv) {
-  float beat = pow(1.0 - u_beatPhase, 3.0);  // 1 on the beat, falling away
-  float bar = pow(1.0 - u_barPhase, 5.0);    // 1 on beat 1, falling away slowly
+  float beat = beatPulse();
+  float bar = barPulse();
   // softened: shallower breaths and colour swings
   float H = u_intensity * (1.0 - 0.5 * u_soft);
   float breath = H * (0.10 * beat + 0.18 * bar);

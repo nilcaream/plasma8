@@ -1,6 +1,7 @@
 import { chooseAlgorithm } from './algorithms';
 import type { Algorithm, AlgorithmDef } from './algorithm';
 import { TapClock } from './clock';
+import { pulse } from './envelope';
 import { createContext } from './gl';
 import { isTapKey, isTapPointer } from './input';
 import { parseDebugParams } from './query';
@@ -158,6 +159,8 @@ function main(): void {
         time: motion.update(dt, soft),
         beatPhase: r.beatPhase,
         barPhase: r.barPhase,
+        beatPulse: pulse(r.beatPhase, intensity),
+        barPulse: pulse(r.barPhase, intensity),
         barCount: r.bar,
         travel: travel.update(r.beats),
         intensity,
