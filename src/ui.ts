@@ -114,21 +114,40 @@ export class Metronome {
   }
 }
 
+/** What the ?debug overlay shows besides the clock. */
+export interface DebugInfo {
+  name: string;
+  home: number;
+  /** Bars before the next change, counting the bar under way. */
+  barsLeft: number;
+  /** How the next change goes, once it is decided: "cut", "fade 2 beats". */
+  change: string | undefined;
+  intensity: number;
+  soft: number;
+}
+
 /** The ?debug overlay. */
 export class DebugOverlay {
   private readonly root = byId('debug');
   private text = '';
 
   constructor(
-    enabled: boolean,
-    private readonly name: string,
+    private readonly enabled: boolean,
     private readonly seed: string,
   ) {
     this.root.classList.toggle('on', enabled);
   }
 
-  update(r: ClockReading): void {
-    const text = `${this.name}\nbar ${r.bar + 1}  beat ${r.beatInBar + 1}\nseed ${this.seed}`;
+  update(r: ClockReading, info: DebugInfo): void {
+    if (!this.enabled) return;
+    const next = `next change in ${info.barsLeft} bar${info.barsLeft === 1 ? '' : 's'}${info.change ? ` (${info.change})` : ''}`;
+    const text = [
+      `${info.name}  home ${info.home.toFixed(2)}`,
+      next,
+      `bar ${r.bar + 1}  beat ${r.beatInBar + 1}  ${Math.round(r.bpm)} BPM`,
+      `intensity ${info.intensity.toFixed(2)}  soften ${info.soft.toFixed(2)}`,
+      `seed ${this.seed}`,
+    ].join('\n');
     if (text !== this.text) {
       this.text = text;
       this.root.textContent = text;
