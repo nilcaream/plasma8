@@ -34,7 +34,7 @@ float fbm(vec2 p) {
 vec3 shade(vec2 uv) {
   float beat = pow(1.0 - u_beatPhase, 3.0);  // 1 on the beat, falling away
   float bar = pow(1.0 - u_barPhase, 5.0);    // 1 on beat 1, falling away slowly
-  float breath = u_intensity * (0.05 * beat + 0.08 * bar);
+  float breath = u_intensity * (0.10 * beat + 0.18 * bar);
 
   float t = u_time;
   float ang = u_rotate * t;
@@ -47,7 +47,8 @@ vec3 shade(vec2 uv) {
                 fbm(p + u_warp * q + vec2(8.3, 2.8) - u_speed.y * t * 0.4));
   float f = fbm(p + u_warp * w + u_offset2);
 
-  float k = 1.1 * f + 0.45 * length(q) + 0.25 * length(w);
+  // the colours swing on every beat and take a bigger step at the start of a bar
+  float k = 1.1 * f + 0.45 * length(q) + 0.25 * length(w) + u_intensity * (0.12 * beat + 0.3 * bar);
   vec3 col = u_palA + u_palB * cos(6.28318 * (u_palC * k + u_palD));
 
   col *= 1.0 + 0.18 * u_intensity * beat + 0.12 * u_intensity * bar;
