@@ -1,4 +1,4 @@
-import type { ClockReading } from './clock';
+import { formatTempo, type ClockReading } from './clock';
 import type { Settings } from './settings';
 
 /** How long the menu icon stays visible after the last movement or touch. */
@@ -101,7 +101,7 @@ export class Metronome {
     const pulse = 1 + (first ? 0.7 : 0.5) * (1 - r.beatPhase) ** 3;
     this.dot.style.transform = `scale(${pulse.toFixed(3)})`;
 
-    const text = `${Math.round(r.bpm)} BPM`;
+    const text = formatTempo(r.bpm, r.bpmError);
     if (text !== this.text) {
       this.text = text;
       this.bpm.textContent = text;
@@ -144,7 +144,7 @@ export class DebugOverlay {
     const text = [
       `${info.name}  home ${info.home.toFixed(2)}`,
       next,
-      `bar ${r.bar + 1}  beat ${r.beatInBar + 1}  ${Math.round(r.bpm)} BPM`,
+      `bar ${r.bar + 1}  beat ${r.beatInBar + 1}  ${formatTempo(r.bpm, r.bpmError)} BPM`,
       `intensity ${info.intensity.toFixed(2)}  soften ${info.soft.toFixed(2)}`,
       `seed ${this.seed}`,
     ].join('\n');

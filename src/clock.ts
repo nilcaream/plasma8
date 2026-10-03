@@ -54,6 +54,11 @@ export function clampBpm(bpm: number): number {
   return Math.min(MAX_BPM, Math.max(MIN_BPM, bpm));
 }
 
+/** `132.31 +/- 0.41`: the tempo and its standard error, both to 2 decimals; the tempo alone while there is no error. */
+export function formatTempo(bpm: number, error: number | undefined): string {
+  return error === undefined ? bpm.toFixed(2) : `${bpm.toFixed(2)} +/- ${error.toFixed(2)}`;
+}
+
 /** Sums of one run's taps (time y against tap number x = 0, 1, 2, …), centred on their means. */
 export interface RunSums {
   n: number;

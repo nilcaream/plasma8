@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_BPM, MAX_BPM, MIN_BPM, TapClock, pooledFit, runSums, tempoChanged } from './clock';
+import { DEFAULT_BPM, MAX_BPM, MIN_BPM, TapClock, formatTempo, pooledFit, runSums, tempoChanged } from './clock';
 
 /** Taps at `count` evenly spaced times starting at `from`. */
 function tapEvery(clock: TapClock, from: number, intervalMs: number, count: number): number {
@@ -10,6 +10,14 @@ function tapEvery(clock: TapClock, from: number, intervalMs: number, count: numb
   }
   return t - intervalMs;
 }
+
+describe('formatTempo', () => {
+  it('writes both numbers to 2 decimals, or the tempo alone while there is no error', () => {
+    expect(formatTempo(132.3149, 0.4071)).toBe('132.31 +/- 0.41');
+    expect(formatTempo(120, 0.5)).toBe('120.00 +/- 0.50');
+    expect(formatTempo(120, undefined)).toBe('120.00');
+  });
+});
 
 describe('pooledFit', () => {
   it('is the step of an even series and the best fit of an uneven one', () => {
