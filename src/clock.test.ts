@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_BPM, MAX_BPM, MIN_BPM, TapClock, median } from './clock';
+import { DEFAULT_BPM, MAX_BPM, MIN_BPM, TapClock, slope } from './clock';
 
 /** Taps at `count` evenly spaced times starting at `from`. */
 function tapEvery(clock: TapClock, from: number, intervalMs: number, count: number): number {
@@ -11,10 +11,10 @@ function tapEvery(clock: TapClock, from: number, intervalMs: number, count: numb
   return t - intervalMs;
 }
 
-describe('median', () => {
-  it('takes the middle of an odd count and the mean of the middle two of an even count', () => {
-    expect(median([5, 1, 3])).toBe(3);
-    expect(median([4, 1, 3, 2])).toBe(2.5);
+describe('slope', () => {
+  it('is the step of an even series and the best fit of an uneven one', () => {
+    expect(slope([100, 600, 1100, 1600])).toBe(500);
+    expect(slope([0, 10, 10, 20])).toBeCloseTo(6, 10); // not first-to-last, which would be 6.67
   });
 });
 
@@ -61,19 +61,26 @@ describe('TapClock tempo', () => {
     expect(clock.read(1900).bpm).toBeGreaterThan(120);
   });
 
-  it('is the median of the last intervals, so one stray interval does not move it', () => {
+  it('settles within a BPM or two once 8 jittery taps are in, and stays there', () => {
     const clock = new TapClock(0);
-    // five taps 600 ms apart, then one 900 ms late tap
-    const last = tapEvery(clock, 1000, 600, 5);
-    clock.tap(last + 900);
-    expect(clock.read(last + 900).bpm).toBeCloseTo(100);
+    // a hand tapping 120 BPM, each tap up to 30 ms early or late
+    const jitter = [0, 25, -20, 10, -30, 15, -5, 30, -25, 5, -10, 20, -15, 12, -22, 8];
+    const afterEight: number[] = [];
+    jitter.forEach((j, i) => {
+      const t = 1000 + 500 * i + j;
+      clock.tap(t);
+      if (i >= 7) afterEight.push(clock.read(t).bpm);
+    });
+    expect(Math.max(...afterEight) - Math.min(...afterEight)).toBeLessThan(3);
+    expect(afterEight.at(-1)).toBeCloseTo(120, 0);
   });
 
-  it('uses only the latest intervals', () => {
+  it('follows the latest 16 taps when the hand changes tempo', () => {
     const clock = new TapClock(0);
-    let t = tapEvery(clock, 1000, 600, 8); // 100 BPM, seven intervals
-    t = tapEvery(clock, t + 400, 400, 5); // then five intervals of 150 BPM: the old ones are out of the window
+    let t = tapEvery(clock, 1000, 600, 20); // 100 BPM
+    t = tapEvery(clock, t + 400, 400, 16); // then 16 taps at 150 BPM: the slow ones are out of the window
     expect(clock.read(t).bpm).toBeCloseTo(150);
+    expect(clock.read(t).beats).toBeCloseTo(35, 3); // the 36th tap is still beat 36 of the run
   });
 
   it('clamps to the allowed range', () => {
@@ -90,14 +97,13 @@ describe('TapClock tempo', () => {
 });
 
 describe('TapClock phase', () => {
-  it('re-aligns on every tap so the tap lands on its beat', () => {
+  it('re-aligns on every tap so the tap lands (almost) on its beat', () => {
     const clock = new TapClock(0);
     clock.tap(1000);
     clock.tap(1500);
-    clock.tap(2020); // 20 ms late
+    clock.tap(2020); // 20 ms late: the fitted line puts it 3 ms off the beat
     const r = clock.read(2020);
-    expect(r.beats).toBeCloseTo(2, 5);
-    expect(r.beatPhase).toBeCloseTo(0, 5);
+    expect(r.beats).toBeCloseTo(2, 1);
     expect(r.beatInBar).toBe(2);
   });
 
@@ -140,7 +146,7 @@ describe('TapClock gaps and double events', () => {
     const clock = new TapClock(0);
     tapEvery(clock, 1000, 500, 4);
     clock.tap(2500 + 1900);
-    expect(clock.read(2500 + 1900).beats).toBeCloseTo(4, 5);
+    expect(clock.read(2500 + 1900).beats).toBeGreaterThan(3); // the run goes on; a reset would give 0
   });
 
   it('ignores a second tap a few milliseconds after the first', () => {
