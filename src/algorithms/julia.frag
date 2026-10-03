@@ -31,6 +31,9 @@ vec3 shade(vec2 uv) {
   float I = u_intensity;
   float t = u_time;
   float bars = barStep();
+  // softened: smaller zooms, lifted darks, gentler swings
+  float M = 1.0 - 0.5 * u_soft;
+  float H = I * M;
 
   // kaleidoscope fold
   float wedge = 6.28318 / u_segments;
@@ -41,7 +44,7 @@ vec3 shade(vec2 uv) {
   a = abs(a - 0.5 * wedge);
   p = r * vec2(cos(a), sin(a));
 
-  float zoom = u_zoom * (1.0 - 0.12 * I * beat - 0.06 * I * bar);
+  float zoom = u_zoom * (1.0 - M * (0.12 * I * beat + 0.06 * I * bar));
   vec2 z = p * zoom + u_center;
   float theta = u_theta + u_wander * sin(t * 0.11) + u_barTheta * bars;
   vec2 c = cardioid(theta) * u_edge;
@@ -61,13 +64,13 @@ vec3 shade(vec2 uv) {
   float k = clamp(smoothN / 28.0, 0.0, 1.0);
 
   // hard: near-black background with bright filaments; soft: lifted and gentler
-  vec3 col = cosPalette(k * u_bands + 0.05 * t + 0.1 * I * beat, u_palA, u_palB, u_palC, u_palD);
-  float glow = pow(k, mix(0.9, 1.8, I));
-  col *= mix(0.3 + 0.7 * glow, 1.3 * glow, I);
-  vec3 core = cosPalette(0.6 + 0.3 * trap + 0.1 * bars, u_palA, u_palB, u_palC, u_palD) * mix(0.55, 0.85, I);
+  vec3 col = cosPalette(k * u_bands + 0.05 * t + 0.1 * H * beat, u_palA, u_palB, u_palC, u_palD);
+  float glow = pow(k, mix(0.9, 1.8, H));
+  col *= mix(0.3 + 0.7 * glow, 1.3 * glow, H);
+  vec3 core = cosPalette(0.6 + 0.3 * trap + 0.1 * bars, u_palA, u_palB, u_palC, u_palD) * mix(0.55, 0.85, H);
   col = mix(col, core, inside);
-  col += 0.4 * I * exp(-trap * 30.0) * (0.4 + beat);
+  col += 0.4 * H * exp(-trap * 30.0) * (0.4 + beat);
 
-  col *= 1.0 + 0.3 * I * beat + 0.2 * I * bar;
+  col *= 1.0 + 0.3 * H * beat + 0.2 * H * bar;
   return col;
 }

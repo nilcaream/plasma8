@@ -22,7 +22,9 @@ const float RADIUS = 1.0;
 const float FAR = 40.0;
 
 vec2 path(float z) {
-  return vec2(u_bend.x * sin(z * u_bendFreq.x), u_bend.y * cos(z * u_bendFreq.y));
+  // softened, the tube winds less
+  vec2 bend = u_bend * (1.0 - 0.5 * u_soft);
+  return vec2(bend.x * sin(z * u_bendFreq.x), bend.y * cos(z * u_bendFreq.y));
 }
 
 // distance to the wall from inside the tube
@@ -49,6 +51,8 @@ vec3 shade(vec2 uv) {
   float I = u_intensity;
   float t = u_time;
   float bars = barStep();
+  // softened: calmer lines and a dimmer wave
+  float H = I * (1.0 - 0.5 * u_soft);
 
   float camZ = t * u_speed + u_surge * u_travel;
 
@@ -85,14 +89,14 @@ vec3 shade(vec2 uv) {
 
   // hard: dark walls, lines flaring on the beat; soft: lighter walls, calm lines
   vec3 col = wall * mix(0.45, 0.12, I);
-  col += lineCol * glowLines * (mix(0.5, 0.7, I) + 1.3 * I * beat);
+  col += lineCol * glowLines * (mix(0.5, 0.7, H) + 1.3 * H * beat);
 
   // the bar-start wave rushing away down the tube
   float waveAt = u_barPhase * 28.0;
-  col += lineCol * mix(0.4, 1.4, I) * exp(-abs(d - waveAt) * 1.2) * (1.0 - u_barPhase);
+  col += lineCol * mix(0.4, 1.4, H) * exp(-abs(d - waveAt) * 1.2) * (1.0 - u_barPhase);
 
   vec3 fog = mix(u_palA * 0.5, vec3(0.0), I);
   col = mix(fog, col, exp(-d * mix(0.05, 0.11, I)));
-  col *= 1.0 + 0.15 * I * bar;
+  col *= 1.0 + 0.15 * H * bar;
   return col;
 }

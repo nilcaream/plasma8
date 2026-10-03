@@ -17,6 +17,7 @@ uniform float u_barPhase;
 uniform float u_barCount;
 uniform float u_travel;
 uniform float u_intensity;
+uniform float u_soft;
 out vec4 fragColor;
 
 float hash12(vec2 p) {
@@ -29,8 +30,8 @@ float hash12(vec2 p) {
 float beatPulse() { return pow(1.0 - u_beatPhase, 3.0); }
 float barPulse() { return pow(1.0 - u_barPhase, 5.0); }
 
-// a count that steps up by one at every bar start, eased over the first eighth of the bar
-float barStep() { return u_barCount + smoothstep(0.0, 0.125, u_barPhase); }
+// a count that steps up by one at every bar start, eased over the first eighth of the bar, up to half of it when softened
+float barStep() { return u_barCount + smoothstep(0.0, mix(0.125, 0.5, u_soft), u_barPhase); }
 
 mat2 rot2(float a) { return mat2(cos(a), -sin(a), sin(a), cos(a)); }
 
@@ -47,7 +48,7 @@ void main() {
 }
 `;
 
-const COMMON_UNIFORMS = ['u_resolution', 'u_time', 'u_beatPhase', 'u_barPhase', 'u_barCount', 'u_travel', 'u_intensity'] as const;
+const COMMON_UNIFORMS = ['u_resolution', 'u_time', 'u_beatPhase', 'u_barPhase', 'u_barCount', 'u_travel', 'u_intensity', 'u_soft'] as const;
 
 /**
  * Programs by shader body: every change makes a new instance with new
@@ -100,6 +101,7 @@ export class ShaderAlgorithm implements Algorithm {
     gl.uniform1f(c.get('u_barCount') ?? null, inputs.barCount);
     gl.uniform1f(c.get('u_travel') ?? null, inputs.travel);
     gl.uniform1f(c.get('u_intensity') ?? null, inputs.intensity);
+    gl.uniform1f(c.get('u_soft') ?? null, inputs.soft);
     for (const { location, value } of this.params) setUniform(gl, location, value);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }

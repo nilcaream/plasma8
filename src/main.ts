@@ -7,7 +7,7 @@ import { parseDebugParams } from './query';
 import { createRng, formatSeed, freshSeed } from './rng';
 import { Sequencer, type Change } from './sequence';
 import { loadSettings, saveSettings, type Settings } from './settings';
-import { softening } from './soften';
+import { MotionClock, softening } from './soften';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
 import { FlashGate, flashLevel } from './strobe';
 import { BeatTravel } from './travel';
@@ -67,6 +67,7 @@ function main(): void {
   const sequencer = new Sequencer(rng);
   const gate = new FlashGate();
   const travel = new BeatTravel();
+  const motion = new MotionClock();
   let current = make(live.intensity);
   let incoming: Running | undefined;
   let look: TransitionLook | undefined;
@@ -130,6 +131,7 @@ function main(): void {
     }
 
     // Softening follows the slider at once; during a fade it slides from the outgoing home to the incoming one.
+    // It slows the motion and calms each algorithm; it never blurs.
     const fade = incoming ? step.fade : 0;
     const eased = fade * fade * (3 - 2 * fade);
     const softOut = softening(current.def.home, slider);
@@ -153,12 +155,13 @@ function main(): void {
 
     stage.render(current.algorithm, incoming?.algorithm, look, {
       inputs: {
-        time: seconds,
+        time: motion.update(dt, soft),
         beatPhase: r.beatPhase,
         barPhase: r.barPhase,
         barCount: r.bar,
         travel: travel.update(r.beats),
         intensity,
+        soft,
         width,
         height,
       },

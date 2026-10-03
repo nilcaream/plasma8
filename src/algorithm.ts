@@ -3,7 +3,7 @@ import type { StrobeBeat } from './strobe';
 
 /** What every algorithm gets each frame, whatever it draws. */
 export interface FrameInputs {
-  /** Seconds since the page loaded; continuous, never re-aligned by taps. */
+  /** Seconds of motion since the page loaded: slower while softened; continuous, never re-aligned by taps. */
   time: number;
   /** 0..1 inside the current beat. */
   beatPhase: number;
@@ -15,6 +15,8 @@ export interface FrameInputs {
   travel: number;
   /** 0 soft … 1 hard. */
   intensity: number;
+  /** 0 … 1: how far the slider sits below the algorithm's home; smaller moves, gentler changes. */
+  soft: number;
   /** Size of the drawing surface in pixels. */
   width: number;
   height: number;

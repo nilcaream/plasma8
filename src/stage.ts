@@ -88,7 +88,6 @@ export class Stage {
       source = this.mixed;
     }
 
-    if (f.soft > 0.002) source.updateMipmaps();
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, width, height);
     gl.useProgram(this.post);
