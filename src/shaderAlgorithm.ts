@@ -16,9 +16,8 @@ uniform float u_beatPhase;
 uniform float u_barPhase;
 uniform float u_beatPulse;
 uniform float u_barPulse;
-uniform float u_barCount;
+uniform float u_barSteps;
 uniform float u_intensity;
-uniform float u_soft;
 out vec4 fragColor;
 
 float hash12(vec2 p) {
@@ -31,8 +30,9 @@ float hash12(vec2 p) {
 float beatPulse() { return u_beatPulse; }
 float barPulse() { return u_barPulse; }
 
-// a count that steps up by one at every bar start, eased over the first eighth of the bar, up to half of it when softened
-float barStep() { return u_barCount + smoothstep(0.0, mix(0.125, 0.5, u_soft), u_barPhase); }
+// a count that steps up at every bar start, eased: by a quarter step at intensity 0, a whole one at 1 (src/motion.ts);
+// every turn, roll or shift taken at a bar start goes through it
+float barStep() { return u_barSteps; }
 
 mat2 rot2(float a) { return mat2(cos(a), -sin(a), sin(a), cos(a)); }
 
@@ -49,7 +49,7 @@ void main() {
 }
 `;
 
-const COMMON_UNIFORMS = ['u_resolution', 'u_time', 'u_beatPhase', 'u_barPhase', 'u_beatPulse', 'u_barPulse', 'u_barCount', 'u_intensity', 'u_soft'] as const;
+const COMMON_UNIFORMS = ['u_resolution', 'u_time', 'u_beatPhase', 'u_barPhase', 'u_beatPulse', 'u_barPulse', 'u_barSteps', 'u_intensity'] as const;
 
 /**
  * Programs by shader body: every change makes a new instance with new
@@ -105,9 +105,8 @@ export class ShaderAlgorithm implements Algorithm {
     gl.uniform1f(c.get('u_barPhase') ?? null, inputs.barPhase);
     gl.uniform1f(c.get('u_beatPulse') ?? null, inputs.beatPulse);
     gl.uniform1f(c.get('u_barPulse') ?? null, inputs.barPulse);
-    gl.uniform1f(c.get('u_barCount') ?? null, inputs.barCount);
+    gl.uniform1f(c.get('u_barSteps') ?? null, inputs.barSteps);
     gl.uniform1f(c.get('u_intensity') ?? null, inputs.intensity);
-    gl.uniform1f(c.get('u_soft') ?? null, inputs.soft);
     for (const { location, value } of this.params) setUniform(gl, location, value);
     if (this.perFrame) {
       for (const [uniform, value] of Object.entries(this.perFrame(inputs))) {

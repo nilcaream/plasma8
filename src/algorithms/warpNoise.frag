@@ -34,9 +34,8 @@ float fbm(vec2 p) {
 vec3 shade(vec2 uv) {
   float beat = beatPulse();
   float bar = barPulse();
-  // softened: shallower breaths and colour swings
-  float H = u_intensity * (1.0 - 0.5 * u_soft);
-  float breath = H * (0.10 * beat + 0.18 * bar);
+  // the intensity sets how deep the picture breathes, never its colours
+  float breath = u_intensity * (0.10 * beat + 0.18 * bar);
 
   float t = u_time;
   float ang = u_rotate * t;
@@ -50,10 +49,10 @@ vec3 shade(vec2 uv) {
   float f = fbm(p + u_warp * w + u_offset2);
 
   // the colours swing on every beat and take a bigger step at the start of a bar
-  float k = 1.1 * f + 0.45 * length(q) + 0.25 * length(w) + H * (0.12 * beat + 0.3 * bar);
+  float k = 1.1 * f + 0.45 * length(q) + 0.25 * length(w) + 0.06 * beat + 0.15 * bar;
   vec3 col = u_palA + u_palB * cos(6.28318 * (u_palC * k + u_palD));
 
-  col *= 1.0 + 0.18 * H * beat + 0.12 * H * bar;
+  col *= 1.0 + 0.09 * beat + 0.06 * bar;
   col *= 1.0 - 0.3 * dot(uv, uv);
   return col;
 }

@@ -23,9 +23,7 @@ const float RADIUS = 1.0;
 const float FAR = 40.0;
 
 vec2 path(float z) {
-  // softened, the tube winds less
-  vec2 bend = u_bend * (1.0 - 0.5 * u_soft);
-  return vec2(bend.x * sin(z * u_bendFreq.x), bend.y * cos(z * u_bendFreq.y));
+  return vec2(u_bend.x * sin(z * u_bendFreq.x), u_bend.y * cos(z * u_bendFreq.y));
 }
 
 // distance to the wall from inside the tube
@@ -52,9 +50,9 @@ vec3 shade(vec2 uv) {
   float I = u_intensity;
   float t = u_time;
   float bars = barStep();
-  // softened: calmer lines and a dimmer wave
-  float H = I * (1.0 - 0.5 * u_soft);
 
+  // the dive's speed is the motion time's: the intensity sets it, no beat changes it;
+  // the roll at each bar start goes through barStep(), a quarter of it at intensity 0
   float camZ = t * u_speed;
 
   vec3 ro = vec3(path(camZ), camZ);
@@ -76,7 +74,7 @@ vec3 shade(vec2 uv) {
   vec2 q = p.xy - path(p.z);
   float ang = atan(q.y, q.x) / 6.28318;
 
-  float w = mix(0.14, 0.05, I);
+  float w = 0.06;
   float rings = lines(p.z / u_ringGap, w, fwidth(p.z / u_ringGap));
   // the angle (-0.5..0.5) jumps where it wraps; fract(ang) wraps at 0 instead, so the smaller step is the true one
   float ribX = ang * u_ribs + p.z * u_twist;
@@ -88,16 +86,15 @@ vec3 shade(vec2 uv) {
   vec3 wall = cosPalette(hue, u_palA, u_palB, u_palC, u_palD);
   vec3 lineCol = cosPalette(hue + 0.35, u_palA, u_palB, u_palC, u_palD);
 
-  // hard: dark walls, lines flaring on the beat; soft: lighter walls, calm lines
-  vec3 col = wall * mix(0.45, 0.12, I);
-  col += lineCol * glowLines * (mix(0.5, 0.7, H) + 1.3 * H * beat);
+  // dark walls, lines flaring on the beat: the same at every intensity, the envelope sets how they pulse
+  vec3 col = wall * 0.15;
+  col += lineCol * glowLines * (0.68 + 1.17 * beat);
 
   // the bar-start wave rushing away down the tube
   float waveAt = u_barPhase * 28.0;
-  col += lineCol * mix(0.4, 1.4, H) * exp(-abs(d - waveAt) * 1.2) * (1.0 - u_barPhase);
+  col += lineCol * 1.3 * exp(-abs(d - waveAt) * 1.2) * bar;
 
-  vec3 fog = mix(u_palA * 0.5, vec3(0.0), I);
-  col = mix(fog, col, exp(-d * mix(0.05, 0.11, I)));
-  col *= 1.0 + 0.15 * H * bar;
+  col = mix(u_palA * 0.05, col, exp(-d * 0.104));
+  col *= 1.0 + 0.135 * bar;
   return col;
 }

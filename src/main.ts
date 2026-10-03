@@ -8,7 +8,7 @@ import { parseDebugParams } from './query';
 import { createRng, formatSeed, freshSeed } from './rng';
 import { Sequencer, type Change } from './sequence';
 import { loadSettings, saveSettings, type Settings } from './settings';
-import { MotionClock, softening } from './soften';
+import { BarSteps, MotionClock, motionRate } from './motion';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
 import { FlashGate, flashLevel } from './strobe';
 import { Corner, DebugOverlay, Metronome, showFatal } from './ui';
@@ -67,6 +67,7 @@ function main(): void {
   const sequencer = new Sequencer(rng);
   const gate = new FlashGate();
   const motion = new MotionClock();
+  const barSteps = new BarSteps();
   let current = make(live.intensity);
   let incoming: Running | undefined;
   let look: TransitionLook | undefined;
@@ -110,7 +111,7 @@ function main(): void {
 
     const r = clock.read(now);
     calm += ((r.synced ? 1 : UNSYNCED_CALM) - calm) * (1 - Math.exp(-dt / CALM_EASE_SECONDS));
-    // The algorithms get the calmer value before the first tap; the pick, the cuts and the softening follow the slider.
+    // The algorithms get the calmer value before the first tap; the pick and the cuts follow the slider.
     const slider = live.intensity;
     const intensity = slider * calm;
 
@@ -129,12 +130,11 @@ function main(): void {
       announce(current, sequencer.segment.bars, `in by ${pending}`);
     }
 
-    // Softening follows the slider at once; during a fade it slides from the outgoing home to the incoming one.
-    // It slows the motion and calms each algorithm; it never blurs.
+    // Speed follows the intensity at once; during a fade it slides from the outgoing home to the incoming one.
     const fade = incoming ? step.fade : 0;
     const eased = fade * fade * (3 - 2 * fade);
-    const softOut = softening(current.def.home, slider);
-    const soft = incoming && fade > 0 ? softOut + (softening(incoming.def.home, slider) - softOut) * eased : softOut;
+    const rateOut = motionRate(current.def.home, intensity);
+    const rate = incoming && fade > 0 ? rateOut + (motionRate(incoming.def.home, intensity) - rateOut) * eased : rateOut;
 
     // Strobe: off at 0; the running algorithm says kick or snare, the gate keeps the cap.
     const beat = Math.floor(r.beats);
@@ -154,20 +154,18 @@ function main(): void {
 
     stage.render(current.algorithm, incoming?.algorithm, look, {
       inputs: {
-        time: motion.update(dt, soft),
+        time: motion.update(dt, rate),
         beatPhase: r.beatPhase,
         barPhase: r.barPhase,
         beatPulse: pulse(r.beatPhase, intensity),
         barPulse: pulse(r.barPhase, intensity),
-        barCount: r.bar,
+        barSteps: barSteps.update(r.bar, r.barPhase, intensity),
         beats: r.beats,
         intensity,
-        soft,
         width,
         height,
       },
       fade,
-      soft,
       flash,
     });
 
@@ -178,7 +176,7 @@ function main(): void {
       barsLeft: sequencer.barsLeft(r.beats),
       change: describeChange(sequencer.change, look),
       intensity,
-      soft,
+      rate,
     });
     requestAnimationFrame(frame);
   };

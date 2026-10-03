@@ -27,8 +27,6 @@ export interface StageFrame {
   inputs: FrameInputs;
   /** 0..1 of the fade; above 0 only while a fade runs. */
   fade: number;
-  /** Softening of the final pass, 0..1. */
-  soft: number;
   /** Strobe flash, 0..1. */
   flash: number;
 }
@@ -53,7 +51,7 @@ export class Stage {
   private readonly transition: WebGLProgram;
   private readonly post: WebGLProgram;
   private readonly tu: Uniforms<'u_from' | 'u_to' | 'u_resolution' | 'u_progress' | 'u_style' | 'u_dir' | 'u_offset'>;
-  private readonly pu: Uniforms<'u_src' | 'u_resolution' | 'u_soft' | 'u_flash'>;
+  private readonly pu: Uniforms<'u_src' | 'u_resolution' | 'u_flash'>;
 
   constructor(private readonly gl: WebGL2RenderingContext) {
     this.a = new RenderTarget(gl);
@@ -62,7 +60,7 @@ export class Stage {
     this.transition = createProgram(gl, FULLSCREEN_VERTEX, transitionSource);
     this.post = createProgram(gl, FULLSCREEN_VERTEX, postSource);
     this.tu = locate(gl, this.transition, ['u_from', 'u_to', 'u_resolution', 'u_progress', 'u_style', 'u_dir', 'u_offset']);
-    this.pu = locate(gl, this.post, ['u_src', 'u_resolution', 'u_soft', 'u_flash']);
+    this.pu = locate(gl, this.post, ['u_src', 'u_resolution', 'u_flash']);
   }
 
   render(current: Algorithm, incoming: Algorithm | undefined, look: TransitionLook | undefined, f: StageFrame): void {
@@ -93,7 +91,6 @@ export class Stage {
     gl.useProgram(this.post);
     this.bindTexture(0, source.texture, this.pu.u_src);
     gl.uniform2f(this.pu.u_resolution, width, height);
-    gl.uniform1f(this.pu.u_soft, f.soft);
     gl.uniform1f(this.pu.u_flash, f.flash);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }

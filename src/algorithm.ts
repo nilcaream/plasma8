@@ -3,7 +3,7 @@ import type { StrobeBeat } from './strobe';
 
 /** What every algorithm gets each frame, whatever it draws. */
 export interface FrameInputs {
-  /** Seconds of motion since the page loaded: slower while softened; continuous, never re-aligned by taps. */
+  /** Seconds of motion since the page loaded, at the speed the intensity sets (src/motion.ts); continuous, never re-aligned by taps. */
   time: number;
   /** 0..1 inside the current beat. */
   beatPhase: number;
@@ -13,14 +13,12 @@ export interface FrameInputs {
   beatPulse: number;
   /** The same envelope over the bar: 1 on beat 1. */
   barPulse: number;
-  /** Bars completed so far; 0 during the first bar. */
-  barCount: number;
+  /** Bar steps taken so far (src/motion.ts BarSteps): up by a share of one, by intensity, at each bar start, eased. */
+  barSteps: number;
   /** Beats since beat 1 of bar 1, fractional; starts again from 0 when a tap starts a fresh count. */
   beats: number;
-  /** 0 soft … 1 hard. */
+  /** 0 soft … 1 hard: how hard the beat hits and how far beat moves reach; never the colours. */
   intensity: number;
-  /** 0 … 1: how far the slider sits below the algorithm's home; smaller moves, gentler changes. */
-  soft: number;
   /** Size of the drawing surface in pixels. */
   width: number;
   height: number;
@@ -40,7 +38,7 @@ export interface Algorithm {
 /** Makes an algorithm with its own parameters drawn from `rng`. */
 export interface AlgorithmDef {
   readonly name: string;
-  /** The intensity (0 soft … 1 hard) it is at home at: picked most there, softened below it. */
+  /** The intensity (0 soft … 1 hard) it is at home at: picked most there, and runs at its designed speed there. */
   readonly home: number;
   /** Which beats its strobe flashes on. */
   readonly strobe: StrobeBeat;
