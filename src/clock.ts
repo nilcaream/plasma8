@@ -26,6 +26,8 @@ export interface ClockReading {
   bpm: number;
   /** False until the first tap. */
   synced: boolean;
+  /** Counts fresh runs: 0 while free-running, 1 from the first tap, one more at each reset. */
+  run: number;
   /** Beats elapsed since beat 1 of bar 1, fractional. */
   beats: number;
   /** 0..1 inside the current beat. */
@@ -59,6 +61,7 @@ export function slope(ys: readonly number[]): number {
 export class TapClock {
   private bpm: number;
   private synced = false;
+  private run = 0;
   /** Time of beat 1 of bar 1; while free-running, the time the clock started. */
   private anchor: number;
   private lastTap = -Infinity;
@@ -80,6 +83,7 @@ export class TapClock {
     if (!this.synced || gap >= RESET_GAP_MS || gap < 0) {
       // First tap ever, or a fresh count: this tap is beat 1 of bar 1.
       this.synced = true;
+      this.run += 1;
       this.taps = [now];
       this.firstBeat = 0;
       this.anchor = now;
@@ -110,6 +114,7 @@ export class TapClock {
     return {
       bpm: this.bpm,
       synced: this.synced,
+      run: this.run,
       beats,
       beatPhase,
       beatInBar,

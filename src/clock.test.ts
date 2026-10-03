@@ -149,6 +149,15 @@ describe('TapClock gaps and double events', () => {
     expect(clock.read(2500 + 1900).beats).toBeGreaterThan(3); // the run goes on; a reset would give 0
   });
 
+  it('counts runs: 0 free-running, 1 from the first tap, one more at each fresh count', () => {
+    const clock = new TapClock(0);
+    expect(clock.read(500).run).toBe(0);
+    const last = tapEvery(clock, 1000, 500, 4);
+    expect(clock.read(last).run).toBe(1);
+    clock.tap(last + 2000);
+    expect(clock.read(last + 2000).run).toBe(2);
+  });
+
   it('ignores a second tap a few milliseconds after the first', () => {
     const clock = new TapClock(0);
     clock.tap(1000);
