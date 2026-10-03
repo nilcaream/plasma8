@@ -1,7 +1,7 @@
 import { chooseAlgorithm } from './algorithms';
 import type { Algorithm, AlgorithmDef } from './algorithm';
 import { TapClock } from './clock';
-import { pulse } from './envelope';
+import { beatInputs } from './drive';
 import { createContext } from './gl';
 import { isTapKey, isTapPointer } from './input';
 import { parseDebugParams } from './query';
@@ -27,9 +27,6 @@ function describeChange(change: Change | undefined, look: TransitionLook | undef
 
 /** Cap the pixel ratio: the soft fields gain nothing from more, and phones pay for it. */
 const MAX_PIXEL_RATIO = 1.5;
-/** Before the first tap the visuals are calmer: the intensity is scaled by this, then eased to 1. */
-const UNSYNCED_CALM = 0.55;
-const CALM_EASE_SECONDS = 0.8;
 
 function main(): void {
   const params = parseDebugParams(location.search);
@@ -99,7 +96,6 @@ function main(): void {
 
   const start = performance.now();
   let last = start;
-  let calm = UNSYNCED_CALM;
   let lastBeat = -1;
   let pending = 'change';
 
@@ -110,15 +106,13 @@ function main(): void {
     last = now;
 
     const r = clock.read(now);
-    calm += ((r.synced ? 1 : UNSYNCED_CALM) - calm) * (1 - Math.exp(-dt / CALM_EASE_SECONDS));
-    // The algorithms get the calmer value before the first tap; the pick and the cuts follow the slider.
-    const slider = live.intensity;
-    const intensity = slider * calm;
+    const intensity = live.intensity;
+    const beat = beatInputs(r, intensity);
 
     // Changes: the next algorithm is made a bar ahead, and takes over on beat 1.
-    const step = sequencer.update(r.beats, r.run, slider);
+    const step = sequencer.update(r.beats, r.run, intensity);
     if (step.prepare) {
-      incoming = make(slider, current.def);
+      incoming = make(intensity, current.def);
       look = drawTransitionLook(rng);
       pending = describeChange(sequencer.change, look) ?? 'change';
     }
@@ -137,12 +131,12 @@ function main(): void {
     const rate = incoming && fade > 0 ? rateOut + (motionRate(incoming.def.home, intensity) - rateOut) * eased : rateOut;
 
     // Strobe: off at 0; the running algorithm says kick or snare, the gate keeps the cap.
-    const beat = Math.floor(r.beats);
-    if (beat !== lastBeat) {
-      lastBeat = beat;
-      if (live.strobe > 0) gate.onBeat(current.def.strobe, beat, r.bpm, seconds);
+    const beatIndex = Math.floor(r.beats);
+    if (beatIndex !== lastBeat) {
+      lastBeat = beatIndex;
+      if (live.strobe > 0) gate.onBeat(current.def.strobe, beatIndex, r.bpm, seconds);
     }
-    const flash = flashLevel(seconds - gate.lastFlash, live.strobe) * calm;
+    const flash = flashLevel(seconds - gate.lastFlash, live.strobe);
 
     const ratio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
     const width = Math.max(1, Math.round(canvas.clientWidth * ratio));
@@ -154,14 +148,9 @@ function main(): void {
 
     stage.render(current.algorithm, incoming?.algorithm, look, {
       inputs: {
+        ...beat,
         time: motion.update(dt, rate),
-        beatPhase: r.beatPhase,
-        barPhase: r.barPhase,
-        beatPulse: pulse(r.beatPhase, intensity),
-        barPulse: pulse(r.barPhase, intensity),
         barSteps: barSteps.update(r.bar, r.barPhase, intensity),
-        beats: r.beats,
-        intensity,
         width,
         height,
       },
