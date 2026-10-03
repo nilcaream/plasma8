@@ -19,46 +19,46 @@ function flashTimes(beat: StrobeBeat, bpm: number, seconds: number, seed = 1): n
 }
 
 describe('the flash grid', () => {
-  it('flashes on every kick at 100 BPM', () => {
-    expect([0, 1, 2, 3].filter((i) => onFlashGrid('kick', i, 100))).toEqual([0, 1, 2, 3]);
+  it('flashes on every kick at club tempos', () => {
+    expect([0, 1, 2, 3].filter((i) => onFlashGrid('kick', i, 128))).toEqual([0, 1, 2, 3]);
+    expect(flashStep('kick', 150)).toBe(1);
   });
 
-  it('flashes on beats 2 and 4 for the snare', () => {
+  it('keeps every kick up to just under 180 BPM and skips every other one from 180', () => {
+    expect(flashStep('kick', 179.9)).toBe(1);
+    expect(flashStep('kick', 180)).toBe(2);
+    expect([0, 1, 2, 3, 4].filter((i) => onFlashGrid('kick', i, 180))).toEqual([0, 2, 4]);
+  });
+
+  it('flashes on beats 2 and 4 for the snare, at every tempo', () => {
     expect([0, 1, 2, 3, 4, 5, 6, 7].filter((i) => onFlashGrid('snare', i, 128))).toEqual([1, 3, 5, 7]);
-  });
-
-  it('skips every other kick when the kicks come too fast, keeping beats 1 and 3', () => {
-    expect(flashStep('kick', 128)).toBe(2);
-    expect([0, 1, 2, 3, 4].filter((i) => onFlashGrid('kick', i, 128))).toEqual([0, 2, 4]);
-  });
-
-  it('keeps one snare in a bar only at the fastest tempos', () => {
-    expect(flashStep('snare', 200)).toBe(2);
-    expect(flashStep('snare', 240)).toBe(4);
+    expect(flashStep('snare', 240)).toBe(2);
   });
 });
 
 describe('FlashGate', () => {
-  it('never lets 3 flashes into one second, at any tempo, kick or snare', () => {
+  it('never lets 4 flashes into one second, at any tempo, kick or snare', () => {
     for (const beat of ['kick', 'snare'] as const) {
       for (let bpm = MIN_BPM; bpm <= MAX_BPM; bpm += 0.5) {
         const times = flashTimes(beat, bpm, 12, bpm);
         expect(times.length).toBeGreaterThan(0);
-        for (let i = 2; i < times.length; i++) expect(times[i]! - times[i - 2]!).toBeGreaterThanOrEqual(1);
+        for (let i = 3; i < times.length; i++) expect(times[i]! - times[i - 3]!).toBeGreaterThan(1);
       }
     }
   });
 
-  it('keeps every grid beat when the tempo leaves room, frame timing or not', () => {
-    expect(flashTimes('kick', 110, 12).length).toBe(22);
+  it('keeps every kick at 170 BPM, frame timing or not', () => {
+    expect(flashTimes('kick', 170, 12).length).toBe(34);
   });
 
-  it('holds back a flash that would be the third inside one second', () => {
+  it('lets 3 flashes into one second and holds back a fourth', () => {
     const gate = new FlashGate();
+    // far enough apart that only the one-second window can hold the fourth back
     expect(gate.onBeat('kick', 0, 60, 0)).toBe(true);
-    expect(gate.onBeat('kick', 1, 60, 0.5)).toBe(true);
-    expect(gate.onBeat('kick', 2, 60, 0.9)).toBe(false);
-    expect(gate.onBeat('kick', 3, 60, 1.05)).toBe(true);
+    expect(gate.onBeat('kick', 1, 60, 0.3)).toBe(true);
+    expect(gate.onBeat('kick', 2, 60, 0.6)).toBe(true);
+    expect(gate.onBeat('kick', 3, 60, 1.0)).toBe(false);
+    expect(gate.onBeat('kick', 4, 60, 1.31)).toBe(true);
   });
 
   it('never fires two flashes close together, as when a tap moves the beat back', () => {

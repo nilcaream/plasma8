@@ -3,19 +3,19 @@
  * times in seconds and never reads a clock.
  *
  * Each algorithm says which beats it flashes on: every kick (every beat) or the
- * snare/clap (beats 2 and 4). Whatever the tempo, there are never 3 flashes in
- * any one second (under the WCAG 2.3.1 threshold). Two layers keep it so: when
- * the beats come too fast, beats are skipped on the grid (every other one, or
- * one in four), with a margin for frames that land a little late; and a flash
- * that would make 3 within a second never fires, which also covers a tap that
- * re-aligns the clock between two flashes.
+ * snare/clap (beats 2 and 4). Whatever the tempo, there are at most 3 flashes
+ * in any one-second period (WCAG 2.3.1). Two layers keep it so: when the beats
+ * come too fast, beats are skipped on the grid (every other one, or one in
+ * four), so a kick keeps every beat up to just under 180 BPM; and a flash that
+ * would make a fourth within a second never fires, which also covers frames
+ * that land late and a tap that re-aligns the clock between two flashes.
  */
 
 export type StrobeBeat = 'kick' | 'snare';
 
-/** The grid keeps flashes at least this far apart: half a second plus a margin for frame timing. */
-export const MIN_GRID_GAP_S = 0.52;
-/** Never this many flashes inside one second. */
+/** On the grid, flashes are more than this far apart, so 4 of them always span more than a second. */
+export const MIN_GRID_GAP_S = 1 / 3;
+/** At most this many flashes in any one second. */
 export const MAX_FLASHES_PER_S = 3;
 /** Never two flashes closer than this, whatever the clock does. */
 export const MIN_GAP_S = 0.25;
@@ -32,7 +32,7 @@ const OFFSET: Record<StrobeBeat, number> = { kick: 0, snare: 1 };
 export function flashStep(beat: StrobeBeat, bpm: number): number {
   const beatS = 60 / bpm;
   let step = SPACING[beat];
-  while (step * beatS < MIN_GRID_GAP_S && step < 8) step *= 2;
+  while (step * beatS <= MIN_GRID_GAP_S && step < 8) step *= 2;
   return step;
 }
 
@@ -52,8 +52,9 @@ export class FlashGate {
     if (!onFlashGrid(beat, beatIndex, bpm)) return false;
     const last = this.recent[this.recent.length - 1];
     if (last !== undefined && nowS - last < MIN_GAP_S) return false;
-    const window = this.recent.filter((t) => nowS - t < 1);
-    if (window.length >= MAX_FLASHES_PER_S - 1) return false;
+    // the second ending now, both ends included, may hold this flash and at most 2 before it
+    const window = this.recent.filter((t) => nowS - t <= 1);
+    if (window.length >= MAX_FLASHES_PER_S) return false;
     this.recent = [...window, nowS];
     return true;
   }
