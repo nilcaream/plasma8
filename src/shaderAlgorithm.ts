@@ -17,7 +17,6 @@ uniform float u_barPhase;
 uniform float u_beatPulse;
 uniform float u_barPulse;
 uniform float u_barCount;
-uniform float u_travel;
 uniform float u_intensity;
 uniform float u_soft;
 out vec4 fragColor;
@@ -50,7 +49,7 @@ void main() {
 }
 `;
 
-const COMMON_UNIFORMS = ['u_resolution', 'u_time', 'u_beatPhase', 'u_barPhase', 'u_beatPulse', 'u_barPulse', 'u_barCount', 'u_travel', 'u_intensity', 'u_soft'] as const;
+const COMMON_UNIFORMS = ['u_resolution', 'u_time', 'u_beatPhase', 'u_barPhase', 'u_beatPulse', 'u_barPulse', 'u_barCount', 'u_intensity', 'u_soft'] as const;
 
 /**
  * Programs by shader body: every change makes a new instance with new
@@ -72,11 +71,15 @@ export class ShaderAlgorithm implements Algorithm {
   private readonly common = new Map<string, WebGLUniformLocation>();
   private readonly params: { location: WebGLUniformLocation; value: number | readonly number[] }[] = [];
 
+  private readonly frameLocations = new Map<string, WebGLUniformLocation | null>();
+
+  /** `perFrame`, when given, returns uniforms of the algorithm's own that change every frame. */
   constructor(
     private readonly gl: WebGL2RenderingContext,
     readonly name: string,
     shaderBody: string,
     params: ShaderParams,
+    private readonly perFrame?: (inputs: FrameInputs) => ShaderParams,
   ) {
     this.program = programFor(gl, shaderBody);
     for (const u of COMMON_UNIFORMS) {
@@ -103,10 +106,16 @@ export class ShaderAlgorithm implements Algorithm {
     gl.uniform1f(c.get('u_beatPulse') ?? null, inputs.beatPulse);
     gl.uniform1f(c.get('u_barPulse') ?? null, inputs.barPulse);
     gl.uniform1f(c.get('u_barCount') ?? null, inputs.barCount);
-    gl.uniform1f(c.get('u_travel') ?? null, inputs.travel);
     gl.uniform1f(c.get('u_intensity') ?? null, inputs.intensity);
     gl.uniform1f(c.get('u_soft') ?? null, inputs.soft);
     for (const { location, value } of this.params) setUniform(gl, location, value);
+    if (this.perFrame) {
+      for (const [uniform, value] of Object.entries(this.perFrame(inputs))) {
+        let location = this.frameLocations.get(uniform);
+        if (location === undefined) this.frameLocations.set(uniform, (location = gl.getUniformLocation(this.program, uniform)));
+        if (location) setUniform(gl, location, value);
+      }
+    }
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 

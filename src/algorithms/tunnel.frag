@@ -1,7 +1,8 @@
 // Raymarched tunnel: the camera flies down a winding tube (round or a polygon
-// in cross-section) whose walls carry glowing rings and ribs. Hard: every beat
-// shoves the camera forward and flares the lines; every bar start sends a wave
-// of light rushing away down the tube and rolls the view by a step.
+// in cross-section) whose walls carry glowing rings and ribs. The dive goes at
+// one steady speed. On every beat (or every second one) the far end swings to
+// a new spot on screen and glides there, and the lines flare; every bar start
+// sends a wave of light rushing away down the tube and rolls the view by a step.
 uniform vec3 u_palA;
 uniform vec3 u_palB;
 uniform vec3 u_palC;
@@ -10,7 +11,7 @@ uniform float u_sides;     // 0 round, else the polygon's sides
 uniform vec2 u_bend;       // how far the path swings, x and y
 uniform vec2 u_bendFreq;
 uniform float u_speed;     // forward, units per second
-uniform float u_surge;     // extra forward per beat, front-loaded (u_travel never goes back)
+uniform vec2 u_aim;        // where the far end sits on screen, in uv (src/swing.ts)
 uniform float u_ringGap;
 uniform float u_ribs;
 uniform float u_twist;     // ribs spiral along the tube
@@ -54,14 +55,14 @@ vec3 shade(vec2 uv) {
   // softened: calmer lines and a dimmer wave
   float H = I * (1.0 - 0.5 * u_soft);
 
-  float camZ = t * u_speed + u_surge * u_travel;
+  float camZ = t * u_speed;
 
   vec3 ro = vec3(path(camZ), camZ);
   vec3 ta = vec3(path(camZ + 1.5), camZ + 1.5);
   vec3 fw = normalize(ta - ro);
   vec3 rt = normalize(cross(vec3(0.0, 1.0, 0.0), fw));
   vec3 up = cross(fw, rt);
-  vec2 v = rot2(u_roll * t + u_barRoll * bars) * uv;
+  vec2 v = rot2(u_roll * t + u_barRoll * bars) * (uv - u_aim);
   vec3 rd = normalize(v.x * rt + v.y * up + 1.1 * fw);
 
   float d = 0.05;

@@ -15,8 +15,8 @@ export interface FrameInputs {
   barPulse: number;
   /** Bars completed so far; 0 during the first bar. */
   barCount: number;
-  /** Beats travelled, front-loaded after each beat; never goes back, even when a tap starts a fresh count. */
-  travel: number;
+  /** Beats since beat 1 of bar 1, fractional; starts again from 0 when a tap starts a fresh count. */
+  beats: number;
   /** 0 soft … 1 hard. */
   intensity: number;
   /** 0 … 1: how far the slider sits below the algorithm's home; smaller moves, gentler changes. */
