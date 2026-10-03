@@ -23,6 +23,17 @@ float hash12(vec2 p) {
   p3 += dot(p3, p3.yzx + 33.33);
   return fract((p3.x + p3.y) * p3.z);
 }
+
+// 1 on the beat, falling away over it; 1 on beat 1, falling away over the bar
+float beatPulse() { return pow(1.0 - u_beatPhase, 3.0); }
+float barPulse() { return pow(1.0 - u_barPhase, 5.0); }
+
+// a count that steps up by one at every bar start, eased over the first eighth of the bar
+float barStep() { return u_barCount + smoothstep(0.0, 0.125, u_barPhase); }
+
+mat2 rot2(float a) { return mat2(cos(a), -sin(a), sin(a), cos(a)); }
+
+vec3 cosPalette(float t, vec3 a, vec3 b, vec3 c, vec3 d) { return a + b * cos(6.28318 * (c * t + d)); }
 `;
 
 /** Adds a little noise so slow soft gradients do not band. */
@@ -37,6 +48,20 @@ void main() {
 
 const COMMON_UNIFORMS = ['u_resolution', 'u_time', 'u_beatPhase', 'u_barPhase', 'u_barCount', 'u_intensity'] as const;
 
+/**
+ * Programs by shader body: every change makes a new instance with new
+ * parameters, and only the first instance of an algorithm pays for compiling.
+ */
+const programs = new WeakMap<WebGL2RenderingContext, Map<string, WebGLProgram>>();
+
+function programFor(gl: WebGL2RenderingContext, shaderBody: string): WebGLProgram {
+  let cache = programs.get(gl);
+  if (!cache) programs.set(gl, (cache = new Map()));
+  let program = cache.get(shaderBody);
+  if (!program) cache.set(shaderBody, (program = createProgram(gl, FULLSCREEN_VERTEX, HEADER + shaderBody + FOOTER)));
+  return program;
+}
+
 /** An algorithm that is one full-screen fragment shader plus a set of random parameters. */
 export class ShaderAlgorithm implements Algorithm {
   private readonly program: WebGLProgram;
@@ -49,7 +74,7 @@ export class ShaderAlgorithm implements Algorithm {
     shaderBody: string,
     params: ShaderParams,
   ) {
-    this.program = createProgram(gl, FULLSCREEN_VERTEX, HEADER + shaderBody + FOOTER);
+    this.program = programFor(gl, shaderBody);
     for (const u of COMMON_UNIFORMS) {
       const location = gl.getUniformLocation(this.program, u);
       if (location) this.common.set(u, location);
@@ -77,9 +102,8 @@ export class ShaderAlgorithm implements Algorithm {
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
-  dispose(): void {
-    this.gl.deleteProgram(this.program);
-  }
+  /** The program is shared with later instances of the same algorithm, so there is nothing to free. */
+  dispose(): void {}
 }
 
 function setUniform(gl: WebGL2RenderingContext, location: WebGLUniformLocation, value: number | readonly number[]): void {
