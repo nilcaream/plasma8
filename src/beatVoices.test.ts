@@ -23,12 +23,12 @@ describe('rise and fallPower', () => {
   it('run from the intensity-0 values to the intensity-1 values', () => {
     expect(rise(0)).toBeCloseTo(DEFAULT_SHAPE.a0, 12);
     expect(rise(1)).toBeCloseTo(DEFAULT_SHAPE.a1, 12);
-    expect(rise(0)).toBeCloseTo(0.5, 12); // long and soft at 0
-    expect(rise(1)).toBeCloseTo(0.02, 12); // short at 1
     expect(fallPower(0)).toBeCloseTo(DEFAULT_SHAPE.p0, 12);
     expect(fallPower(1)).toBeCloseTo(DEFAULT_SHAPE.p1, 12);
-    expect(rise(0.5)).toBeCloseTo(0.26, 12);
-    expect(fallPower(0.5)).toBeCloseTo(2.5, 12);
+    // the settled shape: a longer, softer rise and gentler fall at 0
+    expect(DEFAULT_SHAPE).toEqual({ a0: 0.165, a1: 0.045, p0: 1.7, p1: 5 });
+    expect(rise(0.5)).toBeCloseTo(0.105, 12);
+    expect(fallPower(0.5)).toBeCloseTo(3.35, 12);
   });
 });
 

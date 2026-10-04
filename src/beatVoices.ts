@@ -37,7 +37,7 @@ export interface Shape {
   p1: number;
 }
 
-export const DEFAULT_SHAPE: Readonly<Shape> = { a0: 0.5, a1: 0.02, p0: 1, p1: 4 };
+export const DEFAULT_SHAPE: Readonly<Shape> = { a0: 0.165, a1: 0.045, p0: 1.7, p1: 5 };
 
 export type Amounts = Record<VoiceName, number>;
 
