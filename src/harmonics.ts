@@ -20,6 +20,18 @@ export const LAYERS = PERIODS.length;
 /** How much each step to a faster layer weighs less at intensity 0. */
 export const DAMPING = 4;
 
+/**
+ * The damping's tuning span, for trying values far beyond the code's. Above 1
+ * the slow layers lead at intensity 0; at 1 all layers weigh their f; below 1
+ * the fast ones lead. It stays above 0, where a power of the base is defined.
+ */
+export const DAMPING_RANGE = [0.1, 16] as const;
+
+/** The draw's ranges: f_0 so the 2-bar layer leads at intensity 0, then f_1..f_3, the width share and the offset share. */
+export const FACTOR_RANGES = [[0.5, 1], [0, 1], [0, 1], [0, 1]] as const;
+export const WIDTH_SHARE_RANGE = [0.25, 0.6] as const;
+export const OFFSET_RANGE = [0, 1] as const;
+
 /** One parameter's draw: its share of the outer bounds and its layer factors. */
 export interface HarmonicDraw {
   /** The seed of the layers' points. */
@@ -90,9 +102,9 @@ export function mix(seed: number, factors: readonly number[], intensity: number,
 export function drawHarmonic(rng: Rng): HarmonicDraw {
   return {
     seed: Math.floor(rng.next() * 4294967296) >>> 0,
-    widthShare: rng.range(0.25, 0.6),
-    offsetShare: rng.next(),
-    factors: [rng.range(0.5, 1), rng.next(), rng.next(), rng.next()],
+    widthShare: rng.range(...WIDTH_SHARE_RANGE),
+    offsetShare: rng.range(...OFFSET_RANGE),
+    factors: FACTOR_RANGES.map(([min, max]) => rng.range(min, max)),
   };
 }
 

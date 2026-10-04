@@ -4,7 +4,7 @@
  * ticks, curves, dots and a playhead) in the page's theme colours.
  */
 
-import { MAX_BPM, MIN_BPM } from './clock';
+import { LIVE } from './pageRanges';
 import type { PageTempo } from './pageTempo';
 
 export function el<T extends HTMLElement = HTMLElement>(id: string): T {
@@ -58,7 +58,7 @@ export function button(parent: HTMLElement, label: string, id: string): HTMLButt
 
 /** The Live group's BPM slider, and the tap button that drives the same tempo. */
 export function tempoControls(live: HTMLElement, tapButton: HTMLButtonElement, tempo: PageTempo): (now: number) => void {
-  const setBpm = slider(live, { label: 'BPM', min: MIN_BPM, max: MAX_BPM, step: 0.01, value: tempo.tempo(0).bpm, digits: 2 },
+  const setBpm = slider(live, { label: 'BPM', ...LIVE.bpm, step: 0.01, value: tempo.tempo(0).bpm, digits: 2 },
     (v) => tempo.setBpm(v, performance.now()));
   // the event's own time, as the app does: the moment of the press, not of the handler
   tapButton.addEventListener('pointerdown', (e) => tempo.tap(e.timeStamp));

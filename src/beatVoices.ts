@@ -7,6 +7,8 @@
  * Positions are in beats from beat 1 of a bar: 0 is beat 1, 1 is beat 2.
  */
 
+import type { Rng } from './rng';
+
 export type VoiceName = 'kick' | 'snare' | 'crash';
 
 export interface Voice {
@@ -39,7 +41,30 @@ export interface Shape {
 
 export const DEFAULT_SHAPE: Readonly<Shape> = { a0: 0.165, a1: 0.045, p0: 1.7, p1: 5 };
 
+/**
+ * The longest rise the windows allow, in beats: the shortest window. A longer
+ * rise would start before the onset ahead of it, inside that onset's fall.
+ */
+export const MAX_RISE = Math.min(...Object.values(VOICES).map((v) => v.length));
+
+/**
+ * The fall power's tuning span, for trying values far beyond the code's. It
+ * stays above 0: at 0 the fall is flat and the peak leaves the onset.
+ */
+export const POWER_RANGE = [0.05, 20] as const;
+
+/** The flash gain G an algorithm starts from, and a wide tuning span; below 0 the flash would darken. */
+export const DEFAULT_GAIN = 1;
+export const GAIN_RANGE = [0, 5] as const;
+
 export type Amounts = Record<VoiceName, number>;
+
+/** Each voice's strength A is drawn from this range when an instance starts. */
+export const AMOUNT_RANGE = [0, 1] as const;
+
+export function drawAmounts(rng: Rng): Amounts {
+  return { kick: rng.range(...AMOUNT_RANGE), snare: rng.range(...AMOUNT_RANGE), crash: rng.range(...AMOUNT_RANGE) };
+}
 
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 

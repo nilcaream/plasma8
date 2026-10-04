@@ -4,16 +4,18 @@
  * in time so the sharpness can be felt.
  */
 import {
-  DEFAULT_SHAPE, VOICES, VOICE_NAMES, fallPower, flash, light, rise, windowEnvelope,
+  DEFAULT_GAIN, DEFAULT_SHAPE, VOICES, VOICE_NAMES, drawAmounts, fallPower, flash, light, rise, windowEnvelope,
   type Amounts, type Shape, type VoiceName,
 } from './beatVoices';
+import { BEATS, LIVE } from './pageRanges';
+import { createRng, freshSeed } from './rng';
 import {
   button, colors, controlGroup, dot, el, frame, plot, playhead, samples, setup, slider, tempoControls, type Tick,
 } from './pageGraphs';
 import { PageTempo } from './pageTempo';
 
 type Key = 'I' | 'kick' | 'snare' | 'crash' | 'G' | keyof Shape;
-const P: Record<Key, number> = { I: 0.5, kick: 0.3, snare: 0.1, crash: 0.8, G: 1, ...DEFAULT_SHAPE };
+const P: Record<Key, number> = { I: 0.5, kick: 0.3, snare: 0.1, crash: 0.8, G: DEFAULT_GAIN, ...DEFAULT_SHAPE };
 const shape = (): Shape => ({ a0: P.a0, a1: P.a1, p0: P.p0, p1: P.p1 });
 const amounts = (): Amounts => ({ kick: P.kick, snare: P.snare, crash: P.crash });
 
@@ -28,28 +30,41 @@ const controls = el('controls');
 const tempo = new PageTempo(performance.now(), 120);
 const set = (key: Key) => (v: number): void => { P[key] = v; writeFormulas(); };
 
-const live = controlGroup(controls, 'Live', 'Set by the user, with the slider and taps: neither random nor fixed.');
-slider(live, { label: 'I', min: 0, max: 1, step: 0.01, value: P.I, digits: 2 }, set('I'));
+const live = controlGroup(controls, 'Live',
+  `Set by the user, with the slider and taps: I ${LIVE.intensity.min}-${LIVE.intensity.max}, BPM ${LIVE.bpm.min}-${LIVE.bpm.max} (the tap clock's limits).`);
+slider(live, { label: 'I', ...LIVE.intensity, step: 0.01, value: P.I, digits: 2 }, set('I'));
 const showTempo = tempoControls(live, el<HTMLButtonElement>('tap'), tempo);
 
-const random = controlGroup(controls, 'Random per instance', 'Drawn when an instance starts; here each A from U(0, 1).');
+const random = controlGroup(controls, 'Random per instance',
+  `Drawn when an instance starts: each A from U(${BEATS.amount.min}, ${BEATS.amount.max}). The sliders span exactly that.`);
 const amountSliders = Object.fromEntries(VOICE_NAMES.map((name) => [name,
-  slider(random, { label: 'A_' + name, min: 0, max: 1, step: 0.01, value: P[name], digits: 2 }, set(name))])) as Record<VoiceName, (v: number) => void>;
+  slider(random, { label: 'A_' + name, ...BEATS.amount, step: 0.01, value: P[name], digits: 2 }, set(name))])) as Record<VoiceName, (v: number) => void>;
 button(random, 'Draw again', 'redraw').addEventListener('click', () => {
+  const drawn = drawAmounts(createRng(freshSeed()));
   for (const name of VOICE_NAMES) {
-    P[name] = Math.round(Math.random() * 100) / 100;
+    P[name] = Math.round(drawn[name] * 100) / 100;
     amountSliders[name](P[name]);
   }
   writeFormulas();
 });
 
 const fixed = controlGroup(controls, 'Fixed in code',
-  'Constants in src/beatVoices.ts; x0 is the value at intensity 0, x1 at 1. Windows: kick every beat, snare on 2 and 4, crash on 1, a beat each.');
-slider(fixed, { label: 'a0', min: 0, max: 1, step: 0.005, value: P.a0, digits: 3 }, set('a0'));
-slider(fixed, { label: 'a1', min: 0, max: 1, step: 0.005, value: P.a1, digits: 3 }, set('a1'));
-slider(fixed, { label: 'p0', min: 0, max: 8, step: 0.1, value: P.p0, digits: 1 }, set('p0'));
-slider(fixed, { label: 'p1', min: 0, max: 8, step: 0.1, value: P.p1, digits: 1 }, set('p1'));
-slider(fixed, { label: 'G', min: 0, max: 2, step: 0.01, value: P.G, digits: 2 }, set('G'));
+  'Constants in src/beatVoices.ts; x0 is the value at intensity 0, x1 at 1. Wide spans for trying values. '
+  + `a stops at ${BEATS.rise.max} beat, the window: a longer rise would reach into the fall before it. `
+  + `p stops at ${BEATS.power.min}: at 0 the fall is flat and the peak leaves the onset.`);
+const shapeSliders = {
+  a0: slider(fixed, { label: 'a0', ...BEATS.rise, step: 0.005, value: P.a0, digits: 3 }, set('a0')),
+  a1: slider(fixed, { label: 'a1', ...BEATS.rise, step: 0.005, value: P.a1, digits: 3 }, set('a1')),
+  p0: slider(fixed, { label: 'p0', ...BEATS.power, step: 0.05, value: P.p0, digits: 2 }, set('p0')),
+  p1: slider(fixed, { label: 'p1', ...BEATS.power, step: 0.05, value: P.p1, digits: 2 }, set('p1')),
+};
+const setGain = slider(fixed, { label: 'G', ...BEATS.gain, step: 0.01, value: P.G, digits: 2 }, set('G'));
+button(fixed, 'Reset to code values', 'reset-fixed').addEventListener('click', () => {
+  for (const key of ['a0', 'a1', 'p0', 'p1'] as const) { P[key] = DEFAULT_SHAPE[key]; shapeSliders[key](P[key]); }
+  P.G = DEFAULT_GAIN;
+  setGain(P.G);
+  writeFormulas();
+});
 
 // --- drawing --------------------------------------------------------------
 
@@ -84,7 +99,8 @@ function drawBar(pos: number): void {
 
 function drawLight(pos: number): void {
   const s = setup(el<HTMLCanvasElement>('lightCanvas'));
-  const { X, Y } = frame(s, 0, 4, 1, 3, BEAT_TICKS, [1, 1.5, 2, 2.5, 3], 1);
+  const top = Math.max(3, Math.ceil(1 + P.G)); // light reaches 1 + G at most
+  const { X, Y } = frame(s, 0, 4, 1, top, BEAT_TICKS, [0, 1, 2, 3, 4].map((i) => 1 + ((top - 1) * i) / 4), 1);
   plot(s.ctx, X, Y, 0, 4, samples(s.w), (x) => at(x).light, colors.light, 2.5);
   playhead(s, X, pos);
 }

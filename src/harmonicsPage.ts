@@ -12,6 +12,7 @@ import {
   button, colors, controlGroup, dot, el, frame, plot, playhead, samples, setup, slider, tempoControls,
   type Map1, type Tick,
 } from './pageGraphs';
+import { BOUNDS, HARMONICS, LIVE } from './pageRanges';
 import { PageTempo } from './pageTempo';
 import { createRng, formatSeed, freshSeed } from './rng';
 
@@ -26,27 +27,32 @@ function roundDraw(d: HarmonicDraw): HarmonicDraw {
 }
 
 let draw = roundDraw(drawHarmonic(createRng(freshSeed())));
-const P = { I: 0.5, L: 2, H: 8, damping: DAMPING };
+/** L and H are an example algorithm's outer bounds (zoom 2-8 in the design talk); the damping is the code's. */
+const EXAMPLE_BOUNDS = { L: 2, H: 8 };
+const P = { I: 0.5, ...EXAMPLE_BOUNDS, damping: DAMPING };
 
-/** The outer bounds, in order whichever slider is higher. */
-const bounds = (): [number, number] => [Math.min(P.L, P.H), Math.max(P.L, P.H)];
+/** The outer bounds; the sliders keep L below H. */
+const bounds = (): [number, number] => [P.L, P.H];
 
 // --- controls -------------------------------------------------------------
 
 const controls = el('controls');
 const tempo = new PageTempo(performance.now(), 120);
 
-const live = controlGroup(controls, 'Live', 'Set by the user, with the slider and taps: neither random nor fixed.');
-slider(live, { label: 'I', min: 0, max: 1, step: 0.01, value: P.I, digits: 2 }, (v) => { P.I = v; });
+const live = controlGroup(controls, 'Live',
+  `Set by the user, with the slider and taps: I ${LIVE.intensity.min}-${LIVE.intensity.max}, BPM ${LIVE.bpm.min}-${LIVE.bpm.max} (the tap clock's limits).`);
+slider(live, { label: 'I', ...LIVE.intensity, step: 0.01, value: P.I, digits: 2 }, (v) => { P.I = v; });
 const showTempo = tempoControls(live, el<HTMLButtonElement>('tap'), tempo);
 
+const fmt = (r: { min: number; max: number }): string => `U(${r.min}, ${r.max})`;
 const random = controlGroup(controls, 'Random per instance',
-  'Drawn when an instance starts: f_0 from U(0.5, 1), f_1..f_3 from U(0, 1), the width share from U(0.25, 0.6), the offset from U(0, 1), and the layer points.');
+  `Drawn when an instance starts, and the sliders span exactly that: f_0 from ${fmt(HARMONICS.factors[0]!)}, f_1..f_3 from ${fmt(HARMONICS.factors[1]!)}, `
+  + `the width share from ${fmt(HARMONICS.width)}, the offset from ${fmt(HARMONICS.offset)}, and the layer points.`);
 const factorSliders = draw.factors.map((f, k) =>
-  slider(random, { label: `f_${k}`, min: 0, max: 1, step: 0.01, value: f, digits: 2 }, (v) => { draw.factors[k] = v; }));
-const setWidth = slider(random, { label: 'width', min: 0.25, max: 0.6, step: 0.01, value: draw.widthShare, digits: 2 },
+  slider(random, { label: `f_${k}`, ...HARMONICS.factors[k]!, step: 0.01, value: f, digits: 2 }, (v) => { draw.factors[k] = v; }));
+const setWidth = slider(random, { label: 'width', ...HARMONICS.width, step: 0.01, value: draw.widthShare, digits: 2 },
   (v) => { draw.widthShare = v; });
-const setOffset = slider(random, { label: 'offset', min: 0, max: 1, step: 0.01, value: draw.offsetShare, digits: 2 },
+const setOffset = slider(random, { label: 'offset', ...HARMONICS.offset, step: 0.01, value: draw.offsetShare, digits: 2 },
   (v) => { draw.offsetShare = v; });
 const seedLine = document.createElement('p');
 seedLine.className = 'note';
@@ -62,10 +68,24 @@ button(random, 'Draw again', 'redraw').addEventListener('click', () => {
 });
 
 const fixed = controlGroup(controls, 'Fixed in code',
-  `L and H are an algorithm's outer bounds for this parameter. In src/harmonics.ts: periods ${PERIODS.join(', ')} beats, and the damping base below (4).`);
-slider(fixed, { label: 'L', min: 0, max: 10, step: 0.1, value: P.L, digits: 1 }, (v) => { P.L = v; });
-slider(fixed, { label: 'H', min: 0, max: 10, step: 0.1, value: P.H, digits: 1 }, (v) => { P.H = v; });
-slider(fixed, { label: 'base', min: 1, max: 8, step: 0.1, value: P.damping, digits: 1 }, (v) => { P.damping = v; });
+  `L and H are an algorithm's outer bounds for this parameter; L stays ${BOUNDS.gap} below H. In src/harmonics.ts: periods ${PERIODS.join(', ')} beats, `
+  + `and the damping base (${DAMPING}): above 1 the slow layers lead at I = 0, below 1 the fast ones; it stops at ${HARMONICS.damping.min}, above 0, where its powers are defined.`);
+const g = BOUNDS.gap;
+const setL = slider(fixed, { label: 'L', min: BOUNDS.min, max: BOUNDS.max - g, step: 0.1, value: P.L, digits: 1 }, (v) => {
+  P.L = v;
+  if (P.H < v + g) { P.H = v + g; setH(P.H); }
+});
+const setH = slider(fixed, { label: 'H', min: BOUNDS.min + g, max: BOUNDS.max, step: 0.1, value: P.H, digits: 1 }, (v) => {
+  P.H = v;
+  if (P.L > v - g) { P.L = v - g; setL(P.L); }
+});
+const setBase = slider(fixed, { label: 'base', ...HARMONICS.damping, step: 0.1, value: P.damping, digits: 1 }, (v) => { P.damping = v; });
+button(fixed, 'Reset to code values', 'reset-fixed').addEventListener('click', () => {
+  Object.assign(P, EXAMPLE_BOUNDS, { damping: DAMPING });
+  setL(P.L);
+  setH(P.H);
+  setBase(P.damping);
+});
 
 // --- lanes ----------------------------------------------------------------
 
