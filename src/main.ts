@@ -22,7 +22,8 @@ function describeChange(change: Change | undefined, look: TransitionLook | undef
   if (!change) return undefined;
   if (change.kind === 'cut') return 'cut';
   const style = look ? `, ${TRANSITION_STYLES[look.style]}` : '';
-  return `fade ${change.beats} beat${change.beats === 1 ? '' : 's'}${style}`;
+  const beats = Number.isInteger(change.beats) ? String(change.beats) : change.beats.toFixed(1);
+  return `fade ${beats} beat${change.beats === 1 ? '' : 's'}${style}`;
 }
 
 /** Cap the pixel ratio: the soft fields gain nothing from more, and phones pay for it. */

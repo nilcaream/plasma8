@@ -57,10 +57,10 @@ describe('Sequencer change', () => {
     expect(seen.fades).toEqual([]);
   });
 
-  it('fades over the last two beats and lands at 1 on beat 1', () => {
+  it('fades over the last two beats at intensity 1 and lands at 1 on beat 1', () => {
     // 4 bars; then a fade (0.99 is not a cut) of two beats (0.9)
     const seq = new Sequencer(scripted(0.0, 0.99, 0.9));
-    const seen = drive(seq, 0, 17);
+    const seen = drive(seq, 0, 17, 0, 1);
     expect(seen.change).toEqual([16]);
     const fades = seen.fades;
     expect(fades[0]![0]).toBeCloseTo(14.05);
@@ -70,11 +70,23 @@ describe('Sequencer change', () => {
     for (let i = 1; i < fades.length; i++) expect(fades[i]![1]).toBeGreaterThan(fades[i - 1]![1]);
   });
 
-  it('fades over the last beat only when it draws one beat', () => {
+  it('fades over the last beat only when it draws one beat at intensity 1', () => {
     const seq = new Sequencer(scripted(0.0, 0.99, 0.1));
-    const seen = drive(seq, 0, 17);
+    const seen = drive(seq, 0, 17, 0, 1);
     expect(seen.fades[0]![0]).toBeCloseTo(15.05);
     expect(seen.change).toEqual([16]);
+  });
+
+  it('fades over the whole last bar at intensity 0 and lands on beat 1, whatever it draws', () => {
+    for (const draw of [0.1, 0.9]) {
+      const seq = new Sequencer(scripted(0.0, 0.99, draw));
+      const seen = drive(seq, 0, 17, 0, 0);
+      expect(seq.change).toBeUndefined(); // landed
+      expect(seen.change).toEqual([16]);
+      expect(seen.fades[0]![0]).toBeCloseTo(12.05);
+      expect(seen.fades.find(([b]) => b === 14)![1]).toBeCloseTo(0.5);
+      expect(seen.fades[seen.fades.length - 1]![0]).toBeCloseTo(15.95);
+    }
   });
 
   it('starts the next phrase on the bar of the change', () => {
@@ -120,7 +132,16 @@ describe('cuts and fades', () => {
       for (let i = 0; i < 2000; i++) if (drawChange(rng, intensity).kind === 'cut') n++;
       return n / 2000;
     };
-    expect(cuts(0)).toBeCloseTo(CUT_SHARE_SOFT, 1);
+    expect(cuts(0)).toBe(0); // never a cut at intensity 0
     expect(cuts(1)).toBeCloseTo(CUT_SHARE_HARD, 1);
+  });
+
+  it('shortens the fades steadily from a bar at intensity 0 to 1 or 2 beats at 1', () => {
+    const fade = (draw: number, intensity: number): number => drawChange(scripted(0.99, draw), intensity).beats;
+    expect(fade(0.1, 0)).toBe(4);
+    expect(fade(0.9, 0)).toBe(4);
+    expect(fade(0.1, 1)).toBe(1);
+    expect(fade(0.9, 1)).toBe(2);
+    expect(fade(0.9, 0.5)).toBeCloseTo(3, 12);
   });
 });

@@ -5,8 +5,9 @@
  * An algorithm runs for a phrase of 4, 8 or 16 bars, drawn at random, and the
  * change lands on beat 1 of the bar after the phrase. One bar before the change
  * the next algorithm is prepared and the change is decided: an abrupt cut on
- * beat 1, or a smooth fade over the last one or two beats of the phrase that
- * ends exactly on beat 1. The higher the intensity, the more cuts.
+ * beat 1, or a smooth fade that ends exactly on beat 1. At intensity 0 every
+ * change fades over the whole last bar; the higher the intensity, the shorter
+ * the fades (down to the last one or two beats) and the more cuts.
  *
  * When the tap clock starts a fresh count, the phrase is re-counted from the new
  * bar 1 with the bars it had left, rounded up to a phrase, so changes follow the
@@ -19,13 +20,15 @@ import type { Rng } from './rng';
 export const PHRASES = [4, 8, 16] as const;
 export type Phrase = (typeof PHRASES)[number];
 
-/** Share of changes that cut rather than fade, at intensity 0 and at 1. */
-export const CUT_SHARE_SOFT = 0.1;
+/** Share of changes that cut rather than fade, at intensity 0 and at 1: none at 0. */
+export const CUT_SHARE_SOFT = 0;
 export const CUT_SHARE_HARD = 0.85;
+/** How many beats a fade takes at intensity 0: the whole last bar. At 1 it takes 1 or 2, drawn. */
+export const FADE_BEATS_SOFT = BEATS_PER_BAR;
 
 export interface Change {
   kind: 'cut' | 'fade';
-  /** How many beats the fade takes: 1 or 2; 0 for a cut. */
+  /** How many beats the fade takes: a bar at intensity 0, shortening to 1 or 2 at 1; 0 for a cut. */
   beats: number;
 }
 
@@ -51,7 +54,9 @@ export function cutShare(intensity: number): number {
 
 export function drawChange(rng: Rng, intensity: number): Change {
   if (rng.next() < cutShare(intensity)) return { kind: 'cut', beats: 0 };
-  return { kind: 'fade', beats: rng.next() < 0.5 ? 1 : 2 };
+  const i = Math.min(1, Math.max(0, intensity));
+  const hard = rng.next() < 0.5 ? 1 : 2;
+  return { kind: 'fade', beats: FADE_BEATS_SOFT + (hard - FADE_BEATS_SOFT) * i };
 }
 
 /** The shortest phrase that holds `bars`. */
