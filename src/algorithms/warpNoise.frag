@@ -10,6 +10,12 @@ uniform vec2 u_offset;
 uniform vec2 u_offset2;
 uniform float u_warp;
 uniform float u_rotate;
+uniform float u_beatBreath;  // breath in on every beat, x intensity
+uniform float u_barBreath;   // breath in at the start of a bar, x intensity
+uniform float u_beatColour;  // palette swing on every beat
+uniform float u_barColour;   // palette step at the start of a bar
+uniform float u_beatLight;   // brighter on every beat
+uniform float u_barLight;    // brighter at the start of a bar
 
 float vnoise(vec2 p) {
   vec2 i = floor(p);
@@ -35,7 +41,7 @@ vec3 shade(vec2 uv) {
   float beat = beatPulse();
   float bar = barPulse();
   // the intensity sets how deep the picture breathes, never its colours
-  float breath = u_intensity * (0.10 * beat + 0.18 * bar);
+  float breath = u_intensity * (u_beatBreath * beat + u_barBreath * bar);
 
   float t = u_time;
   float ang = u_rotate * t;
@@ -49,10 +55,10 @@ vec3 shade(vec2 uv) {
   float f = fbm(p + u_warp * w + u_offset2);
 
   // the colours swing on every beat and take a bigger step at the start of a bar
-  float k = 1.1 * f + 0.45 * length(q) + 0.25 * length(w) + 0.06 * beat + 0.15 * bar;
+  float k = 1.1 * f + 0.45 * length(q) + 0.25 * length(w) + u_beatColour * beat + u_barColour * bar;
   vec3 col = u_palA + u_palB * cos(6.28318 * (u_palC * k + u_palD));
 
-  col *= 1.0 + 0.09 * beat + 0.06 * bar;
+  col *= 1.0 + u_beatLight * beat + u_barLight * bar;
   col *= 1.0 - 0.3 * dot(uv, uv);
   return col;
 }

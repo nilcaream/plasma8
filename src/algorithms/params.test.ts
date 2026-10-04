@@ -4,8 +4,11 @@ import { stepShape } from '../motion';
 import { createRng, type Rng } from '../rng';
 import type { ShaderParams } from '../shaderAlgorithm';
 import { JULIA_KNOBS, drawJuliaParams, juliaParams } from './julia';
-import { drawPlasmaParams } from './plasma';
+import { PLASMA_KNOBS, drawPlasmaParams, plasmaParams } from './plasma';
+import plasmaSource from './plasma.frag?raw';
 import { drawTunnelParams } from './tunnel';
+import { WARP_NOISE_KNOBS, warpNoiseParams } from './warpNoise';
+import warpSource from './warpNoise.frag?raw';
 
 const DRAWS: [string, (rng: Rng) => ShaderParams][] = [
   ['plasma', drawPlasmaParams],
@@ -52,6 +55,28 @@ describe('julia\'s fixed values', () => {
     const p = juliaParams(v);
     expect([p.u_beatZoom, p.u_barZoom, p.u_beatLight, p.u_barLight, p.u_glow, p.u_colourShift, p.u_wanderSpeed])
       .toEqual([0.011, 0.029, 0.184, 0.089, 0.263, 0.056, 0.105]);
+  });
+});
+
+describe('plasma\'s and warp noise\'s fixed values', () => {
+  const PLASMA_FIXED = {
+    u_beatBreath: 0.07, u_barBreath: 0.05, u_swirlSpin: 0.03, u_orbitSpeed: 1,
+    u_colourDrift: 0.04, u_beatColour: 0.05, u_beatLight: 0.12, u_barLight: 0.08,
+  };
+  const WARP_FIXED = {
+    u_beatBreath: 0.1, u_barBreath: 0.18, u_beatColour: 0.06, u_barColour: 0.15, u_beatLight: 0.09, u_barLight: 0.06,
+  };
+
+  it('start at the values the shaders had in code, so the picture is unchanged', () => {
+    const p = plasmaParams(drawKnobs(PLASMA_KNOBS, createRng(1)));
+    for (const [key, value] of Object.entries(PLASMA_FIXED)) expect(p[key]).toBe(value);
+    const w = warpNoiseParams(drawKnobs(WARP_NOISE_KNOBS, createRng(1)));
+    for (const [key, value] of Object.entries(WARP_FIXED)) expect(w[key]).toBe(value);
+  });
+
+  it('are each read by the shader as a uniform', () => {
+    for (const key of Object.keys(PLASMA_FIXED)) expect(plasmaSource).toContain(`uniform float ${key};`);
+    for (const key of Object.keys(WARP_FIXED)) expect(warpSource).toContain(`uniform float ${key};`);
   });
 });
 

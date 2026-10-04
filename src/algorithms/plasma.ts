@@ -1,5 +1,5 @@
 import type { AlgorithmDef } from '../algorithm';
-import { drawKnobs, range, int, sign, triple, unit, vec, type Knob, type Values } from '../knobs';
+import { drawKnobs, fixed, range, int, sign, triple, unit, vec, type Knob, type Values } from '../knobs';
 import { STEP_KNOBS } from '../motion';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
@@ -33,7 +33,15 @@ export const PLASMA_KNOBS: readonly Knob[] = [
   range('cycles', 0.6, 1.3, [0.1, 3]),
   sign('barShiftSign'),
   range('barShift', 0.12, 0.3, [0, 0.6]),
-  // fixed in code: the bar step's shape
+  // fixed in code: how the picture follows the music (set on the debug panel), and the bar step's shape
+  fixed('beatBreath', 0.07, [0, 0.45]),
+  fixed('barBreath', 0.05, [0, 0.45]),
+  fixed('swirlSpin', 0.03, [0, 0.5]),
+  fixed('orbitSpeed', 1, [0, 4]),
+  fixed('colourDrift', 0.04, [0, 0.5]),
+  fixed('beatColour', 0.05, [0, 0.5]),
+  fixed('beatLight', 0.12, [0, 1]),
+  fixed('barLight', 0.08, [0, 1]),
   ...STEP_KNOBS,
 ];
 
@@ -53,6 +61,14 @@ export function plasmaParams(v: Values): ShaderParams {
     u_mode: v.mode!,
     u_cycles: v.cycles!,
     u_barShift: v.barShiftSign! * v.barShift!,
+    u_beatBreath: v.beatBreath!,
+    u_barBreath: v.barBreath!,
+    u_swirlSpin: v.swirlSpin!,
+    u_orbitSpeed: v.orbitSpeed!,
+    u_colourDrift: v.colourDrift!,
+    u_beatColour: v.beatColour!,
+    u_beatLight: v.beatLight!,
+    u_barLight: v.barLight!,
   };
 }
 

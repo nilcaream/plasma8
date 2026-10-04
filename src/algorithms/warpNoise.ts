@@ -1,5 +1,5 @@
 import type { AlgorithmDef } from '../algorithm';
-import { drawKnobs, range, sign, triple, vec, type Knob, type Values } from '../knobs';
+import { drawKnobs, fixed, range, sign, triple, vec, type Knob, type Values } from '../knobs';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './warpNoise.frag?raw';
@@ -23,6 +23,13 @@ export const WARP_NOISE_KNOBS: readonly Knob[] = [
   range('warp', 2.5, 4.5, [0, 8]),
   sign('rotateSign'),
   range('rotate', 0.008, 0.03, [0, 0.1]),
+  // fixed in code: how the picture follows the beat (set on the debug panel)
+  fixed('beatBreath', 0.1, [0, 1]),
+  fixed('barBreath', 0.18, [0, 1]),
+  fixed('beatColour', 0.06, [0, 0.5]),
+  fixed('barColour', 0.15, [0, 0.5]),
+  fixed('beatLight', 0.09, [0, 1]),
+  fixed('barLight', 0.06, [0, 1]),
 ];
 
 export function warpNoiseParams(v: Values): ShaderParams {
@@ -37,6 +44,12 @@ export function warpNoiseParams(v: Values): ShaderParams {
     u_offset2: vec(v, 'offset2', 2),
     u_warp: v.warp!,
     u_rotate: v.rotateSign! * v.rotate!,
+    u_beatBreath: v.beatBreath!,
+    u_barBreath: v.barBreath!,
+    u_beatColour: v.beatColour!,
+    u_barColour: v.barColour!,
+    u_beatLight: v.beatLight!,
+    u_barLight: v.barLight!,
   };
 }
 
