@@ -75,29 +75,84 @@ export function share(knob: Knob, value: number): number {
   return Math.min(1, Math.max(0, (value - lo) / (hi - lo)));
 }
 
-/** A value from the slider, kept in the wide span and whole where the knob is whole. */
+// --- the user's range: the debug panel's min, max and value per knob -------
+
+/** The part of a knob's wide span the user likes, and the value in it now. */
+export interface UserRange { min: number; max: number; value: number }
+
+/** A choice of two, such as a sign: its two values are the whole wide span, and every slider lands on one of them. */
+export function isChoice(knob: Knob): boolean {
+  const d = knob.draw;
+  return d.kind === 'pick' && new Set(d.values).size === 2 && Math.min(...d.values) === knob.wide[0] && Math.max(...d.values) === knob.wide[1];
+}
+
+/** The slider's step: 1 for whole numbers, the whole span for a choice of two, a thousandth of the span otherwise. */
+export function step(knob: Knob): number {
+  const [lo, hi] = knob.wide;
+  return isChoice(knob) ? hi - lo : knob.whole ? 1 : (hi - lo) / 1000;
+}
+
+/** How far apart min and max must stay: one step when the values are continuous; whole numbers and choices may meet (one value only). */
+export function gap(knob: Knob): number {
+  return knob.whole || isChoice(knob) ? 0 : step(knob);
+}
+
+/** A slider's value kept in the wide span: on one of a choice's two values, whole where the knob is whole. */
 export function settle(knob: Knob, value: number): number {
-  const v = Math.min(knob.wide[1], Math.max(knob.wide[0], value));
+  const [lo, hi] = knob.wide;
+  const v = Math.min(hi, Math.max(lo, value));
+  if (isChoice(knob)) return v - lo < hi - v ? lo : hi;
   return knob.whole ? Math.round(v) : v;
 }
 
-/** What starts an instance: this load's draw, with every value the user has pinned in its place. */
-export function withPins(drawn: Values, pins: ReadonlyMap<string, number>): Values {
-  const out = { ...drawn };
-  for (const [key, value] of pins) if (key in out) out[key] = value;
-  return out;
+const inside = (v: number, min: number, max: number): number => Math.min(max, Math.max(min, v));
+
+/** Where every knob starts: the range the code draws from, and the value drawn from it. */
+export function startRange(knob: Knob, value: number): UserRange {
+  const [min, max] = drawBounds(knob.draw);
+  return { min, max, value };
+}
+
+/** Moves min; it stops short of max, and pulls the value inside. */
+export function setMin(knob: Knob, r: UserRange, to: number): UserRange {
+  const min = Math.min(settle(knob, to), r.max - gap(knob));
+  return { min, max: r.max, value: inside(r.value, min, r.max) };
+}
+
+/** Moves max; it stops short of min, and pulls the value inside. */
+export function setMax(knob: Knob, r: UserRange, to: number): UserRange {
+  const max = Math.max(settle(knob, to), r.min + gap(knob));
+  return { min: r.min, max, value: inside(r.value, r.min, max) };
+}
+
+/** Moves the value, kept inside min..max. */
+export function setValue(knob: Knob, r: UserRange, to: number): UserRange {
+  return { ...r, value: inside(settle(knob, to), r.min, r.max) };
+}
+
+/**
+ * A fresh value from the user's range. Left at the code's range, it draws
+ * exactly as the code does. Otherwise uniform in min..max (whole numbers for a
+ * whole knob), except that a pick draws from its own values inside the range,
+ * as often as the code would, while any lie inside.
+ */
+export function drawFrom(knob: Knob, r: UserRange, rng: Rng): number {
+  const [lo, hi] = drawBounds(knob.draw);
+  if (r.min === lo && r.max === hi) return drawKnob(knob.draw, rng);
+  if (knob.draw.kind === 'pick') {
+    const own = knob.draw.values.filter((v) => v >= r.min && v <= r.max);
+    if (own.length > 0) return rng.pick(own);
+  }
+  if (knob.whole) return drawKnob({ kind: 'int', min: Math.ceil(r.min), max: Math.floor(r.max) }, rng);
+  return rng.range(r.min, r.max);
 }
 
 const num = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(3));
 
-function describe(draw: Draw): string {
-  return draw.kind === 'pick' ? `one of ${draw.values.map(num).join(' ')}` : `${draw.kind === 'int' ? 'whole ' : ''}${num(draw.min)}..${num(draw.max)}`;
-}
-
-/** The values as plain text, one knob a line, to paste back: value, what was drawn, from what, and whether it is pinned. */
-export function formatValues(title: string, knobs: readonly Knob[], values: Values, drawn: Values, pins: ReadonlyMap<string, number>): string {
+/** The ranges as plain text to paste back, one knob a line: min and max. */
+export function formatRanges(title: string, knobs: readonly Knob[], ranges: Readonly<Record<string, UserRange>>): string {
   const width = Math.max(...knobs.map((k) => k.key.length));
-  const lines = knobs.map((k) =>
-    `${k.key.padEnd(width)}  ${num(values[k.key]!).padStart(7)}${pins.has(k.key) ? ' pinned' : '       '}  drawn ${num(drawn[k.key]!)} from ${describe(k.draw)}`);
+  const col = (n: number): string => num(n).padStart(7);
+  const lines = knobs.map((k) => `${k.key.padEnd(width)}  min ${col(ranges[k.key]!.min)}  max ${col(ranges[k.key]!.max)}`);
   return [title, ...lines].join('\n');
 }

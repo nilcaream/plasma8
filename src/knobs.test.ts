@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { ALGORITHMS } from './algorithms';
-import { drawBounds, drawKnob, drawKnobs, formatValues, int, pick, range, settle, share, withPins } from './knobs';
+import {
+  drawBounds, drawFrom, drawKnob, drawKnobs, formatRanges, int, isChoice, pick, range, setMax, setMin, setValue, settle, share, sign,
+  startRange, step, type Knob, type UserRange,
+} from './knobs';
 import { createRng } from './rng';
 
 describe('drawKnob', () => {
@@ -58,37 +61,96 @@ describe('the slider maths', () => {
     expect(share(k, -3)).toBe(0);
   });
 
-  it('keeps a slider value in the wide span, whole where the knob is whole', () => {
+  it('keeps a slider value in the wide span, whole where the knob is whole, on a choice\'s two values', () => {
     expect(settle(k, 2.345)).toBe(2.345);
     expect(settle(k, 7)).toBe(4);
     expect(settle(w, 4.6)).toBe(5);
     expect(settle(w, -2)).toBe(1);
+    expect(settle(sign('s'), 0.2)).toBe(1);
+    expect(settle(sign('s'), -0.2)).toBe(-1);
   });
 
   it('marks a pick by its lowest and highest value', () => {
     expect(drawBounds(pick('s', [0, 0, 4, 5, 6, 8], [0, 12]).draw)).toEqual([0, 8]);
   });
-});
 
-describe('withPins', () => {
-  it('puts the pinned values in place of the draw, and leaves the rest as drawn', () => {
-    const drawn = { a: 1, b: 2, c: 3 };
-    expect(withPins(drawn, new Map([['b', 7]]))).toEqual({ a: 1, b: 7, c: 3 });
-    expect(drawn).toEqual({ a: 1, b: 2, c: 3 });
-  });
-
-  it('ignores a pin for a knob the algorithm does not have', () => {
-    expect(withPins({ a: 1 }, new Map([['z', 5]]))).toEqual({ a: 1 });
+  it('knows a choice of two from a pick with room round it', () => {
+    expect(isChoice(sign('s'))).toBe(true);
+    expect(isChoice(pick('beat', [0, 1], [0, 1]))).toBe(true);
+    expect(isChoice(pick('sides', [0, 0, 4, 5, 6, 8], [0, 12]))).toBe(false);
+    expect(isChoice(pick('turn', [0.5, 1], [0, 2], false))).toBe(false);
   });
 });
 
-describe('formatValues', () => {
-  it('writes one line per knob with its value, the draw and its range, and marks the pinned ones', () => {
+describe('the user\'s range', () => {
+  const k = range('x', 1, 2, [0, 4]);
+  const w = int('n', 3, 9, [1, 16]);
+  const s = sign('s');
+
+  it('starts at the range the code draws from', () => {
+    expect(startRange(k, 1.5)).toEqual({ min: 1, max: 2, value: 1.5 });
+    expect(startRange(pick('sides', [0, 0, 4, 5, 6, 8], [0, 12]), 4)).toEqual({ min: 0, max: 8, value: 4 });
+  });
+
+  it('keeps min below max by a step when continuous, and pulls the value inside', () => {
+    const r = { min: 1, max: 2, value: 1.5 };
+    expect(setMin(k, r, 3)).toEqual({ min: 2 - step(k), max: 2, value: 2 - step(k) });
+    expect(setMax(k, r, 0)).toEqual({ min: 1, max: 1 + step(k), value: 1 + step(k) });
+    expect(setMin(k, r, 1.8)).toEqual({ min: 1.8, max: 2, value: 1.8 });
+    expect(setMax(k, r, 1.2)).toEqual({ min: 1, max: 1.2, value: 1.2 });
+    expect(setMin(k, r, -5).min).toBe(0);
+    expect(setMax(k, r, 9).max).toBe(4);
+  });
+
+  it('lets whole numbers and choices meet, for one value only', () => {
+    expect(setMin(w, { min: 3, max: 9, value: 5 }, 12)).toEqual({ min: 9, max: 9, value: 9 });
+    expect(setMin(s, { min: -1, max: 1, value: -1 }, 1)).toEqual({ min: 1, max: 1, value: 1 });
+  });
+
+  it('keeps the value inside min..max', () => {
+    const r = { min: 1, max: 2, value: 1.5 };
+    expect(setValue(k, r, 3.5).value).toBe(2);
+    expect(setValue(k, r, 0.2).value).toBe(1);
+    expect(setValue(w, { min: 3, max: 9, value: 5 }, 6.4).value).toBe(6);
+  });
+
+  const many = (knob: Knob, r: UserRange, seed = 5): number[] => {
+    const rng = createRng(seed);
+    return Array.from({ length: 3000 }, () => drawFrom(knob, r, rng));
+  };
+
+  it('draws exactly as the code does while left at the code\'s range', () => {
+    for (const knob of [k, w, pick('sides', [0, 0, 4, 5, 6, 8], [0, 12])]) {
+      const rng = createRng(5);
+      const code = Array.from({ length: 3000 }, () => drawKnob(knob.draw, rng));
+      expect(many(knob, startRange(knob, 0))).toEqual(code);
+    }
+  });
+
+  it('draws from the user\'s range once it is moved', () => {
+    const v = many(k, { min: 2.5, max: 3.5, value: 3 });
+    expect(Math.min(...v)).toBeGreaterThanOrEqual(2.5);
+    expect(Math.max(...v)).toBeLessThan(3.5);
+    expect(Math.max(...v)).toBeGreaterThan(3.4);
+    expect(new Set(many(w, { min: 10, max: 12, value: 11 }))).toEqual(new Set([10, 11, 12]));
+    expect(new Set(many(s, { min: 1, max: 1, value: 1 }))).toEqual(new Set([1]));
+  });
+
+  it('draws a pick from its own values inside the range, or from the whole numbers in it when none lie inside', () => {
+    const sides = pick('sides', [0, 0, 4, 5, 6, 8], [0, 12]);
+    expect(new Set(many(sides, { min: 4, max: 10, value: 4 }))).toEqual(new Set([4, 5, 6, 8]));
+    expect(new Set(many(sides, { min: 9, max: 11, value: 9 }))).toEqual(new Set([9, 10, 11]));
+  });
+});
+
+describe('formatRanges', () => {
+  it('writes one line per knob with its min and max', () => {
     const knobs = [range('scale', 0.9, 1.8, [0.3, 4]), int('ribs', 4, 16, [1, 32])];
-    const text = formatValues('tunnel  seed 0000002a', knobs, { scale: 2.5, ribs: 7 }, { scale: 1.2, ribs: 7 }, new Map([['scale', 2.5]]));
-    const lines = text.split('\n');
-    expect(lines[0]).toBe('tunnel  seed 0000002a');
-    expect(lines[1]).toBe('scale    2.500 pinned  drawn 1.200 from 0.900..1.800');
-    expect(lines[2]).toBe('ribs         7         drawn 7 from whole 4..16');
+    const text = formatRanges('tunnel  seed 0000002a', knobs, { scale: { min: 0.9, max: 2.5, value: 2 }, ribs: { min: 4, max: 7, value: 5 } });
+    expect(text.split('\n')).toEqual([
+      'tunnel  seed 0000002a',
+      'scale  min   0.900  max   2.500',
+      'ribs   min       4  max       7',
+    ]);
   });
 });

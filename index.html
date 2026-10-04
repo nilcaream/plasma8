@@ -220,18 +220,23 @@
       #knobs .list {
         overflow-y: auto;
         min-height: 0;
+        padding-right: 8px;
+        scrollbar-width: thin;
+        scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
       }
       #knobs .knob {
         display: grid;
-        grid-template-columns: 92px 1fr 48px 18px;
+        grid-template-columns: 40px 1fr 52px;
         align-items: center;
-        gap: 6px;
-        height: 22px;
+        gap: 1px 6px;
+        margin-bottom: 8px;
+      }
+      #knobs .name {
+        grid-column: 1 / -1;
+        font-weight: 600;
       }
       #knobs label {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+        opacity: 0.7;
       }
       #knobs .track {
         position: relative;
@@ -252,13 +257,6 @@
         width: 2px;
         margin-left: -1px;
         background: rgba(255, 255, 255, 0.5);
-      }
-      #knobs .drawn {
-        top: 2px !important;
-        height: 14px !important;
-        width: 2px;
-        margin-left: -1px;
-        background: #7fd3ff;
       }
       #knobs .track::before {
         content: '';
@@ -301,27 +299,15 @@
         border-radius: 3px;
         background: var(--fg);
       }
-      #knobs .pinned input[type='range']::-webkit-slider-thumb {
+      #knobs input[data-part='value']::-webkit-slider-thumb {
         background: var(--accent);
       }
-      #knobs .pinned input[type='range']::-moz-range-thumb {
+      #knobs input[data-part='value']::-moz-range-thumb {
         background: var(--accent);
       }
       #knobs output {
         text-align: right;
         font-variant-numeric: tabular-nums;
-      }
-      #knobs .release {
-        padding: 0;
-        width: 18px;
-        visibility: hidden;
-      }
-      #knobs .pinned label,
-      #knobs .pinned output {
-        color: var(--accent);
-      }
-      #knobs .pinned .release {
-        visibility: visible;
       }
 
       #fatal {

@@ -5,7 +5,7 @@ import { beatInputs } from './drive';
 import { createContext } from './gl';
 import { isTapKey, isTapPointer } from './input';
 import { KnobPanel } from './knobPanel';
-import { drawKnobs, type Values } from './knobs';
+import type { Values } from './knobs';
 import { parseDebugParams } from './query';
 import { createRng, formatSeed, freshSeed } from './rng';
 import { Sequencer, type Change } from './sequence';
@@ -17,8 +17,8 @@ import { Corner, DebugOverlay, Metronome, showFatal } from './ui';
 
 interface Running {
   def: AlgorithmDef;
-  /** What it drew at start, before any pinned value. */
-  drawn: Values;
+  /** Its knobs' values: drawn at start, moved by the debug panel. */
+  values: Values;
   algorithm: Algorithm;
 }
 
@@ -60,10 +60,10 @@ function main(): void {
     console.info(`[plasma8] ${current.def.name} drawn again; seed ${seedText}`);
   });
   let warned = false;
-  // every value it draws at start, then what the debug panel has pinned in place of the draw
+  // every value it draws at start: from the code's ranges, or from the debug panel's min..max once moved
   const create = (def: AlgorithmDef): Running => {
-    const drawn = drawKnobs(def.knobs, rng);
-    return { def, drawn, algorithm: def.create(gl, knobPanel.start(def, drawn), rng) };
+    const values = knobPanel.start(def, rng);
+    return { def, values, algorithm: def.create(gl, values, rng) };
   };
   const make = (intensity: number, running?: AlgorithmDef): Running => {
     const { def, unknown } = chooseAlgorithm(params.algo, intensity, rng, running);
