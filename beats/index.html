@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Beat flash graphs</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #f6f6f4;
+    --panel: #ffffff;
+    --fg: #1d1d1f;
+    --muted: #6b6b70;
+    --grid: #e2e2e0;
+    --beat: #b9b9b6;
+    --kick: #d0452f;
+    --snare: #2f7ad0;
+    --crash: #c08a00;
+    --total: #1d1d1f;
+    --light: #7a3fc4;
+    --play: #1a9a5a;
+    --border: #dcdcd8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151517;
+      --panel: #1f1f22;
+      --fg: #ececee;
+      --muted: #9a9aa2;
+      --grid: #2e2e33;
+      --beat: #4a4a52;
+      --kick: #ff6f57;
+      --snare: #5aa2ff;
+      --crash: #f2c14e;
+      --total: #f4f4f6;
+      --light: #b98cff;
+      --play: #3fd68a;
+      --border: #34343a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
+  }
+  @media (max-width: 860px) {
+    main { grid-template-columns: minmax(0, 1fr); }
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; grid-column: 1 / -1; }
+  .sub { color: var(--muted); margin: 0; grid-column: 1 / -1; }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    min-width: 0;
+  }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 8px; }
+  .graphs { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  canvas { display: block; width: 100%; }
+  #barCanvas { height: 280px; }
+  #lightCanvas { height: 160px; }
+  #shapeCanvas { height: 220px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; color: var(--muted); font-size: 13px; }
+  .legend span::before {
+    content: ""; display: inline-block; width: 18px; height: 3px; margin-right: 6px; vertical-align: middle;
+    background: var(--c); border-radius: 2px;
+  }
+  .legend .thick::before { height: 5px; }
+  .legend .dashed::before { background: repeating-linear-gradient(90deg, var(--c) 0 4px, transparent 4px 7px); }
+  .legend .dot::before { width: 9px; height: 9px; border-radius: 50%; }
+  .side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .ctl { display: grid; grid-template-columns: 70px minmax(0, 1fr) 46px; align-items: center; gap: 8px; margin: 6px 0; }
+  .ctl label { font-variant-numeric: tabular-nums; }
+  .ctl output { text-align: right; font-variant-numeric: tabular-nums; }
+  .ctl input[type=range] { width: 100%; }
+  .group { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--border); }
+  .pulse-wrap { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
+  #square { width: 140px; height: 140px; border-radius: 6px; background: rgb(128,128,128); border: 1px solid var(--border); }
+  .pulse-info { display: flex; flex-direction: column; gap: 8px; font-variant-numeric: tabular-nums; }
+  .pulse-info input[type=number] { width: 80px; font: inherit; padding: 3px 6px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; }
+  .beats { display: flex; gap: 6px; }
+  .beats i { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border); font-style: normal; display: grid; place-items: center; font-size: 12px; color: var(--muted); }
+  .beats i.on { background: var(--play); color: var(--panel); border-color: var(--play); }
+  button { font: inherit; padding: 3px 10px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+  .formulas { grid-column: 1 / -1; }
+  .formulas pre {
+    margin: 0; white-space: pre-wrap; overflow-wrap: anywhere;
+    font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Beat flash graphs</h1>
+  <p class="sub">One bar, beats 1&ndash;4. Kick on every beat (1 beat), snare on beats 2 and 4, crash on beat 1; each a 1-beat window. Every voice peaks exactly on its onset beat: it rises over the r beats before it. Beats only, no harmonics.</p>
+
+  <div class="graphs">
+    <section>
+      <h2>One bar: voices I&middot;A&middot;e and F</h2>
+      <canvas id="barCanvas"></canvas>
+      <div class="legend">
+        <span style="--c: var(--kick)">kick</span>
+        <span style="--c: var(--snare)">snare</span>
+        <span style="--c: var(--crash)">crash</span>
+        <span class="thick" style="--c: var(--total)">F</span>
+        <span class="dot" style="--c: var(--muted)">peak, on its onset beat</span>
+        <span style="--c: var(--play)">now</span>
+      </div>
+    </section>
+    <section>
+      <h2>light = 1 + G&middot;F</h2>
+      <canvas id="lightCanvas"></canvas>
+    </section>
+    <section>
+      <h2>Shape of one window: e(t) at the current I, t in beats from the onset</h2>
+      <canvas id="shapeCanvas"></canvas>
+      <div class="legend">
+        <span class="thick" style="--c: var(--total)">e(t) at current I</span>
+        <span class="dashed" style="--c: var(--muted)">I = 0 and I = 1</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="side">
+    <section>
+      <h2>Feel it</h2>
+      <div class="pulse-wrap">
+        <div id="square"></div>
+        <div class="pulse-info">
+          <label>BPM <input id="bpm" type="number" min="30" max="300" step="1" value="120"></label>
+          <div class="beats"><i>1</i><i>2</i><i>3</i><i>4</i></div>
+          <div>F <span id="nowF">0.000</span></div>
+          <div>light <span id="nowLight">1.000</span></div>
+          <button id="restart" type="button">Restart bar</button>
+        </div>
+      </div>
+    </section>
+    <section id="controls">
+      <h2>Controls</h2>
+    </section>
+  </div>
+
+  <section class="formulas">
+    <h2>Formulas with the current numbers</h2>
+    <pre id="formulas"></pre>
+  </section>
+</main>
+<script type="module" src="/src/beatsPage.ts"></script>
+</body>
+</html>
