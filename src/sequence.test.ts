@@ -145,3 +145,20 @@ describe('cuts and fades', () => {
     expect(fade(0.9, 0.5)).toBeCloseTo(3, 12);
   });
 });
+
+describe('a held Sequencer (an algorithm forced by name)', () => {
+  it('never prepares, fades or changes, over many bars, fresh tap counts and any intensity', () => {
+    const held = new Sequencer(createRng(4), 0, true);
+    const free = new Sequencer(createRng(4));
+    let changes = 0;
+    for (let f = 0; f < 64 * 4 * 30; f++) {
+      const beats = f / 30;
+      const run = beats < 100 ? 0 : 1;
+      const step = held.update(beats, run, (f % 100) / 100);
+      expect(step).toEqual({ prepare: false, change: false, fade: 0 });
+      if (free.update(beats, run, 0.5).change) changes++;
+    }
+    expect(changes).toBeGreaterThan(3);
+    expect(held.barsLeft(10)).toBe(Infinity);
+  });
+});

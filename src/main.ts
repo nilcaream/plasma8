@@ -1,4 +1,4 @@
-import { chooseAlgorithm } from './algorithms';
+import { ALGORITHMS, chooseAlgorithm } from './algorithms';
 import type { Algorithm, AlgorithmDef } from './algorithm';
 import { TapClock } from './clock';
 import { beatInputs } from './drive';
@@ -78,7 +78,8 @@ function main(): void {
   };
 
   const stage = new Stage(gl);
-  const sequencer = new Sequencer(rng);
+  // an algorithm forced by name never changes: it keeps its draw until "Draw again" or a reload
+  const sequencer = new Sequencer(rng, 0, ALGORITHMS.some((a) => a.name === params.algo));
   const gate = new FlashGate();
   const motion = new MotionClock();
   let current = make(live.intensity);

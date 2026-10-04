@@ -70,9 +70,11 @@ export class Sequencer {
   private run: number | undefined;
   private lastBeats = 0;
 
+  /** `hold`: never change; the algorithm that runs keeps running (an algorithm forced by name, for setting it up). */
   constructor(
     private readonly rng: Rng,
     startBar = 0,
+    readonly hold = false,
   ) {
     this.seg = { startBar, bars: rng.pick(PHRASES) };
   }
@@ -88,6 +90,7 @@ export class Sequencer {
 
   /** Bars left before the change, counting the bar under way. */
   barsLeft(beats: number): number {
+    if (this.hold) return Infinity;
     return this.changeBar - Math.floor(beats / BEATS_PER_BAR);
   }
 
@@ -97,6 +100,7 @@ export class Sequencer {
 
   /** Call once a frame with the clock's beat count, its run and the intensity. */
   update(beats: number, run: number, intensity: number): SequenceStep {
+    if (this.hold) return { prepare: false, change: false, fade: 0 };
     const bar = Math.floor(beats / BEATS_PER_BAR);
     const fresh = this.run !== undefined && run !== this.run;
     const before = this.lastBeats;
