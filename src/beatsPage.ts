@@ -7,39 +7,15 @@ import {
   DEFAULT_SHAPE, VOICES, VOICE_NAMES, fallPower, flash, light, rise, windowEnvelope,
   type Amounts, type Shape, type VoiceName,
 } from './beatVoices';
+import {
+  button, colors, controlGroup, dot, el, frame, plot, playhead, samples, setup, slider, tempoControls, type Tick,
+} from './pageGraphs';
+import { PageTempo } from './pageTempo';
 
-interface Param {
-  key: 'I' | 'kick' | 'snare' | 'crash' | 'G' | keyof Shape;
-  label: string;
-  min: number;
-  max: number;
-  step: number;
-  value: number;
-  digits: number;
-  group?: boolean;
-}
-
-const PARAMS: Param[] = [
-  { key: 'I', label: 'I', min: 0, max: 1, step: 0.01, value: 0.5, digits: 2 },
-  { key: 'kick', label: 'A_kick', min: 0, max: 1, step: 0.01, value: 0.3, digits: 2, group: true },
-  { key: 'snare', label: 'A_snare', min: 0, max: 1, step: 0.01, value: 0.1, digits: 2 },
-  { key: 'crash', label: 'A_crash', min: 0, max: 1, step: 0.01, value: 0.8, digits: 2 },
-  { key: 'G', label: 'G', min: 0, max: 2, step: 0.01, value: 1, digits: 2, group: true },
-  { key: 'a0', label: 'a0', min: 0, max: 1, step: 0.005, value: DEFAULT_SHAPE.a0, digits: 3, group: true },
-  { key: 'a1', label: 'a1', min: 0, max: 1, step: 0.005, value: DEFAULT_SHAPE.a1, digits: 3 },
-  { key: 'p0', label: 'p0', min: 0, max: 8, step: 0.1, value: DEFAULT_SHAPE.p0, digits: 1, group: true },
-  { key: 'p1', label: 'p1', min: 0, max: 8, step: 0.1, value: DEFAULT_SHAPE.p1, digits: 1 },
-];
-
-const P = Object.fromEntries(PARAMS.map((p) => [p.key, p.value])) as Record<Param['key'], number>;
+type Key = 'I' | 'kick' | 'snare' | 'crash' | 'G' | keyof Shape;
+const P: Record<Key, number> = { I: 0.5, kick: 0.3, snare: 0.1, crash: 0.8, G: 1, ...DEFAULT_SHAPE };
 const shape = (): Shape => ({ a0: P.a0, a1: P.a1, p0: P.p0, p1: P.p1 });
 const amounts = (): Amounts => ({ kick: P.kick, snare: P.snare, crash: P.crash });
-
-function el<T extends HTMLElement = HTMLElement>(id: string): T {
-  const e = document.getElementById(id);
-  if (!e) throw new Error(`#${id} is missing`);
-  return e as T;
-}
 
 function at(beats: number) {
   const f = flash(beats, P.I, amounts(), shape());
@@ -49,114 +25,37 @@ function at(beats: number) {
 // --- controls -------------------------------------------------------------
 
 const controls = el('controls');
-for (const prm of PARAMS) {
-  const row = document.createElement('div');
-  row.className = 'ctl' + (prm.group ? ' group' : '');
-  const id = 'in-' + prm.key;
-  row.innerHTML = `<label for="${id}">${prm.label}</label>
-    <input id="${id}" type="range" min="${prm.min}" max="${prm.max}" step="${prm.step}" value="${prm.value}">
-    <output for="${id}">${prm.value.toFixed(prm.digits)}</output>`;
-  const input = row.querySelector('input')!;
-  const out = row.querySelector('output')!;
-  input.addEventListener('input', () => {
-    P[prm.key] = Number(input.value);
-    out.textContent = P[prm.key].toFixed(prm.digits);
-    writeFormulas();
-  });
-  controls.appendChild(row);
-}
+const tempo = new PageTempo(performance.now(), 120);
+const set = (key: Key) => (v: number): void => { P[key] = v; writeFormulas(); };
+
+const live = controlGroup(controls, 'Live', 'Set by the user, with the slider and taps: neither random nor fixed.');
+slider(live, { label: 'I', min: 0, max: 1, step: 0.01, value: P.I, digits: 2 }, set('I'));
+const showTempo = tempoControls(live, el<HTMLButtonElement>('tap'), tempo);
+
+const random = controlGroup(controls, 'Random per instance', 'Drawn when an instance starts; here each A from U(0, 1).');
+const amountSliders = Object.fromEntries(VOICE_NAMES.map((name) => [name,
+  slider(random, { label: 'A_' + name, min: 0, max: 1, step: 0.01, value: P[name], digits: 2 }, set(name))])) as Record<VoiceName, (v: number) => void>;
+button(random, 'Draw again', 'redraw').addEventListener('click', () => {
+  for (const name of VOICE_NAMES) {
+    P[name] = Math.round(Math.random() * 100) / 100;
+    amountSliders[name](P[name]);
+  }
+  writeFormulas();
+});
+
+const fixed = controlGroup(controls, 'Fixed in code',
+  'Constants in src/beatVoices.ts; x0 is the value at intensity 0, x1 at 1. Windows: kick every beat, snare on 2 and 4, crash on 1, a beat each.');
+slider(fixed, { label: 'a0', min: 0, max: 1, step: 0.005, value: P.a0, digits: 3 }, set('a0'));
+slider(fixed, { label: 'a1', min: 0, max: 1, step: 0.005, value: P.a1, digits: 3 }, set('a1'));
+slider(fixed, { label: 'p0', min: 0, max: 8, step: 0.1, value: P.p0, digits: 1 }, set('p0'));
+slider(fixed, { label: 'p1', min: 0, max: 8, step: 0.1, value: P.p1, digits: 1 }, set('p1'));
+slider(fixed, { label: 'G', min: 0, max: 2, step: 0.01, value: P.G, digits: 2 }, set('G'));
 
 // --- drawing --------------------------------------------------------------
-
-const COLOR_KEYS = ['fg', 'muted', 'grid', 'beat', 'kick', 'snare', 'crash', 'total', 'light', 'play', 'panel'] as const;
-const colors = {} as Record<(typeof COLOR_KEYS)[number], string>;
-function readColors(): void {
-  const cs = getComputedStyle(document.documentElement);
-  for (const k of COLOR_KEYS) colors[k] = cs.getPropertyValue('--' + k).trim();
-}
-readColors();
-matchMedia('(prefers-color-scheme: dark)').addEventListener('change', readColors);
-
-interface Surface { ctx: CanvasRenderingContext2D; w: number; h: number }
-
-function setup(canvas: HTMLCanvasElement): Surface {
-  const dpr = window.devicePixelRatio || 1;
-  const w = canvas.clientWidth, h = canvas.clientHeight;
-  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
-    canvas.width = Math.round(w * dpr);
-    canvas.height = Math.round(h * dpr);
-  }
-  const ctx = canvas.getContext('2d')!;
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.clearRect(0, 0, w, h);
-  ctx.font = '12px system-ui, sans-serif';
-  return { ctx, w, h };
-}
-
-const PAD = { l: 44, r: 24, t: 10, b: 26 };
-
-interface Tick { x: number; label: string; strong?: boolean }
-type Map1 = (v: number) => number;
-
-/** A frame with x and y ticks; returns the mappings from data to pixels. */
-function frame(s: Surface, x0: number, x1: number, y0: number, y1: number, xTicks: Tick[], yTicks: number[], yDigits: number) {
-  const { ctx, w, h } = s;
-  const X: Map1 = (x) => PAD.l + (x - x0) / (x1 - x0) * (w - PAD.l - PAD.r);
-  const Y: Map1 = (y) => h - PAD.b - (y - y0) / (y1 - y0) * (h - PAD.t - PAD.b);
-  ctx.lineWidth = 1;
-  ctx.fillStyle = colors.muted;
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
-  for (const y of yTicks) {
-    ctx.strokeStyle = colors.grid;
-    ctx.beginPath(); ctx.moveTo(PAD.l, Y(y) + 0.5); ctx.lineTo(w - PAD.r, Y(y) + 0.5); ctx.stroke();
-    ctx.fillText(y.toFixed(yDigits), PAD.l - 6, Y(y));
-  }
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  for (const t of xTicks) {
-    ctx.strokeStyle = t.strong ? colors.beat : colors.grid;
-    ctx.lineWidth = t.strong ? 1.5 : 1;
-    ctx.beginPath(); ctx.moveTo(Math.round(X(t.x)) + 0.5, PAD.t); ctx.lineTo(Math.round(X(t.x)) + 0.5, h - PAD.b); ctx.stroke();
-    ctx.fillText(t.label, X(t.x), h - PAD.b + 6);
-  }
-  ctx.lineWidth = 1;
-  return { X, Y };
-}
-
-function plot(ctx: CanvasRenderingContext2D, X: Map1, Y: Map1, x0: number, x1: number, n: number, f: Map1, color: string, width: number, dash: number[] = []): void {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = width;
-  ctx.lineJoin = 'round';
-  ctx.setLineDash(dash);
-  ctx.beginPath();
-  for (let i = 0; i <= n; i++) {
-    const x = x0 + (x1 - x0) * i / n;
-    const y = f(x);
-    if (i === 0) ctx.moveTo(X(x), Y(y)); else ctx.lineTo(X(x), Y(y));
-  }
-  ctx.stroke();
-  ctx.setLineDash([]);
-}
-
-function dot(ctx: CanvasRenderingContext2D, x: number, y: number, color: string): void {
-  ctx.fillStyle = color;
-  ctx.strokeStyle = colors.panel;
-  ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.arc(x, y, 4.5, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
-}
 
 const BEAT_TICKS: Tick[] = [0, 1, 2, 3, 4].map((x): Tick => ({ x, label: x < 4 ? 'beat ' + (x + 1) : 'next 1', strong: true }))
   .concat([0.5, 1.5, 2.5, 3.5].map((x): Tick => ({ x, label: '' })));
 
-/** Samples per curve: two per pixel, and every onset lands on a sample. */
-const samples = (w: number): number => Math.max(512, Math.ceil(w / 256) * 512);
-
-function playhead(s: Surface, X: Map1, pos: number): void {
-  s.ctx.strokeStyle = colors.play;
-  s.ctx.lineWidth = 2;
-  s.ctx.beginPath(); s.ctx.moveTo(X(pos), PAD.t); s.ctx.lineTo(X(pos), s.h - PAD.b); s.ctx.stroke();
-}
 
 function onsetsInBar(name: VoiceName): number[] {
   const v = VOICES[name];
@@ -244,24 +143,17 @@ function writeFormulas(): void {
 
 // --- real time ------------------------------------------------------------
 
-const bpmInput = el<HTMLInputElement>('bpm');
 const square = el('square');
 const beatDots = document.querySelectorAll('.beats i');
 const nowF = el('nowF');
 const nowLight = el('nowLight');
-let t0 = performance.now(), bpm = 120, beatsAtT0 = 0;
-
-const beatsNow = (now: number): number => beatsAtT0 + (now - t0) / 60000 * bpm;
-bpmInput.addEventListener('input', () => {
-  const v = Number(bpmInput.value);
-  if (!(v >= 30 && v <= 300)) return;
-  const now = performance.now();
-  beatsAtT0 = beatsNow(now); t0 = now; bpm = v; // keep the phase when the tempo changes
-});
-el('restart').addEventListener('click', () => { t0 = performance.now(); beatsAtT0 = 0; });
+const nowTempo = el('nowTempo');
+el('restart').addEventListener('click', () => tempo.restart(performance.now()));
 
 function frameLoop(now: number): void {
-  const pos = beatsNow(now) % 4;
+  const pos = tempo.beats(now) % 4;
+  showTempo(now);
+  nowTempo.textContent = tempo.tempo(now).label;
   const v = at(pos);
   const g = Math.round(Math.min(1, 0.5 * v.light) * 255);
   square.style.background = `rgb(${g},${g},${g})`;

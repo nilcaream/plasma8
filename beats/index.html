@@ -84,11 +84,16 @@
   .ctl label { font-variant-numeric: tabular-nums; }
   .ctl output { text-align: right; font-variant-numeric: tabular-nums; }
   .ctl input[type=range] { width: 100%; }
-  .group { margin-top: 10px; padding-top: 6px; border-top: 1px solid var(--border); }
+  .ctl-group + .ctl-group { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .ctl-group h3 { font-size: 13px; font-weight: 600; margin: 0 0 2px; }
+  .ctl-group .note { font-size: 12px; color: var(--muted); margin: 0 0 4px; }
+  .ctl-group button { margin-top: 4px; }
+  .tap { padding: 8px 14px; font-weight: 600; touch-action: manipulation; }
   .pulse-wrap { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; }
   #square { width: 140px; height: 140px; border-radius: 6px; background: rgb(128,128,128); border: 1px solid var(--border); }
-  .pulse-info { display: flex; flex-direction: column; gap: 8px; font-variant-numeric: tabular-nums; }
-  .pulse-info input[type=number] { width: 80px; font: inherit; padding: 3px 6px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; }
+  /* a fixed basis, so a longer tempo label never moves the Tap button out from under the finger */
+  .pulse-info { flex: 1 1 0; min-width: 120px; display: flex; flex-direction: column; gap: 8px; font-variant-numeric: tabular-nums; }
+  #nowTempo { display: block; white-space: nowrap; }
   .beats { display: flex; gap: 6px; }
   .beats i { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border); font-style: normal; display: grid; place-items: center; font-size: 12px; color: var(--muted); }
   .beats i.on { background: var(--play); color: var(--panel); border-color: var(--play); }
@@ -138,10 +143,11 @@
       <div class="pulse-wrap">
         <div id="square"></div>
         <div class="pulse-info">
-          <label>BPM <input id="bpm" type="number" min="30" max="300" step="1" value="120"></label>
+          <div>tempo <span id="nowTempo">120.00</span></div>
           <div class="beats"><i>1</i><i>2</i><i>3</i><i>4</i></div>
           <div>F <span id="nowF">0.000</span></div>
           <div>light <span id="nowLight">1.000</span></div>
+          <button id="tap" type="button" class="tap">Tap tempo</button>
           <button id="restart" type="button">Restart bar</button>
         </div>
       </div>
