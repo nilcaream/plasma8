@@ -9,7 +9,7 @@ uniform vec3 u_palA;
 uniform vec3 u_palB;
 uniform vec3 u_palC;
 uniform vec3 u_palD;
-uniform float u_sides;     // 0 round, else the polygon's sides
+uniform float u_sides;     // 2 is the round tube, 3 and up a polygon of that many sides
 uniform float u_speed;     // forward, units per second
 uniform vec2 u_farEnd;     // where the far end sits on screen, in uv (src/swing.ts)
 uniform float u_beatSize;  // how much the beat changes the brightness: 0.1 at intensity 0, 1 at 1 (src/envelope.ts)
@@ -34,7 +34,8 @@ vec2 centre(float s) {
 float tube(vec3 p) {
   vec2 q = p.xy - centre(p.z);
   float r = length(q);
-  if (u_sides > 2.5) {
+  // 2 sides: the circle; a polygon from 3 sides up
+  if (u_sides >= 3.0) {
     float seg = 6.28318 / u_sides;
     float a = atan(q.y, q.x);
     r *= cos(mod(a + 0.5 * seg, seg) - 0.5 * seg);

@@ -11,7 +11,7 @@ export const TUNNEL_NAME = 'tunnel';
 /**
  * This run's own look: palette, cross-section, dive speed, ring and rib
  * spacing. The speed range is narrow, so the intensity, not the draw, says how
- * fast the dive goes; the twist is small, so the ribs never seem to spin. The
+ * fast the dive goes. The ranges are the ones chosen on the debug panel. The
  * far end swings on every beat (kick) or on every second one (snare), and each
  * of its layers goes round its own way.
  */
@@ -20,12 +20,13 @@ export const TUNNEL_KNOBS: readonly Knob[] = [
   ...triple('palB', 0.35, 0.5, [0, 1]),
   ...triple('palC', 0.6, 1.2, [0, 3]),
   ...triple('palD', 0, 1, [0, 1]),
-  pick('sides', [0, 0, 4, 5, 6, 8], [0, 12]),
+  // 2 is the round tube, 3..9 a polygon of that many sides
+  int('sides', 2, 9, [0, 12]),
   range('speed', 2, 3, [0, 8]),
-  range('ringGap', 0.6, 1.6, [0.2, 4]),
-  int('ribs', 4, 16, [1, 32]),
+  range('ringGap', 0.481, 2.058, [0.2, 4]),
+  int('ribs', 1, 14, [1, 32]),
   sign('twistSign'),
-  range('twist', 0, 0.08, [0, 0.5]),
+  range('twist', 0, 0.313, [0, 0.5]),
   range('hueDrift', 0.01, 0.05, [0, 0.2]),
   pick('swingSnare', [0, 1], [0, 1]),
   ...[0, 1, 2, 3].map((j) => sign(`swingWay.${j}`)),

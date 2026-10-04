@@ -44,9 +44,20 @@ describe('julia parameters', () => {
 });
 
 describe('tunnel parameters', () => {
-  it('are round or a polygon of 4 to 8 sides', () => {
-    for (let seed = 0; seed < 100; seed++) {
-      expect([0, 4, 5, 6, 8]).toContain(drawTunnelParams(createRng(seed)).u_sides);
+  it('draw every whole number of sides from 2 to 9, and nothing else', () => {
+    const rng = createRng(1);
+    const seen = new Set(Array.from({ length: 2000 }, () => drawTunnelParams(rng).u_sides));
+    expect(seen).toEqual(new Set([2, 3, 4, 5, 6, 7, 8, 9]));
+  });
+
+  it('draw whole ribs from 1 to 14, rings 0.481..2.058 apart and a twist of at most 0.313 either way', () => {
+    const rng = createRng(2);
+    const draws = Array.from({ length: 2000 }, () => drawTunnelParams(rng));
+    expect(new Set(draws.map((p) => p.u_ribs))).toEqual(new Set(Array.from({ length: 14 }, (_, i) => i + 1)));
+    for (const p of draws) {
+      expect(p.u_ringGap as number).toBeGreaterThanOrEqual(0.481);
+      expect(p.u_ringGap as number).toBeLessThan(2.058);
+      expect(Math.abs(p.u_twist as number)).toBeLessThan(0.313);
     }
   });
 });
