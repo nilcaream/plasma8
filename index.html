@@ -160,6 +160,170 @@
         display: block;
       }
 
+      /* ?debug only: the running algorithm's random values, under the reserved corner. */
+      #knobs {
+        position: fixed;
+        top: calc(env(safe-area-inset-top, 0px) + 100px);
+        right: calc(env(safe-area-inset-right, 0px) + 12px);
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+        width: min(340px, calc(100vw - 24px));
+        display: none;
+        flex-direction: column;
+        border-radius: 10px;
+        background: var(--panel);
+        font: 11px/1.3 ui-monospace, monospace;
+        user-select: text;
+        -webkit-user-select: text;
+      }
+      #knobs.on {
+        display: flex;
+      }
+      #knobs.folded {
+        bottom: auto;
+        width: auto;
+      }
+      #knobs.folded .body {
+        display: none;
+      }
+      #knobs button {
+        font: inherit;
+        color: var(--fg);
+        background: rgba(255, 255, 255, 0.1);
+        border: 0;
+        border-radius: 5px;
+        padding: 4px 7px;
+        cursor: pointer;
+      }
+      #knobs .fold {
+        align-self: flex-end;
+        margin: 6px;
+      }
+      #knobs .body {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+        padding: 0 10px 10px;
+      }
+      #knobs .buttons {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        margin: 6px 0;
+      }
+      #knobs textarea {
+        font: inherit;
+        color: var(--fg);
+        background: rgba(0, 0, 0, 0.5);
+        border: 0;
+        margin-bottom: 6px;
+      }
+      #knobs .list {
+        overflow-y: auto;
+        min-height: 0;
+      }
+      #knobs .knob {
+        display: grid;
+        grid-template-columns: 92px 1fr 48px 18px;
+        align-items: center;
+        gap: 6px;
+        height: 22px;
+      }
+      #knobs label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      #knobs .track {
+        position: relative;
+        height: 18px;
+      }
+      #knobs .track i {
+        position: absolute;
+        top: 6px;
+        height: 6px;
+        pointer-events: none;
+      }
+      #knobs .band {
+        min-width: 2px;
+        border-radius: 3px;
+        background: rgba(255, 255, 255, 0.28);
+      }
+      #knobs .tick {
+        width: 2px;
+        margin-left: -1px;
+        background: rgba(255, 255, 255, 0.5);
+      }
+      #knobs .drawn {
+        top: 2px !important;
+        height: 14px !important;
+        width: 2px;
+        margin-left: -1px;
+        background: #7fd3ff;
+      }
+      #knobs .track::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 8px;
+        height: 2px;
+        background: rgba(255, 255, 255, 0.15);
+      }
+      #knobs input[type='range'] {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 18px;
+        margin: 0;
+        background: transparent;
+        -webkit-appearance: none;
+        appearance: none;
+      }
+      #knobs input[type='range']::-webkit-slider-runnable-track {
+        height: 18px;
+        background: transparent;
+      }
+      #knobs input[type='range']::-moz-range-track {
+        height: 18px;
+        background: transparent;
+      }
+      #knobs input[type='range']::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 8px;
+        height: 18px;
+        border-radius: 3px;
+        background: var(--fg);
+      }
+      #knobs input[type='range']::-moz-range-thumb {
+        width: 8px;
+        height: 18px;
+        border: 0;
+        border-radius: 3px;
+        background: var(--fg);
+      }
+      #knobs .pinned input[type='range']::-webkit-slider-thumb {
+        background: var(--accent);
+      }
+      #knobs .pinned input[type='range']::-moz-range-thumb {
+        background: var(--accent);
+      }
+      #knobs output {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      #knobs .release {
+        padding: 0;
+        width: 18px;
+        visibility: hidden;
+      }
+      #knobs .pinned label,
+      #knobs .pinned output {
+        color: var(--accent);
+      }
+      #knobs .pinned .release {
+        visibility: visible;
+      }
+
       #fatal {
         position: fixed;
         inset: 0;
@@ -203,6 +367,7 @@
     </div>
 
     <div id="debug"></div>
+    <div id="knobs" role="group" aria-label="Random values"></div>
     <div id="fatal"></div>
 
     <script type="module" src="/src/main.ts"></script>

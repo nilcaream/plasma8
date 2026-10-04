@@ -64,8 +64,8 @@ export class Layer {
   /** The spot after p1, drawn a leg early so the curve can head for it. */
   private ahead: Point | undefined;
   private angle: number;
-  /** Which way round the spots go: 1 or -1. */
-  private readonly way: number;
+  /** Which way round the spots go: 1 or -1; drawn, and set again by a debug override. */
+  way: number;
   private start = 0;
   private length = 1;
   private index: number | undefined;
@@ -77,7 +77,8 @@ export class Layer {
   constructor(
     private readonly rng: Rng,
     readonly period: number,
-    readonly offset = 0,
+    /** Beats into the period that its spots fall on; a change starts the next leg from where the layer is. */
+    public offset = 0,
   ) {
     this.angle = rng.next() * 2 * Math.PI;
     this.way = rng.next() < 0.5 ? -1 : 1;
@@ -134,18 +135,49 @@ export class Layer {
 
 export class Swing {
   private readonly layers: Layer[];
+  private started = false;
+  /** A beat changed while it ran: the weights slide from the old beat's, from `start` on. */
+  private blend: { from: SwingBeat; start?: number } | undefined;
 
+  /** `ways`, when given, sets each layer's way round, slowest first, instead of the layer's own draw. */
   constructor(
     rng: Rng,
-    readonly beat: SwingBeat,
+    private beat: SwingBeat,
+    ways?: readonly number[],
   ) {
-    // a snare's 2-beat layer falls on beats 2 and 4
-    this.layers = LAYER_PERIODS.map((p) => new Layer(rng, p, beat === 'snare' && p === 2 ? 1 : 0));
+    this.layers = LAYER_PERIODS.map((p) => new Layer(rng, p));
+    this.tune(beat, ways);
+  }
+
+  /**
+   * Sets the beat and the layers' ways round while it runs; each layer goes on
+   * from where it is, and the weights slide to the new beat's over a bar.
+   */
+  tune(beat: SwingBeat, ways?: readonly number[]): void {
+    if (beat !== this.beat && this.started) this.blend = { from: this.beat };
+    this.beat = beat;
+    this.layers.forEach((layer, j) => {
+      // a snare's 2-beat layer falls on beats 2 and 4
+      layer.offset = beat === 'snare' && layer.period === 2 ? 1 : 0;
+      const way = ways?.[j];
+      if (way !== undefined) layer.way = way < 0 ? -1 : 1;
+    });
   }
 
   /** Call once a frame with the clock's beat count; returns where the far end is now. */
   update(beats: number, intensity: number): Point {
-    const w = layerWeights(this.beat, intensity);
+    this.started = true;
+    let w = layerWeights(this.beat, intensity);
+    if (this.blend) {
+      const start = (this.blend.start ??= beats);
+      const s = (beats - start) / BEATS_PER_BAR;
+      if (s < 0 || s >= 1) this.blend = undefined;
+      else {
+        const e = s * s * (3 - 2 * s);
+        const from = layerWeights(this.blend.from, intensity);
+        w = w.map((to, j) => from[j]! + (to - from[j]!) * e);
+      }
+    }
     let x = 0;
     let y = 0;
     this.layers.forEach((layer, j) => {

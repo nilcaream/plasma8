@@ -1,5 +1,6 @@
 import type { Algorithm, FrameInputs } from './algorithm';
 import { FULLSCREEN_VERTEX, createProgram } from './gl';
+import type { Values } from './knobs';
 
 /** An algorithm's own random parameters: a name that is a uniform in its shader, and its value. */
 export type ShaderParams = Record<string, number | readonly number[]>;
@@ -65,11 +66,11 @@ function programFor(gl: WebGL2RenderingContext, shaderBody: string): WebGLProgra
   return program;
 }
 
-/** An algorithm that is one full-screen fragment shader plus a set of random parameters. */
-export class ShaderAlgorithm implements Algorithm {
+/** One full-screen fragment shader plus a set of random parameters; `shaderAlgorithm` makes an Algorithm of it. */
+export class ShaderAlgorithm {
   private readonly program: WebGLProgram;
   private readonly common = new Map<string, WebGLUniformLocation>();
-  private readonly params: { location: WebGLUniformLocation; value: number | readonly number[] }[] = [];
+  private readonly params: { uniform: string; location: WebGLUniformLocation; value: number | readonly number[] }[] = [];
 
   private readonly frameLocations = new Map<string, WebGLUniformLocation | null>();
 
@@ -89,7 +90,15 @@ export class ShaderAlgorithm implements Algorithm {
     for (const [uniform, value] of Object.entries(params)) {
       const location = gl.getUniformLocation(this.program, uniform);
       if (!location) throw new Error(`${name}: shader has no uniform ${uniform}`);
-      this.params.push({ location, value });
+      this.params.push({ uniform, location, value });
+    }
+  }
+
+  /** New values for its own uniforms, from the next frame on. */
+  tune(params: ShaderParams): void {
+    for (const p of this.params) {
+      const value = params[p.uniform];
+      if (value !== undefined) p.value = value;
     }
   }
 
@@ -120,6 +129,23 @@ export class ShaderAlgorithm implements Algorithm {
 
   /** The program is shared with later instances of the same algorithm, so there is nothing to free. */
   dispose(): void {}
+}
+
+/** A shader algorithm whose uniforms come from its knobs' values, and follow them when tuned. */
+export function shaderAlgorithm(
+  gl: WebGL2RenderingContext,
+  name: string,
+  shaderBody: string,
+  params: (values: Values) => ShaderParams,
+  values: Values,
+): Algorithm {
+  const shader = new ShaderAlgorithm(gl, name, shaderBody, params(values));
+  return {
+    name,
+    draw: (target, inputs) => shader.draw(target, inputs),
+    dispose: () => shader.dispose(),
+    tune: (v) => shader.tune(params(v)),
+  };
 }
 
 function setUniform(gl: WebGL2RenderingContext, location: WebGLUniformLocation, value: number | readonly number[]): void {

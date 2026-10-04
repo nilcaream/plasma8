@@ -93,4 +93,29 @@ describe('Swing', () => {
     expect(far(1)).toBeLessThanOrEqual(1.3 * reach(1));
     expect(far(1)).toBeGreaterThan(2 * far(0));
   });
+
+  it('tuned to the snare before it starts, moves exactly as a snare swing drawn the same', () => {
+    const tuned = new Swing(createRng(8), 'kick');
+    tuned.tune('snare');
+    expect(trace(tuned, 32, 1)).toEqual(trace(new Swing(createRng(8), 'snare'), 32, 1));
+  });
+
+  it('takes the ways round it is given in place of its own draw', () => {
+    const left = trace(new Swing(createRng(8), 'kick', [-1, -1, -1, -1]), 32, 1);
+    const right = trace(new Swing(createRng(8), 'kick', [1, 1, 1, 1]), 32, 1);
+    expect(left).not.toEqual(right);
+    const tuned = new Swing(createRng(8), 'kick');
+    tuned.tune('kick', [1, 1, 1, 1]);
+    expect(trace(tuned, 32, 1)).toEqual(right);
+  });
+
+  it('goes on smoothly when the beat is changed while it runs', () => {
+    const swing = new Swing(createRng(4), 'kick');
+    const before = trace(swing, 16, 1);
+    swing.tune('snare');
+    const after = trace(swing, 16, 1, 16 + 1 / 60);
+    const steps = (path: Point[]): number => Math.max(...path.slice(1).map((p, i) => dist(p, path[i]!)));
+    expect(dist(after[0]!, before[before.length - 1]!)).toBeLessThan(2 * steps(before));
+    expect(steps(after)).toBeLessThan(2 * steps(before));
+  });
 });

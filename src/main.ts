@@ -4,6 +4,8 @@ import { TapClock } from './clock';
 import { beatInputs } from './drive';
 import { createContext } from './gl';
 import { isTapKey, isTapPointer } from './input';
+import { KnobPanel } from './knobPanel';
+import { drawKnobs, type Values } from './knobs';
 import { parseDebugParams } from './query';
 import { createRng, formatSeed, freshSeed } from './rng';
 import { Sequencer, type Change } from './sequence';
@@ -15,6 +17,8 @@ import { Corner, DebugOverlay, Metronome, showFatal } from './ui';
 
 interface Running {
   def: AlgorithmDef;
+  /** What it drew at start, before any pinned value. */
+  drawn: Values;
   algorithm: Algorithm;
 }
 
@@ -48,14 +52,26 @@ function main(): void {
   const seed = freshSeed();
   const seedText = formatSeed(seed);
   const rng = createRng(seed);
+  // ?debug: a slider for every value the running algorithm drew; "Draw again" starts it afresh at once
+  const knobPanel = new KnobPanel(params.debug, seedText, () => {
+    current.algorithm.dispose();
+    current = create(current.def);
+    knobPanel.show(current);
+    console.info(`[plasma8] ${current.def.name} drawn again; seed ${seedText}`);
+  });
   let warned = false;
+  // every value it draws at start, then what the debug panel has pinned in place of the draw
+  const create = (def: AlgorithmDef): Running => {
+    const drawn = drawKnobs(def.knobs, rng);
+    return { def, drawn, algorithm: def.create(gl, knobPanel.start(def, drawn), rng) };
+  };
   const make = (intensity: number, running?: AlgorithmDef): Running => {
     const { def, unknown } = chooseAlgorithm(params.algo, intensity, rng, running);
     if (unknown && !warned) {
       warned = true;
       console.warn(`[plasma8] unknown algorithm "${params.algo}", picking at random`);
     }
-    return { def, algorithm: def.create(gl, rng) };
+    return create(def);
   };
   const announce = (r: Running, bars: number, how: string): void => {
     console.info(`[plasma8] ${r.def.name} (home ${r.def.home.toFixed(2)}) ${how}; next change in ${bars} bars; seed ${seedText}`);
@@ -70,6 +86,7 @@ function main(): void {
   let incoming: Running | undefined;
   let look: TransitionLook | undefined;
   announce(current, sequencer.segment.bars, 'to start');
+  knobPanel.show(current);
 
   const clock = new TapClock(performance.now(), params.bpm);
 
@@ -86,12 +103,12 @@ function main(): void {
   // Taps: pointer down and key down, anywhere except the reserved corner. A tap
   // is timed when the event happened, not when a busy page got round to it.
   window.addEventListener('pointerdown', (e) => {
-    if (corner.contains(e.target) || !isTapPointer(e)) return;
+    if (corner.contains(e.target) || knobPanel.contains(e.target) || !isTapPointer(e)) return;
     clock.tap(e.timeStamp);
   });
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && corner.isOpen()) corner.setOpen(false);
-    if (corner.contains(e.target) || !isTapKey(e)) return;
+    if (corner.contains(e.target) || knobPanel.contains(e.target) || !isTapKey(e)) return;
     clock.tap(e.timeStamp);
   });
 
@@ -123,6 +140,7 @@ function main(): void {
       incoming = undefined;
       look = undefined;
       announce(current, sequencer.segment.bars, `in by ${pending}`);
+      knobPanel.show(current);
     }
 
     // Speed follows the intensity at once; during a fade it slides from the outgoing home to the incoming one.

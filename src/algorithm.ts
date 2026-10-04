@@ -1,3 +1,4 @@
+import type { Knob, Values } from './knobs';
 import type { Rng } from './rng';
 import type { StrobeBeat } from './strobe';
 
@@ -32,15 +33,19 @@ export interface FrameInputs {
 export interface Algorithm {
   readonly name: string;
   draw(target: WebGLFramebuffer | null, inputs: FrameInputs): void;
+  /** Takes new values for its knobs while it runs (the debug panel's overrides). */
+  tune(values: Values): void;
   dispose(): void;
 }
 
-/** Makes an algorithm with its own parameters drawn from `rng`. */
+/** Makes an algorithm from values for its knobs; `rng` is for what it draws as it runs. */
 export interface AlgorithmDef {
   readonly name: string;
   /** The intensity (0 soft … 1 hard) it is at home at: picked most there, and runs at its designed speed there. */
   readonly home: number;
   /** Which beats its strobe flashes on. */
   readonly strobe: StrobeBeat;
-  create(gl: WebGL2RenderingContext, rng: Rng): Algorithm;
+  /** Everything it draws at random when it starts. */
+  readonly knobs: readonly Knob[];
+  create(gl: WebGL2RenderingContext, values: Values, rng: Rng): Algorithm;
 }
