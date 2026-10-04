@@ -38,7 +38,7 @@ describe('Swing', () => {
 
   it('starts a new glide from where it is when a tap restarts the count mid-glide', () => {
     const swing = new Swing(createRng(11), 'kick');
-    trace(swing, 1, 0); // the first swing starts on beat 1; soft, it glides for 0.9 beat
+    trace(swing, 1, 0); // the first swing starts on beat 1; soft, it glides the whole beat
     const mid = swing.update(1.3, 0);
     expect(dist(mid, swing.update(1.3, 0))).toBe(0);
     const after = swing.update(0, 0); // a fresh tap count: beats back to 0, a new swing
@@ -58,9 +58,10 @@ describe('Swing', () => {
     const snare = settled(new Swing(createRng(3), 'snare'));
     for (let i = 2; i < 8; i++) expect(dist(kick[i]!, kick[i - 1]!)).toBeGreaterThan(0.005);
     // a snare swings on beats 2 and 4 (counted from 0: 1, 3, …) and holds over the beat between
-    expect(dist(snare[2]!, snare[1]!)).toBeLessThan(1e-9);
+    // (its hard glide takes the whole first beat, so just before beat 2 it is a hair short of landing)
+    expect(dist(snare[2]!, snare[1]!)).toBeLessThan(1e-3);
     expect(dist(snare[3]!, snare[2]!)).toBeGreaterThan(0.005);
-    expect(dist(snare[4]!, snare[3]!)).toBeLessThan(1e-9);
+    expect(dist(snare[4]!, snare[3]!)).toBeLessThan(1e-3);
   });
 
   it('reaches further and glides quicker at high intensity', () => {
@@ -69,16 +70,16 @@ describe('Swing', () => {
     expect(far(1)).toBeLessThanOrEqual(reach(1) + 1e-9);
     expect(far(1)).toBeGreaterThan(3 * far(0));
 
-    // a third of a beat after a swing: hard has landed, soft is still under way
-    const progress = (intensity: number): number => {
+    // hard lands half a beat after a swing; soft, a third of a beat in, is not half way yet
+    const progress = (intensity: number, at: number): number => {
       const swing = new Swing(createRng(9), 'kick');
       trace(swing, 1, intensity); // up to beat 1, where the first swing starts
-      const target = swing.update(1.95, intensity);
+      const target = swing.update(1.999, intensity);
       const fresh = new Swing(createRng(9), 'kick');
       trace(fresh, 1, intensity);
-      return dist(fresh.update(1.33, intensity), [0, 0]) / dist(target, [0, 0]);
+      return dist(fresh.update(at, intensity), [0, 0]) / dist(target, [0, 0]);
     };
-    expect(progress(1)).toBeCloseTo(1, 5);
-    expect(progress(0)).toBeLessThan(0.5);
+    expect(progress(1, 1.52)).toBeCloseTo(1, 5);
+    expect(progress(0, 1.33)).toBeLessThan(0.5);
   });
 });

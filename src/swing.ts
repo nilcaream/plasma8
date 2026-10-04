@@ -12,11 +12,11 @@ import type { Rng } from './rng';
 export type SwingBeat = 'kick' | 'snare';
 
 /** How far from the centre a new spot may be, at intensity 0 and 1. */
-export const REACH_SOFT = 0.04;
-export const REACH_HARD = 0.26;
-/** The share of the time between two swings the glide takes, at intensity 0 and 1. */
-export const GLIDE_SOFT = 0.9;
-export const GLIDE_HARD = 0.25;
+export const REACH_SOFT = 0.06;
+export const REACH_HARD = 0.3;
+/** The share of the time between two swings the glide takes, at intensity 0 and 1: soft, it never stops. */
+export const GLIDE_SOFT = 1;
+export const GLIDE_HARD = 0.5;
 
 export type Point = readonly [number, number];
 

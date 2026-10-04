@@ -1,8 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { pulse } from './envelope';
+import { MIN_BEAT_SIZE, beatSize, pulse } from './envelope';
 
 /** How far the envelope drops from the beat to just before the next one: the edge the eye sees. */
 const edge = (intensity: number): number => pulse(0, intensity) - pulse(0.999, intensity);
+
+describe('beatSize', () => {
+  it('is barely there at intensity 0, full at 1, and grows steadily in between', () => {
+    expect(beatSize(0)).toBeCloseTo(MIN_BEAT_SIZE, 12);
+    expect(MIN_BEAT_SIZE).toBeLessThanOrEqual(0.15);
+    expect(beatSize(1)).toBeCloseTo(1, 12);
+    expect(beatSize(0.5)).toBeCloseTo((beatSize(0) + beatSize(1)) / 2, 12);
+    expect(beatSize(-1)).toBe(beatSize(0));
+    expect(beatSize(2)).toBe(beatSize(1));
+  });
+});
 
 describe('pulse', () => {
   it('is full on the beat at every intensity', () => {
