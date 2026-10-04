@@ -40,7 +40,7 @@ vec3 shade(vec2 uv) {
   float t = u_time;
   float bars = barStep();
 
-  // kaleidoscope fold; the turn at each bar start goes through barStep(), a quarter of it at intensity 0
+  // kaleidoscope fold; the turn at each bar start goes through barStep(), sized and eased by julia's own step shape (julia.ts)
   float wedge = 6.28318 / u_segments;
   vec2 p = rot2(u_spin * t + u_barTurn * wedge * bars) * uv;
   float a = atan(p.y, p.x);

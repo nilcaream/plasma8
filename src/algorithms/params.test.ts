@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import { drawKnobs } from '../knobs';
+import { stepShape } from '../motion';
 import { createRng, type Rng } from '../rng';
 import type { ShaderParams } from '../shaderAlgorithm';
-import { drawJuliaParams } from './julia';
+import { JULIA_KNOBS, drawJuliaParams, juliaParams } from './julia';
 import { drawPlasmaParams } from './plasma';
 import { drawTunnelParams } from './tunnel';
 
@@ -40,6 +42,16 @@ describe('julia parameters', () => {
       expect(n).toBeGreaterThanOrEqual(3);
       expect(n).toBeLessThanOrEqual(9);
     }
+  });
+});
+
+describe('julia\'s fixed values', () => {
+  it('are the ones set on the debug panel, its own bar-step shape among them', () => {
+    const v = drawKnobs(JULIA_KNOBS, createRng(1));
+    expect(stepShape(v)).toEqual({ sizeSoft: 0.021, sizeHard: 0.052, easeSoft: 0.793, easeHard: 0.227 });
+    const p = juliaParams(v);
+    expect([p.u_beatZoom, p.u_barZoom, p.u_beatLight, p.u_barLight, p.u_glow, p.u_colourShift, p.u_wanderSpeed])
+      .toEqual([0.011, 0.029, 0.184, 0.089, 0.263, 0.056, 0.105]);
   });
 });
 

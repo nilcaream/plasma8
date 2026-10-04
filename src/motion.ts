@@ -30,13 +30,17 @@ export interface StepShape { sizeSoft: number; sizeHard: number; easeSoft: numbe
 
 export const STEP_SHAPE: StepShape = { sizeSoft: MIN_STEP, sizeHard: 1, easeSoft: EASE_SOFT, easeHard: EASE_HARD };
 
-/** The step shape as fixed knobs, for the debug panel; spans up to a whole bar's ease and twice the full size. */
-export const STEP_KNOBS: readonly Knob[] = [
-  fixed('stepSizeAt0', STEP_SHAPE.sizeSoft, [0, 1]),
-  fixed('stepSizeAt1', STEP_SHAPE.sizeHard, [0, 2]),
-  fixed('stepEaseAt0', STEP_SHAPE.easeSoft, [0.02, 1]),
-  fixed('stepEaseAt1', STEP_SHAPE.easeHard, [0.02, 1]),
-];
+/** A step shape as fixed knobs, for the debug panel; spans up to a whole bar's ease and twice the full size. */
+export function stepKnobs(shape: StepShape = STEP_SHAPE): Knob[] {
+  return [
+    fixed('stepSizeAt0', shape.sizeSoft, [0, 1]),
+    fixed('stepSizeAt1', shape.sizeHard, [0, 2]),
+    fixed('stepEaseAt0', shape.easeSoft, [0.02, 1]),
+    fixed('stepEaseAt1', shape.easeHard, [0.02, 1]),
+  ];
+}
+
+export const STEP_KNOBS: readonly Knob[] = stepKnobs();
 
 /** The step shape from an algorithm's knob values; the shape in code for an algorithm that takes no bar steps. */
 export function stepShape(v: Values): StepShape {
