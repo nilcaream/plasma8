@@ -10,7 +10,7 @@ import { parseDebugParams } from './query';
 import { createRng, formatSeed, freshSeed } from './rng';
 import { Sequencer, type Change } from './sequence';
 import { loadSettings, saveSettings, type Settings } from './settings';
-import { BarSteps, MotionClock, motionRate } from './motion';
+import { MotionClock, motionRate } from './motion';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
 import { FlashGate, flashLevel } from './strobe';
 import { Corner, DebugOverlay, Metronome, showFatal } from './ui';
@@ -81,7 +81,6 @@ function main(): void {
   const sequencer = new Sequencer(rng);
   const gate = new FlashGate();
   const motion = new MotionClock();
-  const barSteps = new BarSteps();
   let current = make(live.intensity);
   let incoming: Running | undefined;
   let look: TransitionLook | undefined;
@@ -169,7 +168,6 @@ function main(): void {
       inputs: {
         ...beat,
         time: motion.update(dt, rate),
-        barSteps: barSteps.update(r.bar, r.barPhase, intensity),
         width,
         height,
       },

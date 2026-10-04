@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALGORITHMS } from './algorithms';
 import {
-  drawBounds, drawFrom, drawKnob, drawKnobs, formatRanges, int, isChoice, pick, range, setMax, setMin, setValue, settle, share, sign,
+  drawBounds, drawFrom, drawKnob, drawKnobs, fixed, formatRanges, int, setFixed, isChoice, pick, range, setMax, setMin, setValue, settle, share, sign,
   startRange, step, type Knob, type UserRange,
 } from './knobs';
 import { createRng } from './rng';
@@ -140,6 +140,30 @@ describe('the user\'s range', () => {
     const sides = pick('sides', [0, 0, 4, 5, 6, 8], [0, 12]);
     expect(new Set(many(sides, { min: 4, max: 10, value: 4 }))).toEqual(new Set([4, 5, 6, 8]));
     expect(new Set(many(sides, { min: 9, max: 11, value: 9 }))).toEqual(new Set([9, 10, 11]));
+  });
+});
+
+describe('fixed knobs', () => {
+  const zoom = fixed('beatZoom', 0.12, [0, 0.5]);
+
+  it('give the code\'s value, and never use up a random number', () => {
+    const knobs = [range('a', 0, 1, [0, 1]), zoom, range('b', 0, 1, [0, 1])];
+    const v = drawKnobs(knobs, createRng(9));
+    expect(v.beatZoom).toBe(0.12);
+    expect([v.a, v.b]).toEqual(Object.values(drawKnobs([knobs[0]!, knobs[2]!], createRng(9))));
+  });
+
+  it('take the user\'s one value, kept in the wide span, as min, max and value', () => {
+    expect(startRange(zoom, 0.12)).toEqual({ min: 0.12, max: 0.12, value: 0.12 });
+    expect(setFixed(zoom, 0.3)).toEqual({ min: 0.3, max: 0.3, value: 0.3 });
+    expect(setFixed(zoom, 2).value).toBe(0.5);
+    expect(drawFrom(zoom, setFixed(zoom, 0.3), createRng(1))).toBe(0.3);
+  });
+
+  it('are copied as name and value after the min and max lines', () => {
+    const knobs = [zoom, range('scale', 0.9, 1.8, [0.3, 4])];
+    const text = formatRanges('julia', knobs, { beatZoom: setFixed(zoom, 0.05), scale: { min: 1, max: 2, value: 1.5 } });
+    expect(text.split('\n')).toEqual(['julia', 'scale     min       1  max       2', 'beatZoom  0.050']);
   });
 });
 

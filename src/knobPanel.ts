@@ -5,11 +5,13 @@
  * code draws from (the ticks on their tracks), and every later run of the same
  * algorithm draws from them, until the page is loaded again. Value is this
  * run's value, kept inside min..max (the band on its track), and put in at once.
+ * Under them, "Fixed in code": one value slider for each value the code fixes
+ * (how the picture follows the music), starting at the code's value (the tick).
  */
 
 import type { Algorithm, AlgorithmDef } from './algorithm';
 import {
-  drawBounds, drawFrom, formatRanges, setMax, setMin, setValue, share, startRange, step,
+  drawBounds, drawFrom, formatRanges, isFixed, setFixed, setMax, setMin, setValue, share, startRange, step,
   type Knob, type UserRange, type Values,
 } from './knobs';
 import type { Rng } from './rng';
@@ -25,9 +27,11 @@ const PARTS: readonly Part[] = ['min', 'max', 'value'];
 
 interface Row {
   knob: Knob;
-  inputs: Record<Part, HTMLInputElement>;
-  outs: Record<Part, HTMLOutputElement>;
-  band: HTMLElement;
+  /** min, max and value for a drawn knob; value alone for a fixed one. */
+  parts: readonly Part[];
+  inputs: Partial<Record<Part, HTMLInputElement>>;
+  outs: Partial<Record<Part, HTMLOutputElement>>;
+  band: HTMLElement | null;
 }
 
 const pct = (x: number): string => `${(x * 100).toFixed(2)}%`;
@@ -56,7 +60,7 @@ export class KnobPanel {
         <div class="head"></div>
         <div class="buttons">
           <button type="button" data-do="again" title="Start this algorithm again now, every value drawn from your min..max">Draw again</button>
-          <button type="button" data-do="copy" title="Copy every knob's min and max as text">Copy</button>
+          <button type="button" data-do="copy" title="Copy every random knob's min and max, and every fixed value, as text">Copy</button>
         </div>
         <textarea readonly rows="6" hidden></textarea>
         <div class="list"></div>
@@ -108,46 +112,59 @@ export class KnobPanel {
 
   private build(knobs: readonly Knob[]): void {
     this.list.textContent = '';
-    this.rows = knobs.map((knob) => {
-      const row = document.createElement('div');
-      row.className = 'knob';
-      const [lo, hi] = knob.wide;
-      const [a, b] = drawBounds(knob.draw);
-      const codeTicks = [...new Set([a, b])].map((v) => `<i class="tick" style="left:${pct(share(knob, v))}"></i>`).join('');
-      const id = `knob-${knob.key.replace(/\W/g, '-')}`;
-      row.innerHTML = `<div class="name">${knob.key}</div>` + PARTS.map((part) => `
-        <label for="${id}-${part}">${part}</label>
-        <span class="track">${part === 'value' ? '<i class="band"></i>' : codeTicks}<input id="${id}-${part}" data-part="${part}" type="range" min="${lo}" max="${hi}" step="${step(knob)}"></span>
-        <output for="${id}-${part}"></output>`).join('');
-      const pick = <T extends Element>(sel: (p: Part) => string): Record<Part, T> =>
-        Object.fromEntries(PARTS.map((p) => [p, row.querySelector<T>(sel(p))!])) as Record<Part, T>;
-      const r: Row = {
-        knob,
-        inputs: pick<HTMLInputElement>((p) => `input[data-part=${p}]`),
-        outs: pick<HTMLOutputElement>((p) => `output[for=${id}-${p}]`),
-        band: row.querySelector('.band')!,
-      };
-      for (const part of PARTS) r.inputs[part].addEventListener('input', () => this.move(r, part, Number(r.inputs[part].value)));
-      this.list.appendChild(row);
-      return r;
-    });
+    const heading = (text: string, note: string): void => {
+      const h = document.createElement('div');
+      h.className = 'group';
+      h.innerHTML = `<b>${text}</b><span>${note}</span>`;
+      this.list.appendChild(h);
+    };
+    heading('Random per instance', 'drawn from min..max at every start');
+    const drawn = knobs.filter((k) => !isFixed(k)).map((k) => this.row(k));
+    const kept = knobs.filter(isFixed);
+    if (kept.length > 0) heading('Fixed in code', 'how it follows the music; the code\'s value to start');
+    this.rows = [...drawn, ...kept.map((k) => this.row(k))];
+  }
+
+  private row(knob: Knob): Row {
+    const row = document.createElement('div');
+    row.className = 'knob';
+    const [lo, hi] = knob.wide;
+    const [a, b] = drawBounds(knob.draw);
+    const codeTicks = [...new Set([a, b])].map((v) => `<i class="tick" style="left:${pct(share(knob, v))}"></i>`).join('');
+    const parts = isFixed(knob) ? (['value'] as const) : PARTS;
+    const id = `knob-${knob.key.replace(/\W/g, '-')}`;
+    row.innerHTML = `<div class="name">${knob.key}</div>` + parts.map((part) => `
+      <label for="${id}-${part}">${part}</label>
+      <span class="track">${part === 'value' && !isFixed(knob) ? '<i class="band"></i>' : codeTicks}<input id="${id}-${part}" data-part="${part}" type="range" min="${lo}" max="${hi}" step="${step(knob)}"></span>
+      <output for="${id}-${part}"></output>`).join('');
+    const r: Row = { knob, parts, inputs: {}, outs: {}, band: row.querySelector('.band') };
+    for (const part of parts) {
+      const input = row.querySelector<HTMLInputElement>(`input[data-part=${part}]`)!;
+      r.inputs[part] = input;
+      r.outs[part] = row.querySelector<HTMLOutputElement>(`output[for=${id}-${part}]`)!;
+      input.addEventListener('input', () => this.move(r, part, Number(input.value)));
+    }
+    this.list.appendChild(row);
+    return r;
   }
 
   private paint(r: Row): void {
     const range = this.ranges[r.knob.key]!;
-    for (const part of PARTS) {
-      r.inputs[part].value = String(range[part]);
-      r.outs[part].textContent = show(range[part]);
+    for (const part of r.parts) {
+      r.inputs[part]!.value = String(range[part]);
+      r.outs[part]!.textContent = show(range[part]);
     }
-    r.band.style.left = pct(share(r.knob, range.min));
-    r.band.style.width = pct(share(r.knob, range.max) - share(r.knob, range.min));
+    if (r.band) {
+      r.band.style.left = pct(share(r.knob, range.min));
+      r.band.style.width = pct(share(r.knob, range.max) - share(r.knob, range.min));
+    }
   }
 
   private move(r: Row, part: Part, to: number): void {
     const s = this.shown!;
     const key = r.knob.key;
-    const set = part === 'min' ? setMin : part === 'max' ? setMax : setValue;
-    const next = set(r.knob, this.ranges[key]!, to);
+    const next = isFixed(r.knob) ? setFixed(r.knob, to)
+      : (part === 'min' ? setMin : part === 'max' ? setMax : setValue)(r.knob, this.ranges[key]!, to);
     this.ranges[key] = next;
     let saved = this.saved.get(s.def.name);
     if (!saved) this.saved.set(s.def.name, (saved = new Map()));

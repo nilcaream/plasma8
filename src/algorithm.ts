@@ -14,8 +14,6 @@ export interface FrameInputs {
   beatPulse: number;
   /** The same envelope over the bar: 1 on beat 1. */
   barPulse: number;
-  /** Bar steps taken so far (src/motion.ts BarSteps): up by a share of one, by intensity, at each bar start, eased. */
-  barSteps: number;
   /** Beats since beat 1 of bar 1, fractional; starts again from 0 when a tap starts a fresh count. */
   beats: number;
   /** 0 soft … 1 hard: how hard the beat hits and how far beat moves reach; never the colours. */

@@ -1,6 +1,7 @@
 import type { AlgorithmDef } from '../algorithm';
 import { beatSize } from '../envelope';
 import { drawKnobs, int, pick, range, sign, triple, vec, type Knob, type Values } from '../knobs';
+import { STEP_KNOBS, stepShape } from '../motion';
 import type { Rng } from '../rng';
 import { ShaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import { Swing, type SwingBeat } from '../swing';
@@ -30,6 +31,8 @@ export const TUNNEL_KNOBS: readonly Knob[] = [
   range('hueDrift', 0.01, 0.05, [0, 0.2]),
   pick('swingSnare', [0, 1], [0, 1]),
   ...[0, 1, 2, 3].map((j) => sign(`swingWay.${j}`)),
+  // fixed in code: the bar step's shape
+  ...STEP_KNOBS,
 ];
 
 export function tunnelParams(v: Values): ShaderParams {
@@ -62,12 +65,14 @@ export const tunnel: AlgorithmDef = {
       u_farEnd: swing.update(inputs.beats, inputs.intensity),
       u_beatSize: beatSize(inputs.intensity),
     }));
+    shader.steps.shape = stepShape(values);
     return {
       name: TUNNEL_NAME,
       draw: (target, inputs) => shader.draw(target, inputs),
       dispose: () => shader.dispose(),
       tune: (v) => {
         shader.tune(tunnelParams(v));
+        shader.steps.shape = stepShape(v);
         swing.tune(swingBeat(v), vec(v, 'swingWay', 4));
       },
     };

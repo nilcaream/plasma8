@@ -1,6 +1,8 @@
 import type { Algorithm, FrameInputs } from './algorithm';
 import { FULLSCREEN_VERTEX, createProgram } from './gl';
+import { BEATS_PER_BAR } from './clock';
 import type { Values } from './knobs';
+import { BarSteps, stepShape } from './motion';
 
 /** An algorithm's own random parameters: a name that is a uniform in its shader, and its value. */
 export type ShaderParams = Record<string, number | readonly number[]>;
@@ -73,6 +75,8 @@ export class ShaderAlgorithm {
   private readonly params: { uniform: string; location: WebGLUniformLocation; value: number | readonly number[] }[] = [];
 
   private readonly frameLocations = new Map<string, WebGLUniformLocation | null>();
+  /** Its own bar steps, so each algorithm can have its own step shape (its fixed knobs, src/motion.ts). */
+  readonly steps = new BarSteps();
 
   /** `perFrame`, when given, returns uniforms of the algorithm's own that change every frame. */
   constructor(
@@ -114,7 +118,7 @@ export class ShaderAlgorithm {
     gl.uniform1f(c.get('u_barPhase') ?? null, inputs.barPhase);
     gl.uniform1f(c.get('u_beatPulse') ?? null, inputs.beatPulse);
     gl.uniform1f(c.get('u_barPulse') ?? null, inputs.barPulse);
-    gl.uniform1f(c.get('u_barSteps') ?? null, inputs.barSteps);
+    gl.uniform1f(c.get('u_barSteps') ?? null, this.steps.update(Math.floor(inputs.beats / BEATS_PER_BAR), inputs.barPhase, inputs.intensity));
     gl.uniform1f(c.get('u_intensity') ?? null, inputs.intensity);
     for (const { location, value } of this.params) setUniform(gl, location, value);
     if (this.perFrame) {
@@ -140,11 +144,15 @@ export function shaderAlgorithm(
   values: Values,
 ): Algorithm {
   const shader = new ShaderAlgorithm(gl, name, shaderBody, params(values));
+  shader.steps.shape = stepShape(values);
   return {
     name,
     draw: (target, inputs) => shader.draw(target, inputs),
     dispose: () => shader.dispose(),
-    tune: (v) => shader.tune(params(v)),
+    tune: (v) => {
+      shader.tune(params(v));
+      shader.steps.shape = stepShape(v);
+    },
   };
 }
 

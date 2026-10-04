@@ -7,11 +7,17 @@
 
 import type { Rng } from './rng';
 
-/** What a knob is drawn from: uniform in [min, max), a whole number in min..max, or one of a list (repeats weigh more). */
+/**
+ * What a knob is drawn from: uniform in [min, max), a whole number in min..max,
+ * or one of a list (repeats weigh more). A fixed knob is not drawn: it is a
+ * value fixed in code, such as how far the picture zooms on the beat, listed
+ * so the debug panel can try others.
+ */
 export type Draw =
   | { kind: 'range'; min: number; max: number }
   | { kind: 'int'; min: number; max: number }
-  | { kind: 'pick'; values: readonly number[] };
+  | { kind: 'pick'; values: readonly number[] }
+  | { kind: 'fixed'; value: number };
 
 export interface Knob {
   key: string;
@@ -32,6 +38,12 @@ export const int = (key: string, min: number, max: number, wide: readonly [numbe
 
 export const pick = (key: string, values: readonly number[], wide: readonly [number, number], whole = true): Knob =>
   ({ key, draw: { kind: 'pick', values }, wide, whole });
+
+/** A value fixed in code, with a span to try others in. */
+export const fixed = (key: string, value: number, wide: readonly [number, number]): Knob =>
+  ({ key, draw: { kind: 'fixed', value }, wide });
+
+export const isFixed = (knob: Knob): boolean => knob.draw.kind === 'fixed';
 
 /** A sign, -1 or 1, as often each. */
 export const sign = (key: string): Knob => pick(key, [-1, 1], [-1, 1]);
@@ -54,6 +66,8 @@ export function drawKnob(draw: Draw, rng: Rng): number {
       return Math.min(draw.max, draw.min + Math.floor(rng.next() * (draw.max - draw.min + 1)));
     case 'pick':
       return rng.pick(draw.values);
+    case 'fixed':
+      return draw.value;
   }
 }
 
@@ -66,7 +80,14 @@ export function drawKnobs(knobs: readonly Knob[], rng: Rng): Values {
 
 /** The lowest and highest value the draw can give. */
 export function drawBounds(draw: Draw): [number, number] {
-  return draw.kind === 'pick' ? [Math.min(...draw.values), Math.max(...draw.values)] : [draw.min, draw.max];
+  switch (draw.kind) {
+    case 'pick':
+      return [Math.min(...draw.values), Math.max(...draw.values)];
+    case 'fixed':
+      return [draw.value, draw.value];
+    default:
+      return [draw.min, draw.max];
+  }
 }
 
 /** Where a value sits on the knob's wide span, 0 at its low end and 1 at its high end. */
@@ -125,6 +146,12 @@ export function setMax(knob: Knob, r: UserRange, to: number): UserRange {
   return { min: r.min, max, value: inside(r.value, r.min, max) };
 }
 
+/** Sets a fixed knob: its one value is its min, its max and its value. */
+export function setFixed(knob: Knob, to: number): UserRange {
+  const v = settle(knob, to);
+  return { min: v, max: v, value: v };
+}
+
 /** Moves the value, kept inside min..max. */
 export function setValue(knob: Knob, r: UserRange, to: number): UserRange {
   return { ...r, value: inside(settle(knob, to), r.min, r.max) };
@@ -137,6 +164,7 @@ export function setValue(knob: Knob, r: UserRange, to: number): UserRange {
  * as often as the code would, while any lie inside.
  */
 export function drawFrom(knob: Knob, r: UserRange, rng: Rng): number {
+  if (knob.draw.kind === 'fixed') return r.min;
   const [lo, hi] = drawBounds(knob.draw);
   if (r.min === lo && r.max === hi) return drawKnob(knob.draw, rng);
   if (knob.draw.kind === 'pick') {
@@ -149,10 +177,11 @@ export function drawFrom(knob: Knob, r: UserRange, rng: Rng): number {
 
 const num = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(3));
 
-/** The ranges as plain text to paste back, one knob a line: min and max. */
+/** The ranges as plain text to paste back, one knob a line: min and max of the drawn ones, then the value of each fixed one. */
 export function formatRanges(title: string, knobs: readonly Knob[], ranges: Readonly<Record<string, UserRange>>): string {
   const width = Math.max(...knobs.map((k) => k.key.length));
   const col = (n: number): string => num(n).padStart(7);
-  const lines = knobs.map((k) => `${k.key.padEnd(width)}  min ${col(ranges[k.key]!.min)}  max ${col(ranges[k.key]!.max)}`);
-  return [title, ...lines].join('\n');
+  const drawn = knobs.filter((k) => !isFixed(k)).map((k) => `${k.key.padEnd(width)}  min ${col(ranges[k.key]!.min)}  max ${col(ranges[k.key]!.max)}`);
+  const kept = knobs.filter(isFixed).map((k) => `${k.key.padEnd(width)}  ${num(ranges[k.key]!.value)}`);
+  return [title, ...drawn, ...kept].join('\n');
 }

@@ -1,5 +1,6 @@
 import type { AlgorithmDef } from '../algorithm';
 import { drawKnobs, range, int, sign, triple, unit, vec, type Knob, type Values } from '../knobs';
+import { STEP_KNOBS } from '../motion';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './plasma.frag?raw';
@@ -32,6 +33,8 @@ export const PLASMA_KNOBS: readonly Knob[] = [
   range('cycles', 0.6, 1.3, [0.1, 3]),
   sign('barShiftSign'),
   range('barShift', 0.12, 0.3, [0, 0.6]),
+  // fixed in code: the bar step's shape
+  ...STEP_KNOBS,
 ];
 
 export function plasmaParams(v: Values): ShaderParams {

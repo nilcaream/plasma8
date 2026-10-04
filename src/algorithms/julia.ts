@@ -1,5 +1,6 @@
 import type { AlgorithmDef } from '../algorithm';
-import { drawKnobs, int, pick, range, sign, triple, vec, type Knob, type Values } from '../knobs';
+import { drawKnobs, fixed, int, pick, range, sign, triple, vec, type Knob, type Values } from '../knobs';
+import { STEP_KNOBS } from '../motion';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './julia.frag?raw';
@@ -28,6 +29,15 @@ export const JULIA_KNOBS: readonly Knob[] = [
   sign('barTurnSign'),
   pick('barTurn', [0.5, 1], [0, 2], false),
   range('bands', 1.5, 4, [0.3, 10]),
+  // fixed in code: how the picture follows the beat, and the bar turn's shape
+  fixed('beatZoom', 0.12, [0, 0.5]),
+  fixed('barZoom', 0.06, [0, 0.5]),
+  fixed('beatLight', 0.2, [0, 1]),
+  fixed('barLight', 0.13, [0, 1]),
+  fixed('glow', 0.26, [0, 1]),
+  fixed('colourShift', 0.065, [0, 0.5]),
+  fixed('wanderSpeed', 0.11, [0, 1]),
+  ...STEP_KNOBS,
 ];
 
 export function juliaParams(v: Values): ShaderParams {
@@ -46,6 +56,13 @@ export function juliaParams(v: Values): ShaderParams {
     u_spin: v.spinSign! * v.spin!,
     u_barTurn: v.barTurnSign! * v.barTurn!,
     u_bands: v.bands!,
+    u_beatZoom: v.beatZoom!,
+    u_barZoom: v.barZoom!,
+    u_beatLight: v.beatLight!,
+    u_barLight: v.barLight!,
+    u_glow: v.glow!,
+    u_colourShift: v.colourShift!,
+    u_wanderSpeed: v.wanderSpeed!,
   };
 }
 

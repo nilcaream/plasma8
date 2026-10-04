@@ -10,6 +10,8 @@
  * 1) and eased over a share of the bar that shrinks as the intensity grows.
  */
 
+import { fixed, type Knob, type Values } from './knobs';
+
 /** The intensity distance that doubles (or halves) the speed. */
 export const SPEED_OCTAVE = 0.6;
 /** The share of its full size a bar step takes at intensity 0. */
@@ -23,14 +25,37 @@ export function motionRate(home: number, intensity: number): number {
   return 2 ** ((intensity - home) / SPEED_OCTAVE);
 }
 
-/** How much of its full size a bar step takes. */
-export function stepScale(intensity: number): number {
-  return MIN_STEP + (1 - MIN_STEP) * intensity * intensity;
+/** A bar step's size (share of its full size) and how long it takes (share of the bar), at intensity 0 and 1. */
+export interface StepShape { sizeSoft: number; sizeHard: number; easeSoft: number; easeHard: number }
+
+export const STEP_SHAPE: StepShape = { sizeSoft: MIN_STEP, sizeHard: 1, easeSoft: EASE_SOFT, easeHard: EASE_HARD };
+
+/** The step shape as fixed knobs, for the debug panel; spans up to a whole bar's ease and twice the full size. */
+export const STEP_KNOBS: readonly Knob[] = [
+  fixed('stepSizeAt0', STEP_SHAPE.sizeSoft, [0, 1]),
+  fixed('stepSizeAt1', STEP_SHAPE.sizeHard, [0, 2]),
+  fixed('stepEaseAt0', STEP_SHAPE.easeSoft, [0.02, 1]),
+  fixed('stepEaseAt1', STEP_SHAPE.easeHard, [0.02, 1]),
+];
+
+/** The step shape from an algorithm's knob values; the shape in code for an algorithm that takes no bar steps. */
+export function stepShape(v: Values): StepShape {
+  return {
+    sizeSoft: v.stepSizeAt0 ?? STEP_SHAPE.sizeSoft,
+    sizeHard: v.stepSizeAt1 ?? STEP_SHAPE.sizeHard,
+    easeSoft: v.stepEaseAt0 ?? STEP_SHAPE.easeSoft,
+    easeHard: v.stepEaseAt1 ?? STEP_SHAPE.easeHard,
+  };
+}
+
+/** How much of its full size a bar step takes: the soft size at 0, growing with the square of the intensity to the hard size at 1. */
+export function stepScale(intensity: number, shape: StepShape = STEP_SHAPE): number {
+  return shape.sizeSoft + (shape.sizeHard - shape.sizeSoft) * intensity * intensity;
 }
 
 /** The share of the bar a step is eased over. */
-export function stepEase(intensity: number): number {
-  return EASE_SOFT + (EASE_HARD - EASE_SOFT) * intensity;
+export function stepEase(intensity: number, shape: StepShape = STEP_SHAPE): number {
+  return shape.easeSoft + (shape.easeHard - shape.easeSoft) * intensity;
 }
 
 /**
@@ -54,6 +79,8 @@ export class MotionClock {
  * short never makes the picture jump.
  */
 export class BarSteps {
+  /** Read at each bar start: a new shape takes effect from the next step on. */
+  shape: StepShape = STEP_SHAPE;
   private from = 0;
   private size = 0;
   private ease = EASE_HARD;
@@ -64,8 +91,8 @@ export class BarSteps {
   update(bar: number, barPhase: number, intensity: number): number {
     if (this.bar !== undefined && bar !== this.bar) {
       this.from = this.shown;
-      this.size = stepScale(intensity);
-      this.ease = stepEase(intensity);
+      this.size = stepScale(intensity, this.shape);
+      this.ease = stepEase(intensity, this.shape);
     }
     this.bar = bar;
     const s = Math.min(1, Math.max(0, barPhase / this.ease));

@@ -17,6 +17,14 @@ uniform vec2 u_center;      // what the folded plane is centred on
 uniform float u_spin;       // turns per second of the whole picture
 uniform float u_barTurn;    // turn of the kaleidoscope at every bar, in wedges
 uniform float u_bands;      // palette cycles along the escape count
+// fixed in code (src/algorithms/julia.ts), how the picture follows the beat:
+uniform float u_beatZoom;    // zoom in on every beat, × intensity
+uniform float u_barZoom;     // and more on beat 1
+uniform float u_beatLight;   // brighter on every beat
+uniform float u_barLight;    // and on beat 1
+uniform float u_glow;        // the orbit-trap glow, lit up by the beat
+uniform float u_colourShift; // palette shift on the beat
+uniform float u_wanderSpeed; // how fast c drifts along the edge
 
 const float MAX_ITER = 96.0;
 
@@ -41,9 +49,9 @@ vec3 shade(vec2 uv) {
   a = abs(a - 0.5 * wedge);
   p = r * vec2(cos(a), sin(a));
 
-  float zoom = u_zoom * (1.0 - 0.12 * I * beat - 0.06 * I * bar);
+  float zoom = u_zoom * (1.0 - u_beatZoom * I * beat - u_barZoom * I * bar);
   vec2 z = p * zoom + u_center;
-  float theta = u_theta + u_wander * sin(t * 0.11) + u_barTheta * bars;
+  float theta = u_theta + u_wander * sin(t * u_wanderSpeed) + u_barTheta * bars;
   vec2 c = cardioid(theta) * u_edge;
 
   float n = 0.0;
@@ -61,13 +69,13 @@ vec3 shade(vec2 uv) {
   float k = clamp(smoothN / 28.0, 0.0, 1.0);
 
   // dark background with bright filaments, the same at every intensity
-  vec3 col = cosPalette(k * u_bands + 0.05 * t + 0.065 * beat, u_palA, u_palB, u_palC, u_palD);
+  vec3 col = cosPalette(k * u_bands + 0.05 * t + u_colourShift * beat, u_palA, u_palB, u_palC, u_palD);
   float glow = pow(k, 1.5);
   col *= mix(0.3 + 0.7 * glow, 1.3 * glow, 0.65);
   vec3 core = cosPalette(0.6 + 0.3 * trap + 0.1 * bars, u_palA, u_palB, u_palC, u_palD) * 0.75;
   col = mix(col, core, inside);
-  col += 0.26 * exp(-trap * 30.0) * (0.4 + beat);
+  col += u_glow * exp(-trap * 30.0) * (0.4 + beat);
 
-  col *= 1.0 + 0.2 * beat + 0.13 * bar;
+  col *= 1.0 + u_beatLight * beat + u_barLight * bar;
   return col;
 }

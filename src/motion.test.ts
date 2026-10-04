@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { BarSteps, MotionClock, motionRate, stepEase, stepScale } from './motion';
+import { drawKnob } from './knobs';
+import { BarSteps, MotionClock, STEP_KNOBS, STEP_SHAPE, motionRate, stepEase, stepScale, stepShape } from './motion';
+import { createRng } from './rng';
 
 describe('motionRate', () => {
   it('is the designed speed at home, faster above and slower below', () => {
@@ -40,6 +42,30 @@ function run(steps: BarSteps, first: number, bars: number, intensity: number): n
 }
 
 describe('BarSteps', () => {
+  it('takes its steps in the shape it is given: size and ease at intensity 0 and 1', () => {
+    const shape = { sizeSoft: 0.1, sizeHard: 0.5, easeSoft: 1, easeHard: 0.25 };
+    expect(stepScale(0, shape)).toBe(0.1);
+    expect(stepScale(1, shape)).toBe(0.5);
+    expect(stepEase(1, shape)).toBe(0.25);
+    const steps = new BarSteps();
+    steps.shape = shape;
+    const hard = run(steps, 0, 3, 1);
+    // 15 frames (a quarter bar) into the step: landed at 0.5 a step
+    expect(hard[75]).toBeCloseTo(0.5, 10);
+    expect(hard.at(-1)).toBeCloseTo(1, 10);
+    const soft = new BarSteps();
+    soft.shape = shape;
+    // eased over the whole bar at 0: halfway at half the bar
+    expect(run(soft, 0, 2, 0)[90]! / 0.1).toBeCloseTo(0.5, 10);
+  });
+
+  it('reads its knobs, and the code\'s shape where an algorithm has none', () => {
+    expect(stepShape({ stepSizeAt0: 0.1, stepSizeAt1: 0.4, stepEaseAt0: 0.9, stepEaseAt1: 0.3 }))
+      .toEqual({ sizeSoft: 0.1, sizeHard: 0.4, easeSoft: 0.9, easeHard: 0.3 });
+    expect(stepShape({})).toEqual(STEP_SHAPE);
+    expect(stepShape(Object.fromEntries(STEP_KNOBS.map((k) => [k.key, drawKnob(k.draw, createRng(1))])))).toEqual(STEP_SHAPE);
+  });
+
   it('takes no step in the first bar, then one scaled step at every bar start', () => {
     const values = run(new BarSteps(), 0, 4, 0);
     expect(values[59]).toBe(0);
