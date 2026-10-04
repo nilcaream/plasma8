@@ -1,85 +1,96 @@
 import { describe, expect, it } from 'vitest';
 import { createRng } from './rng';
-import { Swing, reach, swingIndex, type Point } from './swing';
+import { LAYER_PERIODS, Layer, Swing, layerWeights, reach, type Point } from './swing';
 
 const dist = (a: Point, b: Point): number => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
-/** Runs a swing frame by frame (60 per beat) and returns every position. */
-function trace(swing: Swing, beats: number, intensity: number): Point[] {
+/** Runs anything with update(beats, intensity) frame by frame (60 per beat) and returns every position. */
+function trace(mover: { update(beats: number, intensity: number): Point }, beats: number, intensity: number, from = 0): Point[] {
   const out: Point[] = [];
-  for (let f = 0; f <= beats * 60; f++) out.push(swing.update(f / 60, intensity));
+  for (let f = 0; f <= beats * 60; f++) out.push(mover.update(from + f / 60, intensity));
   return out;
 }
 
-describe('swingIndex', () => {
-  it('steps on every beat for a kick, on beats 2 and 4 for a snare', () => {
-    expect([0, 0.5, 1, 2, 3, 4].map((b) => swingIndex('kick', b))).toEqual([0, 0, 1, 2, 3, 4]);
-    const snare = [0, 0.99, 1, 2.99, 3, 4, 5].map((b) => swingIndex('snare', b));
-    expect(snare).toEqual([-1, -1, 0, 0, 1, 1, 2]);
+describe('layerWeights', () => {
+  it('puts nearly all the weight in the 2-bar layer at intensity 0', () => {
+    for (const beat of ['kick', 'snare'] as const) {
+      const w = layerWeights(beat, 0);
+      expect(w.reduce((a, b) => a + b, 0)).toBeCloseTo(1, 12);
+      expect(LAYER_PERIODS[0]).toBe(8);
+      expect(w[0]).toBeGreaterThan(0.85);
+    }
+  });
+
+  it('puts most of it in the 2-beat and 1-beat layers at 1, led by the drawn beat', () => {
+    const kick = layerWeights('kick', 1);
+    const snare = layerWeights('snare', 1);
+    expect(kick[2]! + kick[3]!).toBeGreaterThan(0.85);
+    expect(Math.max(...kick)).toBe(kick[3]); // every beat
+    expect(snare[2]! + snare[3]!).toBeGreaterThan(0.7);
+    expect(Math.max(...snare)).toBe(snare[2]); // every 2 beats
+  });
+
+  it('moves gradually with the intensity', () => {
+    for (const beat of ['kick', 'snare'] as const) {
+      for (let i = 0; i < 100; i++) {
+        const a = layerWeights(beat, i / 100);
+        const b = layerWeights(beat, (i + 1) / 100);
+        for (let j = 0; j < a.length; j++) expect(Math.abs(a[j]! - b[j]!)).toBeLessThan(0.05);
+      }
+    }
+  });
+});
+
+describe('Layer', () => {
+  it('sets out for a new spot once a period, on the swing beat', () => {
+    const bar = new Layer(createRng(2), 4);
+    trace(bar, 64, 0);
+    expect(bar.spots).toBe(64 / 4 + 1); // the first leg sets out at once
+    const snare = new Layer(createRng(2), 2, 1);
+    snare.update(0, 1);
+    snare.update(0.99, 1);
+    expect(snare.spots).toBe(1);
+    snare.update(1.01, 1); // beat 2
+    expect(snare.spots).toBe(2);
+  });
+
+  it('never stops at a spot and never jumps: one smooth drift', () => {
+    for (const seed of [1, 4, 9]) {
+      for (const period of LAYER_PERIODS) {
+        const path = trace(new Layer(createRng(seed), period), 64, 0.5);
+        const speed = path.slice(1).map((p, i) => dist(p, path[i]!));
+        const settled = speed.slice(60 * period); // after the first leg, which sets out from rest
+        const mean = settled.reduce((a, b) => a + b, 0) / settled.length;
+        expect(Math.min(...settled)).toBeGreaterThan(0.05 * mean);
+        // and no jump in speed from one frame to the next either
+        for (let i = 1; i < settled.length; i++) expect(Math.abs(settled[i]! - settled[i - 1]!)).toBeLessThan(0.2 * mean);
+      }
+    }
+  });
+
+  it('starts a new leg from where it is when a tap restarts the count mid-leg', () => {
+    const layer = new Layer(createRng(11), 1);
+    trace(layer, 1.3, 0);
+    const mid = layer.update(1.3, 0);
+    const after = layer.update(0, 0); // a fresh tap count: beats back to 0, a new leg
+    expect(dist(after, mid)).toBeLessThan(1e-9);
   });
 });
 
 describe('Swing', () => {
-  it('starts at the centre and holds still until the first swing beat', () => {
-    const swing = new Swing(createRng(1), 'kick');
-    expect(swing.update(0, 1)).toEqual([0, 0]);
-    expect(swing.update(0.9, 1)).toEqual([0, 0]);
-    expect(swing.update(1.01, 1)).toEqual([0, 0]); // the glide starts here, from where it was
-    expect(dist(swing.update(1.2, 1), [0, 0])).toBeGreaterThan(0);
-  });
-
   it('glides: never jumps from one frame to the next', () => {
     for (const beat of ['kick', 'snare'] as const) {
-      const path = trace(new Swing(createRng(7), beat), 16, 1);
-      // the widest, quickest glide moves at most about 0.05 a frame; a jump would be up to 0.5
-      for (let i = 1; i < path.length; i++) expect(dist(path[i]!, path[i - 1]!)).toBeLessThan(0.07);
+      for (const intensity of [0, 0.5, 1]) {
+        const path = trace(new Swing(createRng(7), beat), 32, intensity);
+        for (let i = 1; i < path.length; i++) expect(dist(path[i]!, path[i - 1]!)).toBeLessThan(0.03);
+      }
     }
   });
 
-  it('starts a new glide from where it is when a tap restarts the count mid-glide', () => {
-    const swing = new Swing(createRng(11), 'kick');
-    trace(swing, 1, 0); // the first swing starts on beat 1; soft, it glides the whole beat
-    const mid = swing.update(1.3, 0);
-    expect(dist(mid, swing.update(1.3, 0))).toBe(0);
-    const after = swing.update(0, 0); // a fresh tap count: beats back to 0, a new swing
-    expect(dist(after, mid)).toBeLessThan(1e-9);
-  });
-
-  it('moves to a new spot on a kick every beat, on a snare only every second beat', () => {
-    const settled = (swing: Swing): Point[] => {
-      const spots: Point[] = [];
-      for (let b = 1; b <= 8; b++) {
-        for (let f = 0; f < 60; f++) swing.update(b - 1 + f / 60, 1);
-        spots.push(swing.update(b - 0.01, 1)); // just before beat b+1, the glide has landed
-      }
-      return spots;
-    };
-    const kick = settled(new Swing(createRng(3), 'kick'));
-    const snare = settled(new Swing(createRng(3), 'snare'));
-    for (let i = 2; i < 8; i++) expect(dist(kick[i]!, kick[i - 1]!)).toBeGreaterThan(0.005);
-    // a snare swings on beats 2 and 4 (counted from 0: 1, 3, …) and holds over the beat between
-    // (its hard glide takes the whole first beat, so just before beat 2 it is a hair short of landing)
-    expect(dist(snare[2]!, snare[1]!)).toBeLessThan(1e-3);
-    expect(dist(snare[3]!, snare[2]!)).toBeGreaterThan(0.005);
-    expect(dist(snare[4]!, snare[3]!)).toBeLessThan(1e-3);
-  });
-
-  it('reaches further and glides quicker at high intensity', () => {
+  it('reaches further at high intensity', () => {
     const far = (intensity: number): number => Math.max(...trace(new Swing(createRng(5), 'kick'), 64, intensity).map((p) => dist(p, [0, 0])));
-    expect(far(0)).toBeLessThanOrEqual(reach(0) + 1e-9);
-    expect(far(1)).toBeLessThanOrEqual(reach(1) + 1e-9);
-    expect(far(1)).toBeGreaterThan(3 * far(0));
-
-    // hard lands half a beat after a swing; soft, a third of a beat in, is not half way yet
-    const progress = (intensity: number, at: number): number => {
-      const swing = new Swing(createRng(9), 'kick');
-      trace(swing, 1, intensity); // up to beat 1, where the first swing starts
-      const target = swing.update(1.999, intensity);
-      const fresh = new Swing(createRng(9), 'kick');
-      trace(fresh, 1, intensity);
-      return dist(fresh.update(at, intensity), [0, 0]) / dist(target, [0, 0]);
-    };
-    expect(progress(1, 1.52)).toBeCloseTo(1, 5);
-    expect(progress(0, 1.33)).toBeLessThan(0.5);
+    expect(far(0)).toBeLessThanOrEqual(1.3 * reach(0));
+    expect(far(1)).toBeLessThanOrEqual(1.3 * reach(1));
+    expect(far(1)).toBeGreaterThan(2 * far(0));
   });
 });
