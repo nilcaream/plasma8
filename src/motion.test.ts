@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALGORITHMS } from './algorithms';
 import { drawKnob } from './knobs';
-import { BarSteps, MotionClock, STEP_KNOBS, STEP_SHAPE, motionRate, motionTimeFor, stepEase, stepScale, stepShape } from './motion';
+import { BarSteps, MotionClock, STEP_KNOBS, STEP_SHAPE, motionRate, motionTimeFor, steadyRate, stepEase, stepScale, stepShape } from './motion';
 import { createRng } from './rng';
 
 describe('motionRate', () => {
@@ -10,6 +10,27 @@ describe('motionRate', () => {
     expect(motionRate(0.9, 0)).toBeLessThan(0.4);
     expect(motionRate(0.35, 1)).toBeGreaterThan(1.9);
     expect(motionRate(0.5, 0.2)).toBeLessThan(motionRate(0.5, 0.3));
+  });
+});
+
+describe('steadyRate', () => {
+  it('is the base speed at intensity 0 and 75% faster at 1, a straight line between', () => {
+    expect(steadyRate(0)).toBe(1);
+    expect(steadyRate(1)).toBe(1.75);
+    expect(steadyRate(0.5)).toBeCloseTo(1.375, 12);
+    expect(steadyRate(-1)).toBe(1);
+    expect(steadyRate(2)).toBe(1.75);
+  });
+
+  it('never makes the picture jump when the intensity moves: the clock only adds up', () => {
+    const clock = new MotionClock();
+    let last = 0;
+    for (let i = 0; i <= 100; i++) {
+      const t = clock.update(1 / 60, steadyRate(i % 2 === 0 ? 0 : 1));
+      expect(t - last).toBeLessThanOrEqual(1.75 / 60 + 1e-12);
+      expect(t).toBeGreaterThanOrEqual(last);
+      last = t;
+    }
   });
 });
 

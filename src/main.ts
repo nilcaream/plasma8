@@ -10,7 +10,7 @@ import { parseDebugParams } from './query';
 import { createRng, formatSeed, freshSeed } from './rng';
 import { Sequencer, type Change } from './sequence';
 import { loadSettings, saveSettings, type Settings } from './settings';
-import { MotionClock, motionRate, motionTimeFor } from './motion';
+import { MotionClock, motionRate, motionTimeFor, steadyRate } from './motion';
 import { movingRange } from './moving';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
 import { Corner, DebugOverlay, Metronome, showFatal } from './ui';
@@ -164,7 +164,7 @@ function main(): void {
     }
 
     const shared = motion.update(dt, rate);
-    const steadyTime = steady.update(dt, 1);
+    const steadyTime = steady.update(dt, steadyRate(intensity));
     const inputsFor = (def: AlgorithmDef): FrameInputs => ({
       ...beat,
       time: motionTimeFor(def, shared, steadyTime),

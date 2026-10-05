@@ -25,6 +25,14 @@ export function motionRate(home: number, intensity: number): number {
   return 2 ** ((intensity - home) / SPEED_OCTAVE);
 }
 
+/** How much faster a steady-speed algorithm runs at intensity 1 than at 0 (share of its base speed). */
+export const STEADY_BOOST = 0.75;
+
+/** The rate of a steady-speed algorithm: its base speed (1) at intensity 0, a straight line up to 1 + STEADY_BOOST at 1. */
+export function steadyRate(intensity: number): number {
+  return 1 + STEADY_BOOST * Math.min(1, Math.max(0, intensity));
+}
+
 /** A bar step's size (share of its full size) and how long it takes (share of the bar), at intensity 0 and 1. */
 export interface StepShape { sizeSoft: number; sizeHard: number; easeSoft: number; easeHard: number }
 
