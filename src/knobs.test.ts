@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALGORITHMS } from './algorithms';
 import {
-  drawBounds, drawFrom, drawKnob, drawKnobs, fixed, formatRanges, int, setFixed, isChoice, pick, range, setMax, setMin, setValue, settle, share, sign,
+  drawBounds, drawFrom, drawKnob, drawKnobs, fixed, fixedGroups, formatRanges, int, setFixed, isChoice, pick, range, setMax, setMin, setValue, settle, share, sign,
   startRange, step, type Knob, type UserRange,
 } from './knobs';
 import { createRng } from './rng';
@@ -164,6 +164,31 @@ describe('fixed knobs', () => {
     const knobs = [zoom, range('scale', 0.9, 1.8, [0.3, 4])];
     const text = formatRanges('julia', knobs, { beatZoom: setFixed(zoom, 0.05), scale: { min: 1, max: 2, value: 1.5 } });
     expect(text.split('\n')).toEqual(['julia', 'scale     min       1  max       2', 'beatZoom  0.050']);
+  });
+});
+
+describe('fixedGroups', () => {
+  it('put each fixed knob under what it does, in order of first appearance, and skip the drawn ones', () => {
+    const knobs = [
+      fixed('gain', 1, [0, 5], 'follows the beat'),
+      range('a', 0, 1, [0, 1]),
+      fixed('spin', 0, [0, 1], 'moves with time'),
+      fixed('drift', 0, [0, 1], 'moves with time'),
+    ];
+    expect(fixedGroups(knobs).map((g) => [g.group, g.knobs.map((k) => k.key)])).toEqual([
+      ['follows the beat', ['gain']],
+      ['moves with time', ['spin', 'drift']],
+    ]);
+  });
+
+  it('keep a fixed knob without a group under "how it follows the music", as the other algorithms have it', () => {
+    const groups = fixedGroups([fixed('beatZoom', 0.1, [0, 1]), fixed('barZoom', 0.1, [0, 1])]);
+    expect(groups.map((g) => g.group)).toEqual(['how it follows the music']);
+    expect(groups[0]!.knobs).toHaveLength(2);
+    for (const name of ['julia-kaleidoscope', 'tunnel', 'domain-warped-noise']) {
+      const def = ALGORITHMS.find((a) => a.name === name)!;
+      expect(fixedGroups(def.knobs).map((g) => g.group)).toEqual(['how it follows the music']);
+    }
   });
 });
 

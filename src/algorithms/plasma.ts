@@ -1,7 +1,6 @@
 import type { AlgorithmDef } from '../algorithm';
 import { DEFAULT_GAIN, GAIN_RANGE, amountKnobs, amountsOf } from '../beatVoices';
 import { drawKnobs, fixed, range, int, sign, triple, unit, vec, type Knob, type Values } from '../knobs';
-import { STEP_KNOBS } from '../motion';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './plasma.frag?raw';
@@ -36,16 +35,13 @@ export const PLASMA_KNOBS: readonly Knob[] = [
   range('swirl', 0, 1.2, [0, 3]),
   int('mode', 0, 2, [0, 2]),
   range('cycles', 0.6, 1.3, [0.1, 3]),
-  sign('barShiftSign'),
-  range('barShift', 0.12, 0.3, [0, 0.6]),
-  // how hard each beat voice flashes this run
+  // how hard each beat voice flashes this run: the only thing that follows the beat
   ...amountKnobs(),
-  // fixed in code: the flash gain, how the field moves (set on the debug panel), and the bar step's shape
-  fixed('flashGain', DEFAULT_GAIN, GAIN_RANGE),
-  fixed('swirlSpin', 0, [0, 0.5]),
-  fixed('orbitSpeed', 0, [0, 4]),
-  fixed('colourDrift', 0, [0, 0.5]),
-  ...STEP_KNOBS,
+  // fixed in code: the flash gain, and how the field moves with time (set on the debug panel)
+  fixed('flashGain', DEFAULT_GAIN, GAIN_RANGE, 'follows the beat'),
+  fixed('swirlSpin', 0, [0, 0.5], 'moves with time'),
+  fixed('orbitSpeed', 0, [0, 4], 'moves with time'),
+  fixed('colourDrift', 0, [0, 0.5], 'moves with time'),
 ];
 
 export function plasmaParams(v: Values): ShaderParams {
@@ -63,7 +59,6 @@ export function plasmaParams(v: Values): ShaderParams {
     u_swirl: v.swirlSign! * v.swirl!,
     u_mode: v.mode!,
     u_cycles: v.cycles!,
-    u_barShift: v.barShiftSign! * v.barShift!,
     u_flashGain: v.flashGain!,
     u_swirlSpin: v.swirlSpin!,
     u_orbitSpeed: v.orbitSpeed!,

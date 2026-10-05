@@ -26,6 +26,8 @@ export interface Knob {
   wide: readonly [number, number];
   /** Whole numbers only: the shader counts with it, or picks a case by it. */
   whole?: boolean;
+  /** A fixed knob's heading on the panel: what the value does. */
+  group?: string;
 }
 
 export type Values = Record<string, number>;
@@ -39,11 +41,26 @@ export const int = (key: string, min: number, max: number, wide: readonly [numbe
 export const pick = (key: string, values: readonly number[], wide: readonly [number, number], whole = true): Knob =>
   ({ key, draw: { kind: 'pick', values }, wide, whole });
 
-/** A value fixed in code, with a span to try others in. */
-export const fixed = (key: string, value: number, wide: readonly [number, number]): Knob =>
-  ({ key, draw: { kind: 'fixed', value }, wide });
+/** What the panel says a fixed value does when the knob names no group of its own. */
+export const DEFAULT_FIXED_GROUP = 'how it follows the music';
+
+/** A value fixed in code, with a span to try others in, and what it does ("follows the beat", "moves with time"). */
+export const fixed = (key: string, value: number, wide: readonly [number, number], group = DEFAULT_FIXED_GROUP): Knob =>
+  ({ key, draw: { kind: 'fixed', value }, wide, group });
 
 export const isFixed = (knob: Knob): boolean => knob.draw.kind === 'fixed';
+
+/** The fixed knobs by what they do, each group in the order its first knob appears. */
+export function fixedGroups(knobs: readonly Knob[]): { group: string; knobs: Knob[] }[] {
+  const groups: { group: string; knobs: Knob[] }[] = [];
+  for (const knob of knobs.filter(isFixed)) {
+    const group = knob.group ?? DEFAULT_FIXED_GROUP;
+    const found = groups.find((g) => g.group === group);
+    if (found) found.knobs.push(knob);
+    else groups.push({ group, knobs: [knob] });
+  }
+  return groups;
+}
 
 /** A sign, -1 or 1, as often each. */
 export const sign = (key: string): Knob => pick(key, [-1, 1], [-1, 1]);

@@ -11,7 +11,7 @@
 
 import type { Algorithm, AlgorithmDef } from './algorithm';
 import {
-  drawBounds, drawFrom, formatRanges, isFixed, setFixed, setMax, setMin, setValue, share, startRange, step,
+  drawBounds, drawFrom, fixedGroups, formatRanges, isFixed, setFixed, setMax, setMin, setValue, share, startRange, step,
   type Knob, type UserRange, type Values,
 } from './knobs';
 import type { Rng } from './rng';
@@ -120,9 +120,12 @@ export class KnobPanel {
     };
     heading('Random per instance', 'drawn from min..max at every start');
     const drawn = knobs.filter((k) => !isFixed(k)).map((k) => this.row(k));
-    const kept = knobs.filter(isFixed);
-    if (kept.length > 0) heading('Fixed in code', 'how it follows the music; the code\'s value to start');
-    this.rows = [...drawn, ...kept.map((k) => this.row(k))];
+    const kept: Row[] = [];
+    for (const { group, knobs: inGroup } of fixedGroups(knobs)) {
+      heading('Fixed in code', `${group}; the code's value to start`);
+      kept.push(...inGroup.map((k) => this.row(k)));
+    }
+    this.rows = [...drawn, ...kept];
   }
 
   private row(knob: Knob): Row {

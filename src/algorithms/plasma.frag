@@ -1,7 +1,6 @@
 // Plasma: interfering sine waves (two plane waves and two moving ripples)
 // through a cosine palette. Soft to middle: the picture flashes brighter on
-// the beat by the beat voices (never recoloured) and the colours take a step at
-// every bar start (a quarter step at intensity 0).
+// the beat by the beat voices and does nothing else with the beat or the bar.
 uniform vec3 u_palA;
 uniform vec3 u_palB;
 uniform vec3 u_palC;
@@ -15,7 +14,6 @@ uniform float u_scale;
 uniform float u_swirl;  // twist that grows with the distance from the centre
 uniform float u_mode;   // 0 plain sum, 1 folded (sharper ridges), 2 product (cells)
 uniform float u_cycles; // palette cycles across the range of the field
-uniform float u_barShift;
 uniform float u_swirlSpin;   // how fast the whole field turns
 uniform float u_orbitSpeed;  // how fast the ripple centres wander (1 = the wander rates in the code)
 uniform float u_colourDrift; // palette drift over time
@@ -44,7 +42,7 @@ vec3 shade(vec2 uv) {
   }
 
   // the same colours at every intensity; the beat only brightens them, by the flash F (zero at intensity 0)
-  float k = v * u_cycles * 0.85 + u_colourDrift * t + u_barShift * barStep();
+  float k = v * u_cycles * 0.85 + u_colourDrift * t;
   vec3 col = cosPalette(k, u_palA, u_palB, u_palC, u_palD);
 
   col *= 1.0 + u_flashGain * u_flash;

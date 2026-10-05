@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_GAIN, VOICE_NAMES, amountsOf, flash } from '../beatVoices';
-import { drawKnobs } from '../knobs';
+import { drawKnobs, fixedGroups } from '../knobs';
 import { stepShape } from '../motion';
 import { createRng, type Rng } from '../rng';
 import type { ShaderParams } from '../shaderAlgorithm';
@@ -103,6 +103,20 @@ describe('plasma\'s beat flash', () => {
       const amounts = amountsOf(drawKnobs(PLASMA_KNOBS, rng));
       for (let beats = 0; beats < 8; beats += 0.05) expect(flash(beats, 0, amounts).total).toBe(0);
     }
+  });
+
+  it('has no bar step: no knob for it, and nothing in the shader reads one', () => {
+    const keys = PLASMA_KNOBS.map((k) => k.key);
+    expect(keys.filter((k) => /barShift|^step/.test(k))).toEqual([]);
+    expect(plasmaSource).not.toContain('barStep');
+    expect(plasmaSource).not.toContain('u_barShift');
+  });
+
+  it('shows the flash gain under "follows the beat" and the time terms under "moves with time"', () => {
+    expect(fixedGroups(PLASMA_KNOBS).map((g) => [g.group, g.knobs.map((k) => k.key)])).toEqual([
+      ['follows the beat', ['flashGain']],
+      ['moves with time', ['swirlSpin', 'orbitSpeed', 'colourDrift']],
+    ]);
   });
 
   it('starts from the beats page\'s gain, and the shader has no other beat or bar pulse', () => {
