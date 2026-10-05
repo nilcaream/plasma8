@@ -7,7 +7,8 @@ import type { ShaderParams } from '../shaderAlgorithm';
 import { JULIA_KNOBS, drawJuliaParams, juliaParams } from './julia';
 import { PLASMA_KNOBS, drawPlasmaParams, plasmaParams } from './plasma';
 import plasmaSource from './plasma.frag?raw';
-import { drawTunnelParams } from './tunnel';
+import { TUNNEL_KNOBS, drawTunnelParams, tunnelParams } from './tunnel';
+import tunnelSource from './tunnel.frag?raw';
 import { WARP_NOISE_KNOBS, warpNoiseParams } from './warpNoise';
 import warpSource from './warpNoise.frag?raw';
 
@@ -178,6 +179,22 @@ describe('plasma\'s random ranges', () => {
       expect(Math.max(...seen)).toBeLessThan(hi);
       expect(Math.min(...seen)).toBeLessThan(lo + (hi - lo) * 0.02);
       expect(Math.max(...seen)).toBeGreaterThan(hi - (hi - lo) * 0.02);
+    }
+  });
+});
+
+describe('tunnel\'s beat flash', () => {
+  it('has the flash gain 0.5 as a fixed value "follows the beat", read by the shader', () => {
+    expect(tunnelParams(drawKnobs(TUNNEL_KNOBS, createRng(1))).u_flashGain).toBe(0.5);
+    expect(fixedGroups(TUNNEL_KNOBS).map((g) => [g.group, g.knobs.map((k) => k.key)])).toEqual([['follows the beat', ['flashGain']]]);
+    expect(tunnelSource).toContain('u_flashGain * u_flash');
+    expect(drawKnobs(TUNNEL_KNOBS, createRng(2))).toHaveProperty('A.kick');
+  });
+
+  it('has no other beat- or bar-locked term: no far-end swing, bar step, bar wave or beat pulse', () => {
+    expect(TUNNEL_KNOBS.map((k) => k.key).filter((k) => /swing|^step/.test(k))).toEqual([]);
+    for (const old of ['u_farEnd', 'u_beatSize', 'barStep', 'beatPulse', 'barPulse', 'u_barPhase', 'u_beatPhase', 'u_barSteps']) {
+      expect(tunnelSource).not.toContain(old);
     }
   });
 });

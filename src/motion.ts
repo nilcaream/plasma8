@@ -48,8 +48,6 @@ export function stepKnobs(shape: StepShape = STEP_SHAPE): Knob[] {
   ];
 }
 
-export const STEP_KNOBS: readonly Knob[] = stepKnobs();
-
 /** The step shape from an algorithm's knob values; the shape in code for an algorithm that takes no bar steps. */
 export function stepShape(v: Values): StepShape {
   return {

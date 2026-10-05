@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALGORITHMS } from './algorithms';
 import { drawKnob } from './knobs';
-import { BarSteps, MotionClock, STEP_KNOBS, STEP_SHAPE, motionRate, motionTimeFor, steadyRate, stepEase, stepScale, stepShape } from './motion';
+import { BarSteps, MotionClock, STEP_SHAPE, motionRate, motionTimeFor, steadyRate, stepEase, stepKnobs, stepScale, stepShape } from './motion';
 import { createRng } from './rng';
 
 describe('motionRate', () => {
@@ -97,7 +97,7 @@ describe('BarSteps', () => {
     expect(stepShape({ stepSizeAt0: 0.1, stepSizeAt1: 0.4, stepEaseAt0: 0.9, stepEaseAt1: 0.3 }))
       .toEqual({ sizeSoft: 0.1, sizeHard: 0.4, easeSoft: 0.9, easeHard: 0.3 });
     expect(stepShape({})).toEqual(STEP_SHAPE);
-    expect(stepShape(Object.fromEntries(STEP_KNOBS.map((k) => [k.key, drawKnob(k.draw, createRng(1))])))).toEqual(STEP_SHAPE);
+    expect(stepShape(Object.fromEntries(stepKnobs().map((k) => [k.key, drawKnob(k.draw, createRng(1))])))).toEqual(STEP_SHAPE);
   });
 
   it('takes no step in the first bar, then one scaled step at every bar start', () => {

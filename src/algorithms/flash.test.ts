@@ -5,6 +5,7 @@ import { createRng } from '../rng';
 import { shaderAlgorithm } from '../shaderAlgorithm';
 import { plasma, plasmaParams } from './plasma';
 import plasmaSource from './plasma.frag?raw';
+import { tunnel } from './tunnel';
 import { warpNoise } from './warpNoise';
 
 /** A stand-in WebGL context that accepts everything and records the one-float uniforms by name. */
@@ -90,7 +91,16 @@ describe('the strongest voice', () => {
   });
 });
 
-describe.each([plasma, warpNoise])('$name\'s flash', (def) => {
+describe.each([plasma, tunnel])('$name\'s strongest voice', (def) => {
+  it('flashes at exactly the strobe level, the others in proportion', () => {
+    const drawn = { kick: 0.1, snare: 0.2, crash: 0.05 };
+    expect(flashWith(def, drawn, 1)).toBe(1);
+    expect(flashWith(def, drawn, 2)).toBeCloseTo(0.5, 12);
+    expect(flashWith(def, { kick: 0, snare: 0, crash: 0 }, 1)).toBe(0);
+  });
+});
+
+describe.each([plasma, warpNoise, tunnel])('$name\'s flash', (def) => {
   it('reaches the shader as u_flash: full on a beat at strobe 1, none at strobe 0', () => {
     expect(flashOn(def, 0, 1)).toBe(1);
     expect(flashOn(def, 0, 0)).toBe(0);
