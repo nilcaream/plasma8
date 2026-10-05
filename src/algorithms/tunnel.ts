@@ -24,11 +24,11 @@ export const TUNNEL_KNOBS: readonly Knob[] = [
   range('speed', 2, 3, [0, 8]),
   range('ringGap', 0.481, 2.058, [0.2, 4]),
   int('ribs', 1, 14, [1, 32]),
-  range('twist', -0.313, 0.313, [-0.5, 0.5]),
-  range('hueDrift', 0.01, 0.05, [0, 0.2]),
+  range('twist', -0.5, 0.5, [-0.5, 0.5]),
+  range('hueDrift', 0.024, 0.079, [0, 0.2]),
   // where the far end sits on screen (uv); the tube bends to it
-  range('farEnd.x', -0.26, 0.26, [-0.6, 0.6]),
-  range('farEnd.y', -0.26, 0.26, [-0.6, 0.6]),
+  range('farEnd.x', -0.271, 0.271, [-0.6, 0.6]),
+  range('farEnd.y', -0.271, 0.271, [-0.6, 0.6]),
   // how hard each beat voice flashes this run: the only thing that follows the beat
   ...amountKnobs(),
   // fixed in code: the flash gain

@@ -201,7 +201,7 @@ describe('signed values', () => {
     ['julia', JULIA_KNOBS, 'barTheta', 0.04, 0.12],
     ['julia', JULIA_KNOBS, 'spin', 0.05, 0.2],
     ['julia', JULIA_KNOBS, 'barTurn', 1, 2],
-    ['tunnel', TUNNEL_KNOBS, 'twist', 0.313, 0.5],
+    ['tunnel', TUNNEL_KNOBS, 'twist', 0.5, 0.5],
   ] as const)('%s: %s is drawn from -M to M and tried from -X to X', (_name, knobs, key, m, x) => {
     const knob = knobs.find((k) => k.key === key)!;
     expect(drawBounds(knob.draw)).toEqual([-m, m]);
@@ -232,14 +232,16 @@ describe('tunnel parameters', () => {
     expect(seen).toEqual(new Set([2, 3, 4, 5, 6, 7, 8, 9]));
   });
 
-  it('draw whole ribs from 1 to 14, rings 0.481..2.058 apart and a twist of at most 0.313 either way', () => {
+  it('draw whole ribs from 1 to 14, rings 0.481..2.058 apart and a twist of at most 0.5 either way, and a hue drift of 0.024..0.079', () => {
     const rng = createRng(2);
     const draws = Array.from({ length: 2000 }, () => drawTunnelParams(rng));
     expect(new Set(draws.map((p) => p.u_ribs))).toEqual(new Set(Array.from({ length: 14 }, (_, i) => i + 1)));
     for (const p of draws) {
       expect(p.u_ringGap as number).toBeGreaterThanOrEqual(0.481);
       expect(p.u_ringGap as number).toBeLessThan(2.058);
-      expect(Math.abs(p.u_twist as number)).toBeLessThan(0.313);
+      expect(Math.abs(p.u_twist as number)).toBeLessThan(0.5);
+      expect(p.u_hueDrift as number).toBeGreaterThanOrEqual(0.024);
+      expect(p.u_hueDrift as number).toBeLessThan(0.079);
     }
   });
 });

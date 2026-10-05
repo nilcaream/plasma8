@@ -79,16 +79,16 @@ describe('the tunnel shader', () => {
 });
 
 describe('the twist', () => {
-  it('is drawn from -0.313 to 0.313 and moves through zero when its sub-range does', () => {
+  it('is drawn from -0.5 to 0.5 and moves through zero when its sub-range does', () => {
     const rng = createRng(11);
     const draws = Array.from({ length: 2000 }, () => drawKnobs(TUNNEL_KNOBS, rng).twist!);
-    expect(Math.min(...draws)).toBeLessThan(-0.3);
-    expect(Math.max(...draws)).toBeGreaterThan(0.3);
+    expect(Math.min(...draws)).toBeLessThan(-0.48);
+    expect(Math.max(...draws)).toBeGreaterThan(0.48);
     let crossed = 0;
     for (let i = 0; i < 100; i++) {
-      const m = drawMoving([['twist']], (key) => (key === 'twist' ? [-0.313, 0.313] : [0, 1]), rng, [1, 1])[0]!;
+      const m = drawMoving([['twist']], (key) => (key === 'twist' ? [-0.5, 0.5] : [0, 1]), rng, [1, 1])[0]!;
       const { min, max } = movingRange(m);
-      if (!(min < -0.05 && max > 0.05)) continue;
+      if (!(min < -0.15 && max > 0.15)) continue;
       const seen = Array.from({ length: 1600 }, (_, j) => movingAt(m, 0.8, j * 0.25));
       expect(Math.min(...seen)).toBeLessThan(0);
       expect(Math.max(...seen)).toBeGreaterThan(0);
@@ -99,15 +99,15 @@ describe('the twist', () => {
 });
 
 describe('the far end', () => {
-  it('is drawn from -0.26 to 0.26 on each axis, reaching both ends', () => {
+  it('is drawn from -0.271 to 0.271 on each axis, reaching both ends', () => {
     const rng = createRng(8);
     const draws = Array.from({ length: 3000 }, () => drawKnobs(TUNNEL_KNOBS, rng));
     for (const key of ['farEnd.x', 'farEnd.y']) {
       const seen = draws.map((d) => d[key]!);
-      expect(Math.min(...seen)).toBeGreaterThanOrEqual(-0.26);
-      expect(Math.max(...seen)).toBeLessThan(0.26);
-      expect(Math.min(...seen)).toBeLessThan(-0.25);
-      expect(Math.max(...seen)).toBeGreaterThan(0.25);
+      expect(Math.min(...seen)).toBeGreaterThanOrEqual(-0.271);
+      expect(Math.max(...seen)).toBeLessThan(0.271);
+      expect(Math.min(...seen)).toBeLessThan(-0.26);
+      expect(Math.max(...seen)).toBeGreaterThan(0.26);
     }
   });
 });
