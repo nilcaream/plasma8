@@ -20,10 +20,11 @@ describe('the hits', () => {
   const PATTERN: [VoiceName, number, 'low' | 'high'][] = [
     ['kick', 0, 'low'], ['kick', 1, 'high'], ['kick', 2, 'low'], ['kick', 3, 'high'], ['kick', 4, 'low'], ['kick', 5, 'high'],
     ['snare', 1, 'low'], ['snare', 3, 'high'], ['snare', 5, 'low'], ['snare', 7, 'high'],
-    ['crash', 0, 'low'], ['crash', 4, 'high'], ['crash', 8, 'low'], ['crash', 12, 'high'],
+    // bars count from 1: bar 1 starts at beat 0
+    ['crash', 0, 'high'], ['crash', 4, 'low'], ['crash', 8, 'high'], ['crash', 12, 'low'],
   ];
 
-  it('put the kick low on beats 1 and 3 and high on 2 and 4, the snare low on 2 and high on 4, the crash low on beat 1 of an even bar and high on an odd one', () => {
+  it('put the kick low on beats 1 and 3 and high on 2 and 4, the snare low on 2 and high on 4, the crash high on beat 1 of an odd bar (1, 3, ...) and low on an even one (2, 4, ...)', () => {
     for (const [voice, beat, edge] of PATTERN) {
       const s = crossfaderState(beat, base(voice));
       expect(s.last.time).toBe(beat);
@@ -36,7 +37,9 @@ describe('the hits', () => {
     expect([0, 1, 2, 3].map((n) => hitTime('kick', n))).toEqual([0, 1, 2, 3]);
     expect([0, 1, 2].map((n) => hitTime('snare', n))).toEqual([1, 3, 5]);
     expect([0, 1, 2].map((n) => hitTime('crash', n))).toEqual([0, 4, 8]);
-    expect([-3, -2, -1, 0, 1].map(edgeOf)).toEqual(['high', 'low', 'high', 'low', 'high']);
+    expect([-3, -2, -1, 0, 1].map((n) => edgeOf('kick', n))).toEqual(['high', 'low', 'high', 'low', 'high']);
+    expect([-3, -2, -1, 0, 1].map((n) => edgeOf('snare', n))).toEqual(['high', 'low', 'high', 'low', 'high']);
+    expect([-3, -2, -1, 0, 1].map((n) => edgeOf('crash', n))).toEqual(['low', 'high', 'low', 'high', 'low']);
   });
 });
 
@@ -115,7 +118,9 @@ describe('the value', () => {
     expect(crossfade(0, base('snare'))).toBe(6);
     expect(crossfade(-1, base('snare'))).toBe(6);
     expect(crossfade(-0.5, base('kick', 1, 0.25))).toBe(6); // the beat before beat 1 is an odd hit: high
-    expect(crossfade(0, base('crash'))).toBe(2);
+    expect(crossfade(0, base('crash'))).toBe(6); // beat 1 of bar 1 is high
+    expect(crossfade(2, base('crash'))).toBe(6);
+    expect(crossfade(4, base('crash'))).toBe(2); // bar 2 is low
   });
 
   it('does not move at intensity 0, and uses the whole range at 1', () => {

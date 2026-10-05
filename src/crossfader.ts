@@ -39,8 +39,17 @@ export function bandOf(min: number, max: number, intensity: number): { low: numb
   return { low: mid - reach, high: mid + reach };
 }
 
-/** Hit n of a voice (n = 0 is its first onset in the pattern, counting on without end and back before it) sits on this edge: even hits low, odd high. */
-export const edgeOf = (n: number): Edge => (Math.abs(n) % 2 === 0 ? 'low' : 'high');
+/**
+ * The edge a voice's first onset (hit 0) puts the value on. Bars count from 1,
+ * so the crash's hit 0 is beat 1 of bar 1, an odd bar: high.
+ */
+const FIRST_EDGE: Readonly<Record<VoiceName, Edge>> = { kick: 'low', snare: 'low', crash: 'high' };
+
+/** Hit n of a voice (n = 0 is its first onset in the pattern, counting on without end and back before it) sits on this edge: even hits on the first edge, odd ones on the other. */
+export function edgeOf(voice: VoiceName, n: number): Edge {
+  const first = FIRST_EDGE[voice];
+  return Math.abs(n) % 2 === 0 ? first : first === 'low' ? 'high' : 'low';
+}
 
 /** Where hit n of a voice falls, in beats. */
 export const hitTime = (voice: VoiceName, n: number): number => VOICES[voice].onset + n * VOICES[voice].period;
@@ -66,8 +75,8 @@ export function crossfaderState(beats: number, p: Crossfader): CrossfaderState {
   const v = VOICES[p.voice];
   const { low, high } = bandOf(p.min, p.max, p.intensity);
   const n = Math.floor((beats - v.onset) / v.period);
-  const last = { n, time: hitTime(p.voice, n), edge: edgeOf(n) };
-  const next = { n: n + 1, time: hitTime(p.voice, n + 1), edge: edgeOf(n + 1) };
+  const last = { n, time: hitTime(p.voice, n), edge: edgeOf(p.voice, n) };
+  const next = { n: n + 1, time: hitTime(p.voice, n + 1), edge: edgeOf(p.voice, n + 1) };
   const length = Math.min(Math.max(p.travel, 0), v.period);
   const progress = length > 0 ? Math.min(1, Math.max(0, (beats - (next.time - length)) / length)) : 0;
   const from = last.edge === 'low' ? low : high;

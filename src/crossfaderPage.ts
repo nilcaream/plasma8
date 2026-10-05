@@ -5,7 +5,7 @@
  */
 import { VOICES, VOICE_NAMES, type VoiceName } from './beatVoices';
 import {
-  TRAVEL_DEFAULT, crossfade, crossfaderState, drawRange, hitTime, type Crossfader,
+  TRAVEL_DEFAULT, crossfade, crossfaderState, drawRange, edgeOf, hitTime, type Crossfader,
 } from './crossfader';
 import {
   button, colors, controlGroup, dot, el, frame, plot, playhead, samples, setup, slider, tempoControls,
@@ -26,7 +26,7 @@ const round2 = (v: number): number => Math.round(v * 100) / 100;
 const PATTERN: Record<VoiceName, string> = {
   kick: 'kick every beat: low on beats 1 and 3, high on beats 2 and 4',
   snare: 'snare on beats 2 and 4: low on beat 2, high on beat 4',
-  crash: 'crash on beat 1 of every bar: low on an even bar, high on an odd bar (bars counted from 0)',
+  crash: 'crash on beat 1 of every bar: high on an odd bar (1, 3, ...), low on an even bar (2, 4, ...)',
 };
 
 let seed = freshSeed();
@@ -142,7 +142,7 @@ function writeFormulas(pos: number): void {
     `band:  low = mid − I·half = ${f3(mid)} − ${f2(P.intensity)}·${f3(half)} = ${f3(st.low)};  high = mid + I·half = ${f3(st.high)}   (I = 0: the middle, no movement;  I = 1: the whole range)`,
     '',
     `hits of the ${P.voice}: hit n at t_n = ${v.onset} + n·${v.period} beats (t in beats from beat 1 of bar 1);  ${PATTERN[P.voice]}`,
-    'edge e_n = low for even n, high for odd n   (hits counted on in both directions, so a value before the first hit is where the pattern puts it)',
+    `edge e_n = ${edgeOf(P.voice, 0)} for even n, ${edgeOf(P.voice, 1)} for odd n  (hits counted on in both directions, so a value before the first hit is where the pattern puts it)`,
     '',
     `stroke:  L = ${f3(length)} beats${P.travel > length ? ` (travel ${f3(P.travel)} cut to the ${v.period} beats between two hits)` : ''};  s(x) = 3x² − 2x³ on x ∈ [0, 1]`,
     'for t_n ≤ t < t_(n+1):   x = clamp((t − (t_(n+1) − L)) / L, 0, 1)',
