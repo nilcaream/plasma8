@@ -7,6 +7,7 @@
  */
 import { AMOUNT_RANGE, GAIN_RANGE, MAX_RISE, POWER_RANGE } from './beatVoices';
 import { MAX_BPM, MIN_BPM } from './clock';
+import { TRAVEL_RANGE } from './crossfader';
 import { DAMPING_RANGE, FACTOR_RANGES, OFFSET_RANGE, WIDTH_SHARE_RANGE } from './harmonics';
 import { clamp01 } from './settings';
 
@@ -30,6 +31,21 @@ export const BEATS = {
 
 /** An example algorithm's outer bounds for one free parameter, and the least room between L and H. */
 export const BOUNDS = { min: 0, max: 10, gap: 0.1 };
+
+/**
+ * The crossfader's example parameter: its outer bounds (the same example as the
+ * harmonics page), the range an instance draws inside them (the min can be as
+ * high as the bounds' top less the narrowest width, the max as low as the
+ * bounds' bottom plus it), and the stroke's length.
+ */
+const CROSSFADER_BOUNDS = { lo: 2, hi: 8 };
+const narrowest = (CROSSFADER_BOUNDS.hi - CROSSFADER_BOUNDS.lo) * WIDTH_SHARE_RANGE[0];
+export const CROSSFADER = {
+  bounds: CROSSFADER_BOUNDS,
+  min: { min: CROSSFADER_BOUNDS.lo, max: CROSSFADER_BOUNDS.hi - narrowest },
+  max: { min: CROSSFADER_BOUNDS.lo + narrowest, max: CROSSFADER_BOUNDS.hi },
+  travel: range(TRAVEL_RANGE),
+};
 
 export const HARMONICS = {
   factors: FACTOR_RANGES.map(range),

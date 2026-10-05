@@ -3,19 +3,20 @@ import {
   DEFAULT_GAIN, DEFAULT_SHAPE, VOICES, VOICE_NAMES, drawAmounts, voiceEnvelope, windowEnvelope,
 } from './beatVoices';
 import { TapClock, clampBpm } from './clock';
+import { TRAVEL_DEFAULT, drawRange } from './crossfader';
 import { DAMPING, drawHarmonic, weights } from './harmonics';
-import { BEATS, HARMONICS, LIVE, type Range } from './pageRanges';
+import { BEATS, CROSSFADER, HARMONICS, LIVE, type Range } from './pageRanges';
 import { createRng } from './rng';
 import { sanitizeSettings } from './settings';
 
 /** Every sample inside the range, and the samples reach close to both ends: the range is the draw's, no wider and no narrower. */
-function spans(samples: number[], r: Range): void {
+function spans(samples: number[], r: Range, reach = 0.01): void {
   for (const s of samples) {
     expect(s).toBeGreaterThanOrEqual(r.min);
     expect(s).toBeLessThanOrEqual(r.max);
   }
-  expect(Math.min(...samples)).toBeLessThan(r.min + 0.01 * (r.max - r.min));
-  expect(Math.max(...samples)).toBeGreaterThan(r.max - 0.01 * (r.max - r.min));
+  expect(Math.min(...samples)).toBeLessThan(r.min + reach * (r.max - r.min));
+  expect(Math.max(...samples)).toBeGreaterThan(r.max - reach * (r.max - r.min));
 }
 
 describe('the random sliders span exactly what the app draws', () => {
@@ -31,6 +32,13 @@ describe('the random sliders span exactly what the app draws', () => {
 
   it('beats: each voice strength', () => {
     for (const name of VOICE_NAMES) spans(amounts.map((a) => a[name]), BEATS.amount);
+  });
+
+  it('crossfader: the range\'s min and max inside the outer bounds', () => {
+    const ranges = Array.from({ length: 6000 }, () => drawRange(rng, CROSSFADER.bounds.lo, CROSSFADER.bounds.hi));
+    // an end of the min (or the max) needs the narrowest width and the far offset together, so the draw thins out towards it
+    spans(ranges.map((r) => r.min), CROSSFADER.min, 0.05);
+    spans(ranges.map((r) => r.max), CROSSFADER.max, 0.05);
   });
 });
 
@@ -70,6 +78,12 @@ describe('the fixed sliders stay where the code works', () => {
   it('the lowest fall power still falls: the peak is on the onset alone', () => {
     expect(BEATS.power.min).toBeGreaterThan(0);
     expect(windowEnvelope(0.01, 1, 0.1, BEATS.power.min)).toBeLessThan(1);
+  });
+
+  it('the stroke stays above 0 and within the beats between two hits of every voice', () => {
+    expect(CROSSFADER.travel.min).toBeGreaterThan(0);
+    for (const name of VOICE_NAMES) expect(CROSSFADER.travel.max).toBeLessThanOrEqual(VOICES[name].period);
+    expect(CROSSFADER.travel.max).toBeGreaterThanOrEqual(5 * TRAVEL_DEFAULT);
   });
 
   it('the damping stays where its powers are defined and finite', () => {

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Crossfader graphs</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #f6f6f4;
+    --panel: #ffffff;
+    --fg: #1d1d1f;
+    --muted: #6b6b70;
+    --grid: #e2e2e0;
+    --beat: #b9b9b6;
+    --total: #1d1d1f;
+    --play: #1a9a5a;
+    --border: #dcdcd8;
+    --band: rgba(122, 63, 196, 0.16);
+    --light: #7a3fc4;
+    --kick: #2f7ad0;
+    --snare: #c08a00;
+    --crash: #d0452f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151517;
+      --panel: #1f1f22;
+      --fg: #ececee;
+      --muted: #9a9aa2;
+      --grid: #2e2e33;
+      --beat: #4a4a52;
+      --total: #f4f4f6;
+      --play: #3fd68a;
+      --border: #34343a;
+      --band: rgba(185, 140, 255, 0.2);
+      --light: #b98cff;
+      --kick: #5aa2ff;
+      --snare: #f2c14e;
+      --crash: #ff6f57;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
+  }
+  @media (max-width: 860px) {
+    main { grid-template-columns: minmax(0, 1fr); }
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; grid-column: 1 / -1; }
+  .sub { color: var(--muted); margin: 0; grid-column: 1 / -1; }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    min-width: 0;
+  }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 8px; }
+  .graphs { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  canvas { display: block; width: 100%; }
+  #valueCanvas { height: 280px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; color: var(--muted); font-size: 13px; }
+  .legend span::before {
+    content: ""; display: inline-block; width: 18px; height: 3px; margin-right: 6px; vertical-align: middle;
+    background: var(--c); border-radius: 2px;
+  }
+  .legend .thick::before { height: 5px; }
+  .legend .dashed::before { background: repeating-linear-gradient(90deg, var(--c) 0 4px, transparent 4px 7px); }
+  .legend .box::before { height: 10px; }
+  .legend .dotted::before { width: 9px; height: 9px; border-radius: 50%; }
+  .side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .ctl { display: grid; grid-template-columns: 70px minmax(0, 1fr) 46px; align-items: center; gap: 8px; margin: 6px 0; }
+  .ctl label { font-variant-numeric: tabular-nums; }
+  .ctl output { text-align: right; font-variant-numeric: tabular-nums; }
+  .ctl input[type=range] { width: 100%; }
+  .ctl select { grid-column: 2 / -1; font: inherit; padding: 3px 6px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; }
+  .ctl-group + .ctl-group { margin-top: 12px; padding-top: 8px; border-top: 1px solid var(--border); }
+  .ctl-group h3 { font-size: 13px; font-weight: 600; margin: 0 0 2px; }
+  .ctl-group .note { font-size: 12px; color: var(--muted); margin: 0 0 4px; }
+  .ctl-group button { margin-top: 4px; }
+  .tap { padding: 8px 14px; font-weight: 600; touch-action: manipulation; }
+  .gauge { position: relative; height: 34px; margin: 6px 0 4px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); }
+  #gaugeBand { position: absolute; top: 0; bottom: 0; background: var(--band); border-left: 2px solid var(--light); border-right: 2px solid var(--light); }
+  #gaugeMark { position: absolute; top: -4px; bottom: -4px; width: 4px; margin-left: -2px; border-radius: 2px; background: var(--total); }
+  .gauge-scale { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+  #square { width: 100%; height: 56px; margin-top: 10px; border: 1px solid var(--border); border-radius: 6px; }
+  .live { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .beats { display: flex; gap: 6px; flex-wrap: wrap; }
+  .beats i { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border); font-style: normal; display: grid; place-items: center; font-size: 12px; color: var(--muted); }
+  .beats i.on { background: var(--play); color: var(--panel); border-color: var(--play); }
+  .buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+  button { font: inherit; padding: 3px 10px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+  .formulas { grid-column: 1 / -1; }
+  .formulas pre {
+    margin: 0; white-space: pre-wrap; overflow-wrap: anywhere;
+    font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+</style>
+</head>
+<body>
+<main>
+  <h1>Crossfader graphs</h1>
+  <p class="sub">One free parameter over 4 bars. Its range is narrowed round the middle by the intensity into a band; one beat voice then pushes the value from one edge of the band to the other on each of its hits, like a DJ's crossfader: it holds an edge, travels in a short smooth stroke, and arrives exactly on the hit.</p>
+
+  <div class="graphs">
+    <section>
+      <h2>Value over 4 bars</h2>
+      <canvas id="valueCanvas"></canvas>
+      <div class="legend">
+        <span class="thick" style="--c: var(--total)">value</span>
+        <span class="box" style="--c: var(--band)">range [min, max]</span>
+        <span class="dashed" style="--c: var(--light)">band edges</span>
+        <span class="dotted" id="legendVoice" style="--c: var(--kick)">hits of the voice</span>
+        <span style="--c: var(--play)">now</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="side">
+    <section>
+      <h2>Feel it</h2>
+      <div class="gauge"><div id="gaugeBand"></div><div id="gaugeMark"></div></div>
+      <div class="gauge-scale"><span id="gaugeMin">min</span><span id="gaugeMax">max</span></div>
+      <div id="square"></div>
+      <div class="live">
+        <div>tempo <span id="nowTempo">120.00</span></div>
+        <div class="beats" id="beatDots"><i>1</i><i>2</i><i>3</i><i>4</i></div>
+        <div>bar <span id="nowBar">1</span></div>
+        <div>value <span id="nowValue">0.000</span></div>
+        <div class="buttons">
+          <button id="tap" type="button" class="tap">Tap tempo</button>
+          <button id="restart" type="button">Restart</button>
+        </div>
+      </div>
+    </section>
+    <section id="controls">
+      <h2>Controls</h2>
+    </section>
+  </div>
+
+  <section class="formulas">
+    <h2>Formulas with the current numbers</h2>
+    <pre id="formulas"></pre>
+  </section>
+</main>
+<script type="module" src="/src/crossfaderPage.ts"></script>
+</body>
+</html>
