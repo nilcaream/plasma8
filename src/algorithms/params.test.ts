@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { VOICE_NAMES, amountsOf, flash } from '../beatVoices';
+import { DEFAULT_GAIN, VOICE_NAMES, amountsOf, flash } from '../beatVoices';
 import { drawKnobs, fixedGroups } from '../knobs';
 import { stepShape } from '../motion';
 import { createRng, type Rng } from '../rng';
@@ -63,11 +63,9 @@ describe('plasma\'s and warp noise\'s fixed values', () => {
   const PLASMA_FIXED = {
     u_flashGain: 0.445, u_swirlSpin: 0.011, u_orbitSpeed: 0.02, u_colourDrift: 0.021,
   };
-  const WARP_FIXED = {
-    u_beatBreath: 0.1, u_barBreath: 0.18, u_beatColour: 0.06, u_barColour: 0.15, u_beatLight: 0.09, u_barLight: 0.06,
-  };
+  const WARP_FIXED = { u_flashGain: DEFAULT_GAIN };
 
-  it('are plasma\'s as set on the debug panel, and warp noise\'s as the shader had them', () => {
+  it('are plasma\'s as set on the debug panel, and warp noise\'s the beats page\'s gain', () => {
     const p = plasmaParams(drawKnobs(PLASMA_KNOBS, createRng(1)));
     for (const [key, value] of Object.entries(PLASMA_FIXED)) expect(p[key]).toBe(value);
     const w = warpNoiseParams(drawKnobs(WARP_NOISE_KNOBS, createRng(1)));
@@ -125,6 +123,36 @@ describe('plasma\'s beat flash', () => {
     for (const gone of ['beatPulse', 'barPulse', 'u_beatLight', 'u_barLight', 'u_beatColour', 'u_beatBreath', 'u_barBreath']) {
       expect(plasmaSource).not.toContain(gone);
     }
+  });
+});
+
+describe('warp noise\'s beat flash', () => {
+  it('draws each voice\'s strength from 0 to 1, reaching both ends', () => {
+    const rng = createRng(6);
+    const draws = Array.from({ length: 3000 }, () => amountsOf(drawKnobs(WARP_NOISE_KNOBS, rng)));
+    for (const name of VOICE_NAMES) {
+      const seen = draws.map((a) => a[name]);
+      expect(Math.min(...seen)).toBeGreaterThanOrEqual(0);
+      expect(Math.max(...seen)).toBeLessThan(1);
+      expect(Math.min(...seen)).toBeLessThan(0.02);
+      expect(Math.max(...seen)).toBeGreaterThan(0.98);
+    }
+  });
+
+  it('never flashes at intensity 0, and the shader has the flash alone for the beat', () => {
+    const rng = createRng(7);
+    for (let i = 0; i < 50; i++) {
+      const amounts = amountsOf(drawKnobs(WARP_NOISE_KNOBS, rng));
+      for (let beats = 0; beats < 8; beats += 0.05) expect(flash(beats, 0, amounts).total).toBe(0);
+    }
+    expect(warpSource).toContain('u_flashGain * u_flash');
+    for (const gone of ['beatPulse', 'barPulse', 'barStep', 'u_beatLight', 'u_barLight', 'u_beatColour', 'u_barColour', 'u_beatBreath', 'u_barBreath']) {
+      expect(warpSource).not.toContain(gone);
+    }
+  });
+
+  it('shows the flash gain alone under "follows the beat"', () => {
+    expect(fixedGroups(WARP_NOISE_KNOBS).map((g) => [g.group, g.knobs.map((k) => k.key)])).toEqual([['follows the beat', ['flashGain']]]);
   });
 });
 

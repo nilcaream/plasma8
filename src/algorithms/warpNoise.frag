@@ -1,5 +1,6 @@
 // Domain-warped noise: fractal noise warped by fractal noise warped by fractal
-// noise, coloured through a cosine palette. Soft; breathes with the beat.
+// noise, coloured through a cosine palette. Soft; flashes brighter on the beat
+// by the beat voices and does nothing else with the beat or the bar.
 uniform vec3 u_palA;
 uniform vec3 u_palB;
 uniform vec3 u_palC;
@@ -10,12 +11,7 @@ uniform vec2 u_offset;
 uniform vec2 u_offset2;
 uniform float u_warp;
 uniform float u_rotate;
-uniform float u_beatBreath;  // breath in on every beat, x intensity
-uniform float u_barBreath;   // breath in at the start of a bar, x intensity
-uniform float u_beatColour;  // palette swing on every beat
-uniform float u_barColour;   // palette step at the start of a bar
-uniform float u_beatLight;   // brighter on every beat
-uniform float u_barLight;    // brighter at the start of a bar
+uniform float u_flashGain;   // G: how much brighter the flash F makes the picture (light = 1 + G·F)
 
 float vnoise(vec2 p) {
   vec2 i = floor(p);
@@ -38,15 +34,10 @@ float fbm(vec2 p) {
 }
 
 vec3 shade(vec2 uv) {
-  float beat = beatPulse();
-  float bar = barPulse();
-  // the intensity sets how deep the picture breathes, never its colours
-  float breath = u_intensity * (u_beatBreath * beat + u_barBreath * bar);
-
   float t = u_time;
   float ang = u_rotate * t;
   mat2 rot = mat2(cos(ang), -sin(ang), sin(ang), cos(ang));
-  vec2 p = rot * uv * u_scale / (1.0 + breath) + u_offset;
+  vec2 p = rot * uv * u_scale + u_offset;
 
   vec2 q = vec2(fbm(p + u_speed.x * t * vec2(0.30, 0.10)),
                 fbm(p + vec2(5.2, 1.3) - u_speed.x * t * vec2(0.10, 0.30)));
@@ -54,11 +45,11 @@ vec3 shade(vec2 uv) {
                 fbm(p + u_warp * q + vec2(8.3, 2.8) - u_speed.y * t * 0.4));
   float f = fbm(p + u_warp * w + u_offset2);
 
-  // the colours swing on every beat and take a bigger step at the start of a bar
-  float k = 1.1 * f + 0.45 * length(q) + 0.25 * length(w) + u_beatColour * beat + u_barColour * bar;
+  // the same colours at every intensity; the beat only brightens them, by the flash F (zero at intensity 0)
+  float k = 1.1 * f + 0.45 * length(q) + 0.25 * length(w);
   vec3 col = u_palA + u_palB * cos(6.28318 * (u_palC * k + u_palD));
 
-  col *= 1.0 + u_beatLight * beat + u_barLight * bar;
+  col *= 1.0 + u_flashGain * u_flash;
   col *= 1.0 - 0.3 * dot(uv, uv);
   return col;
 }

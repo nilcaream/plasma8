@@ -185,7 +185,7 @@ describe('fixedGroups', () => {
     const groups = fixedGroups([fixed('beatZoom', 0.1, [0, 1]), fixed('barZoom', 0.1, [0, 1])]);
     expect(groups.map((g) => g.group)).toEqual(['how it follows the music']);
     expect(groups[0]!.knobs).toHaveLength(2);
-    for (const name of ['julia-kaleidoscope', 'tunnel', 'domain-warped-noise']) {
+    for (const name of ['julia-kaleidoscope', 'tunnel']) {
       const def = ALGORITHMS.find((a) => a.name === name)!;
       expect(fixedGroups(def.knobs).map((g) => g.group)).toEqual(['how it follows the music']);
     }
