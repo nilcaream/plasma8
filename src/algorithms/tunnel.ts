@@ -21,7 +21,7 @@ export const TUNNEL_KNOBS: readonly Knob[] = [
   ...triple('palD', 0, 1, [0, 1]),
   // 2 is the round tube, 3..9 a polygon of that many sides
   int('sides', 2, 9, [0, 12]),
-  range('speed', 2, 3, [0, 8]),
+  range('speed', 1.136, 1.896, [0, 8]),
   range('ringGap', 0.481, 2.058, [0.2, 4]),
   int('ribs', 1, 14, [1, 32]),
   range('twist', -0.5, 0.5, [-0.5, 0.5]),

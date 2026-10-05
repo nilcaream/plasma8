@@ -226,6 +226,15 @@ describe('tunnel\'s beat flash', () => {
 });
 
 describe('tunnel parameters', () => {
+  it('draw the dive speed from 1.136 to 1.896', () => {
+    const rng = createRng(3);
+    const speeds = Array.from({ length: 2000 }, () => drawTunnelParams(rng).u_speed as number);
+    expect(Math.min(...speeds)).toBeGreaterThanOrEqual(1.136);
+    expect(Math.max(...speeds)).toBeLessThan(1.896);
+    expect(Math.min(...speeds)).toBeLessThan(1.15);
+    expect(Math.max(...speeds)).toBeGreaterThan(1.88);
+  });
+
   it('draw every whole number of sides from 2 to 9, and nothing else', () => {
     const rng = createRng(1);
     const seen = new Set(Array.from({ length: 2000 }, () => drawTunnelParams(rng).u_sides));
