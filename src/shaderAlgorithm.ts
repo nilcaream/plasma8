@@ -150,11 +150,16 @@ export function shaderAlgorithm(
   values: Values,
   amounts?: (values: Values) => Amounts,
   moving: readonly MovingValue[] = [],
+  phases?: (values: Values, inputs: FrameInputs) => ShaderParams,
 ): Algorithm {
-  // the moving values are worked out again every frame, over the latest values of the rest
+  // the moving values are worked out again every frame, over the latest values of the rest; `phases`, when given,
+  // is called once a frame with them and adds the uniforms of its own (an algorithm's running sums)
   let latest = values;
-  const perFrame = moving.length > 0
-    ? (inputs: FrameInputs): ShaderParams => params({ ...latest, ...movingValues(moving, inputs.intensity, inputs.beats) })
+  const perFrame = moving.length > 0 || phases
+    ? (inputs: FrameInputs): ShaderParams => {
+        const now = moving.length > 0 ? { ...latest, ...movingValues(moving, inputs.intensity, inputs.beats) } : latest;
+        return { ...(moving.length > 0 ? params(now) : {}), ...phases?.(now, inputs) };
+      }
     : undefined;
   const shader = new ShaderAlgorithm(gl, name, shaderBody, params(values), perFrame);
   shader.steps.shape = stepShape(values);

@@ -193,7 +193,7 @@ describe('tunnel\'s beat flash', () => {
 
   it('has no other beat- or bar-locked term: no far-end swing, bar step, bar wave or beat pulse', () => {
     expect(TUNNEL_KNOBS.map((k) => k.key).filter((k) => /swing|^step/.test(k))).toEqual([]);
-    for (const old of ['u_farEnd', 'u_beatSize', 'barStep', 'beatPulse', 'barPulse', 'u_barPhase', 'u_beatPhase', 'u_barSteps']) {
+    for (const old of ['u_beatSize', 'barStep', 'beatPulse', 'barPulse', 'u_barPhase', 'u_beatPhase', 'u_barSteps']) {
       expect(tunnelSource).not.toContain(old);
     }
   });

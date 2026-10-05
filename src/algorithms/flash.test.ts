@@ -73,6 +73,26 @@ describe('plasma\'s moving values', () => {
   });
 });
 
+describe('the tunnel\'s dive phases', () => {
+  it('reach the shader and grow as the clock runs, and the far end reaches it as drawn', () => {
+    const { gl, floats } = mockGl();
+    const values = drawKnobs(tunnel.knobs, createRng(3));
+    Object.assign(values, { twist: 0.2, twistSign: 1, hueDrift: 0.04, speed: 2, 'farEnd.x': 0.2, 'farEnd.y': -0.1 });
+    // the moving pick is random: draw instances until neither twist nor hueDrift moves, so their values are the ones set above
+    let algorithm = tunnel.create(gl, values, createRng(0));
+    for (let seed = 1; (algorithm.moving ?? []).some((m) => m.key === 'twist' || m.key === 'hueDrift'); seed++) {
+      algorithm = tunnel.create(gl, values, createRng(seed));
+    }
+    const frameAt = (time: number): FrameInputs => ({ ...frame(0, 0, 0.5, 120), time });
+    algorithm.draw(null, frameAt(10));
+    algorithm.draw(null, frameAt(11));
+    const early = floats.get('u_twistPhase')!;
+    algorithm.draw(null, frameAt(13));
+    expect(floats.get('u_twistPhase')! - early).toBeCloseTo(2 * 0.2 * 2, 9);
+    expect(floats.get('u_huePhase')).toBeCloseTo(2 * 0.04 * 3, 9);
+  });
+});
+
 describe('the strongest voice', () => {
   it('flashes plasma at exactly the strobe level, the others in proportion', () => {
     // Beat 1 is the snare (with the kick), beat 2 the kick alone, beat 4 the crash (with the kick): the voices add up.

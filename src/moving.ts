@@ -20,21 +20,30 @@ export interface MovingValue {
   draw: HarmonicDraw;
 }
 
-/** N in MOVING_COUNT (at most the number of groups) different groups, one value from each; each value's harmonics draw. */
+/**
+ * A group of values that change one thing on screen: each entry is a value or a
+ * pair (or more) that moves together, and an instance moves one entry of it.
+ */
+export type MovingGroup = readonly (string | readonly string[])[];
+
+/** N in `count` (at most the number of groups) different groups, one entry from each; each of its values gets its own harmonics draw. */
 export function drawMoving(
-  groups: readonly (readonly string[])[],
+  groups: readonly MovingGroup[],
   bounds: (key: string) => readonly [number, number],
   rng: Rng,
+  count: readonly [number, number] = MOVING_COUNT,
 ): MovingValue[] {
-  const [least, most] = MOVING_COUNT;
+  const [least, most] = count;
   const n = Math.min(groups.length, least + Math.floor(rng.next() * (most - least + 1)));
   const rest = [...groups];
   const out: MovingValue[] = [];
   for (let i = 0; i < n; i++) {
     const group = rest.splice(Math.floor(rng.next() * rest.length), 1)[0]!;
-    const key = rng.pick(group);
-    const [lo, hi] = bounds(key);
-    out.push({ key, lo, hi, draw: drawHarmonic(rng) });
+    const entry = rng.pick(group);
+    for (const key of typeof entry === 'string' ? [entry] : entry) {
+      const [lo, hi] = bounds(key);
+      out.push({ key, lo, hi, draw: drawHarmonic(rng) });
+    }
   }
   return out;
 }
