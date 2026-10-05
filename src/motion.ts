@@ -76,6 +76,11 @@ export class MotionClock {
   }
 }
 
+/** The motion seconds an algorithm is drawn at: its own steady clock if it keeps its designed speed, else the shared one. */
+export function motionTimeFor(def: { readonly steadySpeed?: boolean }, shared: number, steady: number): number {
+  return def.steadySpeed ? steady : shared;
+}
+
 /**
  * Bar steps taken so far: up by stepScale at every bar start, eased over
  * stepEase of the bar, both fixed when the step starts. Each step starts from

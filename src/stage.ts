@@ -24,6 +24,8 @@ export function drawTransitionLook(rng: Rng): TransitionLook {
 
 export interface StageFrame {
   inputs: FrameInputs;
+  /** What the incoming algorithm is given during a fade, when it keeps its own time; `inputs` otherwise. */
+  incomingInputs?: FrameInputs;
   /** 0..1 of the fade; above 0 only while a fade runs. */
   fade: number;
 }
@@ -63,7 +65,7 @@ export class Stage {
     const { width, height } = f.inputs;
     for (const t of [this.a, this.b]) t.resize(width, height);
     current.draw(this.a.framebuffer, f.inputs);
-    incoming.draw(this.b.framebuffer, f.inputs);
+    incoming.draw(this.b.framebuffer, f.incomingInputs ?? f.inputs);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null);
     gl.viewport(0, 0, width, height);
     gl.useProgram(this.transition);

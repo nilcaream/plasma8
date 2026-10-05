@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { ALGORITHMS } from './algorithms';
 import { drawKnob } from './knobs';
-import { BarSteps, MotionClock, STEP_KNOBS, STEP_SHAPE, motionRate, stepEase, stepScale, stepShape } from './motion';
+import { BarSteps, MotionClock, STEP_KNOBS, STEP_SHAPE, motionRate, motionTimeFor, stepEase, stepScale, stepShape } from './motion';
 import { createRng } from './rng';
 
 describe('motionRate', () => {
@@ -9,6 +10,18 @@ describe('motionRate', () => {
     expect(motionRate(0.9, 0)).toBeLessThan(0.4);
     expect(motionRate(0.35, 1)).toBeGreaterThan(1.9);
     expect(motionRate(0.5, 0.2)).toBeLessThan(motionRate(0.5, 0.3));
+  });
+});
+
+describe('motionTimeFor', () => {
+  it('gives a steady-speed algorithm its own clock and every other the shared one', () => {
+    expect(motionTimeFor({ steadySpeed: true }, 7, 3)).toBe(3);
+    expect(motionTimeFor({}, 7, 3)).toBe(7);
+    expect(motionTimeFor({ steadySpeed: false }, 7, 3)).toBe(7);
+  });
+
+  it('is on for plasma alone', () => {
+    expect(ALGORITHMS.filter((a) => a.steadySpeed).map((a) => a.name)).toEqual(['plasma']);
   });
 });
 

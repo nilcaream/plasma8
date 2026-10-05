@@ -44,6 +44,8 @@ export interface AlgorithmDef {
   readonly name: string;
   /** The intensity (0 soft … 1 hard) it is at home at: picked most there, and runs at its designed speed there. */
   readonly home: number;
+  /** Runs at its designed speed at every intensity, including during a fade, on a clock of its own. */
+  readonly steadySpeed?: boolean;
   /** Everything it draws at random when it starts. */
   readonly knobs: readonly Knob[];
   create(gl: WebGL2RenderingContext, values: Values, rng: Rng): Algorithm;

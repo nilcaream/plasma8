@@ -1,5 +1,5 @@
 import { ALGORITHMS, chooseAlgorithm } from './algorithms';
-import type { Algorithm, AlgorithmDef } from './algorithm';
+import type { Algorithm, AlgorithmDef, FrameInputs } from './algorithm';
 import { TapClock } from './clock';
 import { beatInputs } from './drive';
 import { createContext } from './gl';
@@ -10,7 +10,7 @@ import { parseDebugParams } from './query';
 import { createRng, formatSeed, freshSeed } from './rng';
 import { Sequencer, type Change } from './sequence';
 import { loadSettings, saveSettings, type Settings } from './settings';
-import { MotionClock, motionRate } from './motion';
+import { MotionClock, motionRate, motionTimeFor } from './motion';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
 import { Corner, DebugOverlay, Metronome, showFatal } from './ui';
 
@@ -80,6 +80,7 @@ function main(): void {
   // an algorithm forced by name never changes: it keeps its draw until "Draw again" or a reload
   const sequencer = new Sequencer(rng, 0, ALGORITHMS.some((a) => a.name === params.algo));
   const motion = new MotionClock();
+  const steady = new MotionClock();
   let current = make(live.intensity);
   let incoming: Running | undefined;
   let look: TransitionLook | undefined;
@@ -153,15 +154,19 @@ function main(): void {
       canvas.height = height;
     }
 
+    const shared = motion.update(dt, rate);
+    const steadyTime = steady.update(dt, 1);
+    const inputsFor = (def: AlgorithmDef): FrameInputs => ({
+      ...beat,
+      time: motionTimeFor(def, shared, steadyTime),
+      strobe: live.strobe,
+      bpm: r.bpm,
+      width,
+      height,
+    });
     stage.render(current.algorithm, incoming?.algorithm, look, {
-      inputs: {
-        ...beat,
-        time: motion.update(dt, rate),
-        strobe: live.strobe,
-        bpm: r.bpm,
-        width,
-        height,
-      },
+      inputs: inputsFor(current.def),
+      incomingInputs: incoming ? inputsFor(incoming.def) : undefined,
       fade,
     });
 
