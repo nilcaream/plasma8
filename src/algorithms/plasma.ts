@@ -85,7 +85,8 @@ export const PLASMA_MOVING_GROUPS: readonly (readonly string[])[] = [
 /** A moving value's outer bounds: the range it is drawn from in code. */
 const boundsOf = (key: string): [number, number] => drawBounds(PLASMA_KNOBS.find((k) => k.key === key)!.draw);
 
-export const drawPlasmaMoving = (rng: Rng): MovingValue[] => drawMoving(PLASMA_MOVING_GROUPS, boundsOf, rng);
+export const drawPlasmaMoving = (rng: Rng, bounds: (key: string) => readonly [number, number] = boundsOf): MovingValue[] =>
+  drawMoving(PLASMA_MOVING_GROUPS, bounds, rng);
 
 export const plasma: AlgorithmDef = {
   name: PLASMA_NAME,
@@ -93,5 +94,5 @@ export const plasma: AlgorithmDef = {
   steadySpeed: true,
   knobs: PLASMA_KNOBS,
   create: (gl, values, rng, options) =>
-    shaderAlgorithm(gl, PLASMA_NAME, source, plasmaParams, values, relativeAmountsOf, options?.moves === false ? [] : drawPlasmaMoving(rng)),
+    shaderAlgorithm(gl, PLASMA_NAME, source, plasmaParams, values, relativeAmountsOf, options?.moves === false ? [] : drawPlasmaMoving(rng, options?.bounds)),
 };

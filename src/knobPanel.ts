@@ -88,9 +88,15 @@ export class KnobPanel {
     });
   }
 
-  /** What a new instance is asked for: no moving values while "Moves off" is on. */
-  options(): CreateOptions {
-    return { moves: !this.movesOff };
+  /** What a new instance is asked for: no moving values while "Moves off" is on, and moving values inside the min..max set here. */
+  options(def: AlgorithmDef): CreateOptions {
+    return {
+      moves: !this.movesOff,
+      bounds: (key) => {
+        const r = this.rangeOf(def.name, def.knobs.find((k) => k.key === key)!, 0);
+        return [r.min, r.max];
+      },
+    };
   }
 
   /** Switches the moves off (every moving value stays where it is now) or on again (they move from their sub-ranges). */

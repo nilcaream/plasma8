@@ -90,12 +90,13 @@ export const TUNNEL_MOVING_COUNT = [2, 4] as const;
 
 const boundsOf = (key: string): [number, number] => drawBounds(TUNNEL_KNOBS.find((k) => k.key === key)!.draw);
 
-export const drawTunnelMoving = (rng: Rng): MovingValue[] => drawMoving(TUNNEL_MOVING_GROUPS, boundsOf, rng, TUNNEL_MOVING_COUNT);
+export const drawTunnelMoving = (rng: Rng, bounds: (key: string) => readonly [number, number] = boundsOf): MovingValue[] =>
+  drawMoving(TUNNEL_MOVING_GROUPS, bounds, rng, TUNNEL_MOVING_COUNT);
 
 export const tunnel: AlgorithmDef = {
   name: TUNNEL_NAME,
   home: 0.9,
   knobs: TUNNEL_KNOBS,
   create: (gl, values, rng, options) =>
-    shaderAlgorithm(gl, TUNNEL_NAME, source, tunnelParams, values, relativeAmountsOf, options?.moves === false ? [] : drawTunnelMoving(rng), divePhases()),
+    shaderAlgorithm(gl, TUNNEL_NAME, source, tunnelParams, values, relativeAmountsOf, options?.moves === false ? [] : drawTunnelMoving(rng, options?.bounds), divePhases()),
 };

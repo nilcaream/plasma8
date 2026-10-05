@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { AlgorithmDef, FrameInputs } from '../algorithm';
 import { drawKnobs } from '../knobs';
 import { createRng } from '../rng';
+import { movingRange } from '../moving';
 import { shaderAlgorithm } from '../shaderAlgorithm';
 import { plasma, plasmaParams } from './plasma';
 import plasmaSource from './plasma.frag?raw';
@@ -83,6 +84,25 @@ describe('plasma\'s moving values', () => {
         expect(def.create(gl, values, createRng(seed), { moves: false }).moving).toEqual([]);
         expect(def.create(gl, values, createRng(seed), { moves: true }).moving!.length).toBeGreaterThanOrEqual(2);
         expect(def.create(gl, values, createRng(seed)).moving!.length).toBeGreaterThanOrEqual(2);
+      }
+    }
+  });
+
+  it('moves every value inside the bounds it is given, as the panel\'s min and max, and in the code\'s when it is given none', () => {
+    for (const def of [plasma, tunnel]) {
+      for (let seed = 1; seed <= 20; seed++) {
+        const { gl } = mockGl();
+        const values = drawKnobs(def.knobs, createRng(seed));
+        const given = def.create(gl, values, createRng(seed), { moves: true, bounds: () => [0.2, 0.3] }).moving!;
+        expect(given.length).toBeGreaterThanOrEqual(2);
+        for (const m of given) {
+          expect([m.lo, m.hi]).toEqual([0.2, 0.3]);
+          const { min, max } = movingRange(m);
+          expect(min).toBeGreaterThanOrEqual(0.2 - 1e-12);
+          expect(max).toBeLessThanOrEqual(0.3 + 1e-12);
+        }
+        const code = def.create(gl, values, createRng(seed), { moves: true }).moving!;
+        expect(code.some((m) => m.lo !== 0.2 || m.hi !== 0.3)).toBe(true);
       }
     }
   });

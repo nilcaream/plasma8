@@ -48,6 +48,8 @@ export interface Algorithm {
 export interface CreateOptions {
   /** false: no value moves; every value stays as drawn. */
   moves: boolean;
+  /** The bounds a moving value moves inside: the panel's min and max for the knob; the code's range when left out. */
+  bounds?: (key: string) => readonly [number, number];
 }
 
 /** Makes an algorithm from values for its knobs; `rng` is for what it draws as it runs. */
