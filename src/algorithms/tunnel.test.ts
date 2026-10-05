@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { FrameInputs } from '../algorithm';
 import { drawKnobs } from '../knobs';
+import { drawMoving, movingAt, movingRange } from '../moving';
 import { createRng } from '../rng';
 import { TUNNEL_KNOBS, TUNNEL_MOVING_GROUPS, divePhases, drawTunnelMoving, tunnelParams } from './tunnel';
 import tunnelSource from './tunnel.frag?raw';
@@ -10,7 +11,7 @@ const at = (time: number): FrameInputs => ({
 });
 
 describe('divePhases', () => {
-  const values = { speed: 2, twist: 0.1, twistSign: 1, hueDrift: 0.03 };
+  const values = { speed: 2, twist: 0.1, hueDrift: 0.03 };
 
   it('sums speed · time step · value: with fixed values, the speed times the time times the value', () => {
     const phases = divePhases();
@@ -24,11 +25,22 @@ describe('divePhases', () => {
     expect(p.u_huePhase as number).toBeCloseTo(2 * 0.03 * (last - 10), 9);
   });
 
-  it('starts at 0 whenever the clock already runs, and carries the sign of the twist', () => {
+  it('starts at 0 whenever the clock already runs, and runs backwards while the twist is negative', () => {
     expect(divePhases()(values, at(500))).toEqual({ u_twistPhase: 0, u_huePhase: 0 });
     const phases = divePhases();
-    phases({ ...values, twistSign: -1 }, at(1));
-    expect(phases({ ...values, twistSign: -1 }, at(2)).u_twistPhase as number).toBeCloseTo(-2 * 0.1, 12);
+    phases({ ...values, twist: -0.1 }, at(1));
+    expect(phases({ ...values, twist: -0.1 }, at(2)).u_twistPhase as number).toBeCloseTo(-2 * 0.1, 12);
+  });
+
+  it('crosses zero smoothly: a twist going through 0 turns the phase round without a jump', () => {
+    const phases = divePhases();
+    phases({ ...values, twist: 0.2 }, at(0));
+    const rising = phases({ ...values, twist: 0.2 }, at(1)).u_twistPhase as number;
+    const atZero = phases({ ...values, twist: 0 }, at(2)).u_twistPhase as number;
+    const back = phases({ ...values, twist: -0.2 }, at(3)).u_twistPhase as number;
+    expect(rising).toBeCloseTo(2 * 0.2, 12);
+    expect(atZero).toBeCloseTo(rising, 12);
+    expect(back).toBeCloseTo(rising - 2 * 0.2, 12);
   });
 
   it('never jumps when a value moves: the phase keeps what was summed, and only later steps use the new value', () => {
@@ -66,6 +78,26 @@ describe('the tunnel shader', () => {
   });
 });
 
+describe('the twist', () => {
+  it('is drawn from -0.313 to 0.313 and moves through zero when its sub-range does', () => {
+    const rng = createRng(11);
+    const draws = Array.from({ length: 2000 }, () => drawKnobs(TUNNEL_KNOBS, rng).twist!);
+    expect(Math.min(...draws)).toBeLessThan(-0.3);
+    expect(Math.max(...draws)).toBeGreaterThan(0.3);
+    let crossed = 0;
+    for (let i = 0; i < 100; i++) {
+      const m = drawMoving([['twist']], (key) => (key === 'twist' ? [-0.313, 0.313] : [0, 1]), rng, [1, 1])[0]!;
+      const { min, max } = movingRange(m);
+      if (!(min < -0.05 && max > 0.05)) continue;
+      const seen = Array.from({ length: 1600 }, (_, j) => movingAt(m, 0.8, j * 0.25));
+      expect(Math.min(...seen)).toBeLessThan(0);
+      expect(Math.max(...seen)).toBeGreaterThan(0);
+      crossed++;
+    }
+    expect(crossed).toBeGreaterThan(10);
+  });
+});
+
 describe('the far end', () => {
   it('is drawn from -0.26 to 0.26 on each axis, reaching both ends', () => {
     const rng = createRng(8);
@@ -81,7 +113,7 @@ describe('the far end', () => {
 });
 
 describe('the tunnel\'s moving values', () => {
-  const NEVER = ['ringGap', 'speed', 'sides', 'ribs', 'twistSign', 'flashGain', 'A.kick', 'A.snare', 'A.crash'];
+  const NEVER = ['ringGap', 'speed', 'sides', 'ribs', 'flashGain', 'A.kick', 'A.snare', 'A.crash'];
 
   it('name four groups, all values of the tunnel\'s own knobs, and never the ones that read as speed or count', () => {
     expect(TUNNEL_MOVING_GROUPS).toHaveLength(4);

@@ -62,9 +62,6 @@ export function fixedGroups(knobs: readonly Knob[]): { group: string; knobs: Kno
   return groups;
 }
 
-/** A sign, -1 or 1, as often each. */
-export const sign = (key: string): Knob => pick(key, [-1, 1], [-1, 1]);
-
 /** Three knobs `key.0`..`key.2` drawn alike, as for one palette vector. */
 export const triple = (key: string, min: number, max: number, wide: readonly [number, number]): Knob[] =>
   [0, 1, 2].map((i) => range(`${key}.${i}`, min, max, wide));

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_GAIN, VOICE_NAMES, amountsOf, flash, relativeAmountsOf } from '../beatVoices';
-import { drawKnobs, fixedGroups } from '../knobs';
+import { drawBounds, drawKnobs, fixedGroups } from '../knobs';
 import { stepShape } from '../motion';
 import { createRng, type Rng } from '../rng';
 import type { ShaderParams } from '../shaderAlgorithm';
@@ -180,6 +180,32 @@ describe('plasma\'s random ranges', () => {
       expect(Math.min(...seen)).toBeLessThan(lo + (hi - lo) * 0.02);
       expect(Math.max(...seen)).toBeGreaterThan(hi - (hi - lo) * 0.02);
     }
+  });
+});
+
+describe('signed values', () => {
+  const ALL = [
+    ['plasma', PLASMA_KNOBS], ['domain-warped-noise', WARP_NOISE_KNOBS], ['julia', JULIA_KNOBS], ['tunnel', TUNNEL_KNOBS],
+  ] as const;
+
+  it('are one range through zero each, with no sign knob left in any algorithm', () => {
+    for (const [, knobs] of ALL) {
+      expect(knobs.filter((k) => /Sign$/.test(k.key))).toEqual([]);
+      expect(knobs.filter((k) => k.draw.kind === 'pick' && Math.min(...k.draw.values) === -1 && Math.max(...k.draw.values) === 1 && k.draw.values.length === 2)).toEqual([]);
+    }
+  });
+
+  it.each([
+    ['plasma', PLASMA_KNOBS, 'swirl', 1.2, 3],
+    ['domain-warped-noise', WARP_NOISE_KNOBS, 'rotate', 0.03, 0.1],
+    ['julia', JULIA_KNOBS, 'barTheta', 0.04, 0.12],
+    ['julia', JULIA_KNOBS, 'spin', 0.05, 0.2],
+    ['julia', JULIA_KNOBS, 'barTurn', 1, 2],
+    ['tunnel', TUNNEL_KNOBS, 'twist', 0.313, 0.5],
+  ] as const)('%s: %s is drawn from -M to M and tried from -X to X', (_name, knobs, key, m, x) => {
+    const knob = knobs.find((k) => k.key === key)!;
+    expect(drawBounds(knob.draw)).toEqual([-m, m]);
+    expect(knob.wide).toEqual([-x, x]);
   });
 });
 

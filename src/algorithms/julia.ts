@@ -1,5 +1,5 @@
 import type { AlgorithmDef } from '../algorithm';
-import { drawKnobs, fixed, int, pick, range, sign, triple, vec, type Knob, type Values } from '../knobs';
+import { drawKnobs, fixed, int, range, triple, vec, type Knob, type Values } from '../knobs';
 import { stepKnobs } from '../motion';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
@@ -21,13 +21,10 @@ export const JULIA_KNOBS: readonly Knob[] = [
   range('theta', 0, TAU, [0, TAU]),
   range('edge', 0.94, 1.02, [0.8, 1.15]),
   range('wander', 0.03, 0.12, [0, 0.4]),
-  sign('barThetaSign'),
-  range('barTheta', 0.01, 0.04, [0, 0.12]),
+  range('barTheta', -0.04, 0.04, [-0.12, 0.12]),
   range('zoom', 1.0, 1.8, [0.4, 4]),
-  sign('spinSign'),
-  range('spin', 0.01, 0.05, [0, 0.2]),
-  sign('barTurnSign'),
-  pick('barTurn', [0.5, 1], [0, 2], false),
+  range('spin', -0.05, 0.05, [-0.2, 0.2]),
+  range('barTurn', -1, 1, [-2, 2]),
   range('bands', 1.5, 5.101, [0.3, 10]),
   // fixed in code: how the picture follows the beat, and the bar turn's shape (set on the debug panel)
   fixed('beatZoom', 0.011, [0, 0.5]),
@@ -50,11 +47,11 @@ export function juliaParams(v: Values): ShaderParams {
     u_theta: v.theta!,
     u_edge: v.edge!,
     u_wander: v.wander!,
-    u_barTheta: v.barThetaSign! * v.barTheta!,
+    u_barTheta: v.barTheta!,
     u_zoom: v.zoom!,
     u_center: [v.centreOff! * Math.cos(v.centreAngle!), v.centreOff! * Math.sin(v.centreAngle!)],
-    u_spin: v.spinSign! * v.spin!,
-    u_barTurn: v.barTurnSign! * v.barTurn!,
+    u_spin: v.spin!,
+    u_barTurn: v.barTurn!,
     u_bands: v.bands!,
     u_beatZoom: v.beatZoom!,
     u_barZoom: v.barZoom!,

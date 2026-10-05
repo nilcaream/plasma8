@@ -1,6 +1,6 @@
 import type { AlgorithmDef } from '../algorithm';
 import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
-import { drawBounds, drawKnobs, fixed, range, int, sign, triple, unit, vec, type Knob, type Values } from '../knobs';
+import { drawBounds, drawKnobs, fixed, range, int, triple, unit, vec, type Knob, type Values } from '../knobs';
 import { drawMoving, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
@@ -32,8 +32,7 @@ export const PLASMA_KNOBS: readonly Knob[] = [
   range('orbit.0', 0, 1.5, [0, 1.5]),
   range('orbit.1', 0, 0.7, [0, 1.5]),
   range('scale', 0.9, 1.8, [0.3, 4]),
-  sign('swirlSign'),
-  range('swirl', 0, 1.2, [0, 3]),
+  range('swirl', -1.2, 1.2, [-3, 3]),
   int('mode', 0, 2, [0, 2]),
   range('cycles', 0.6, 1.3, [0.1, 3]),
   // how hard each beat voice flashes this run: the only thing that follows the beat
@@ -57,7 +56,7 @@ export function plasmaParams(v: Values): ShaderParams {
     u_speed: vec(v, 'speed', 4),
     u_orbit: vec(v, 'orbit', 2),
     u_scale: v.scale!,
-    u_swirl: v.swirlSign! * v.swirl!,
+    u_swirl: v.swirl!,
     u_mode: v.mode!,
     u_cycles: v.cycles!,
     u_flashGain: v.flashGain!,

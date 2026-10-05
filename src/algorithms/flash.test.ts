@@ -116,7 +116,7 @@ describe('plasma\'s moving values', () => {
       expect(f.get('u_scale')).toBeGreaterThanOrEqual(1.125 - 1e-9);
       expect(f.get('u_scale')).toBeLessThanOrEqual(1.575 + 1e-9);
       expect(f.get('u_scale')).not.toBe(f.get('drawn scale'));
-      expect(Math.abs(f.get('u_swirl')!)).toBeCloseTo(f.get('drawn swirl')!, 12);
+      expect(f.get('u_swirl')).toBeCloseTo(f.get('drawn swirl')!, 12);
     }
   });
 });
@@ -125,7 +125,7 @@ describe('the tunnel\'s dive phases', () => {
   it('reach the shader and grow as the clock runs, and the far end reaches it as drawn', () => {
     const { gl, floats } = mockGl();
     const values = drawKnobs(tunnel.knobs, createRng(3));
-    Object.assign(values, { twist: 0.2, twistSign: 1, hueDrift: 0.04, speed: 2, 'farEnd.x': 0.2, 'farEnd.y': -0.1 });
+    Object.assign(values, { twist: 0.2, hueDrift: 0.04, speed: 2, 'farEnd.x': 0.2, 'farEnd.y': -0.1 });
     // the moving pick is random: draw instances until neither twist nor hueDrift moves, so their values are the ones set above
     let algorithm = tunnel.create(gl, values, createRng(0));
     for (let seed = 1; (algorithm.moving ?? []).some((m) => m.key === 'twist' || m.key === 'hueDrift'); seed++) {

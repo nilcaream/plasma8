@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { ALGORITHMS } from './algorithms';
 import {
-  drawBounds, drawFrom, drawKnob, drawKnobs, fixed, fixedGroups, formatRanges, int, setFixed, isChoice, pick, range, setMax, setMin, setValue, settle, share, sign,
+  drawBounds, drawFrom, drawKnob, drawKnobs, fixed, fixedGroups, formatRanges, int, setFixed, isChoice, pick, range, setMax, setMin, setValue, settle, share,
   startRange, step, type Knob, type UserRange,
 } from './knobs';
 import { createRng } from './rng';
+
+/** A choice of two, the example for the choice behaviour of the sliders. */
+const sign = (key: string): Knob => pick(key, [-1, 1], [-1, 1]);
 
 describe('drawKnob', () => {
   const rng = createRng(17);

@@ -1,6 +1,6 @@
 import type { AlgorithmDef, FrameInputs } from '../algorithm';
 import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
-import { drawBounds, drawKnobs, fixed, int, range, sign, triple, vec, type Knob, type Values } from '../knobs';
+import { drawBounds, drawKnobs, fixed, int, range, triple, vec, type Knob, type Values } from '../knobs';
 import { drawMoving, type MovingGroup, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
@@ -24,8 +24,7 @@ export const TUNNEL_KNOBS: readonly Knob[] = [
   range('speed', 2, 3, [0, 8]),
   range('ringGap', 0.481, 2.058, [0.2, 4]),
   int('ribs', 1, 14, [1, 32]),
-  sign('twistSign'),
-  range('twist', 0, 0.313, [0, 0.5]),
+  range('twist', -0.313, 0.313, [-0.5, 0.5]),
   range('hueDrift', 0.01, 0.05, [0, 0.2]),
   // where the far end sits on screen (uv); the tube bends to it
   range('farEnd.x', -0.26, 0.26, [-0.6, 0.6]),
@@ -46,7 +45,7 @@ export function tunnelParams(v: Values): ShaderParams {
     u_speed: v.speed!,
     u_ringGap: v.ringGap!,
     u_ribs: v.ribs!,
-    u_twist: v.twistSign! * v.twist!,
+    u_twist: v.twist!,
     u_hueDrift: v.hueDrift!,
     u_farEnd: [v['farEnd.x']!, v['farEnd.y']!],
     u_flashGain: v.flashGain!,
@@ -68,7 +67,7 @@ export function divePhases(): (v: Values, inputs: FrameInputs) => ShaderParams {
   return (v, inputs) => {
     const dive = last === undefined ? 0 : Math.max(0, inputs.time - last) * v.speed!;
     last = inputs.time;
-    twist += dive * v.twistSign! * v.twist!;
+    twist += dive * v.twist!;
     hue += dive * v.hueDrift!;
     return { u_twistPhase: twist, u_huePhase: hue };
   };

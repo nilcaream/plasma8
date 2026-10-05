@@ -1,6 +1,6 @@
 import type { AlgorithmDef } from '../algorithm';
 import { DEFAULT_GAIN, GAIN_RANGE, amountKnobs, amountsOf } from '../beatVoices';
-import { drawKnobs, fixed, range, sign, triple, vec, type Knob, type Values } from '../knobs';
+import { drawKnobs, fixed, range, triple, vec, type Knob, type Values } from '../knobs';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './warpNoise.frag?raw';
@@ -22,8 +22,7 @@ export const WARP_NOISE_KNOBS: readonly Knob[] = [
   range('offset2.0', 0, 60, [0, 60]),
   range('offset2.1', 0, 60, [0, 60]),
   range('warp', 2.5, 4.5, [0, 8]),
-  sign('rotateSign'),
-  range('rotate', 0.008, 0.03, [0, 0.1]),
+  range('rotate', -0.03, 0.03, [-0.1, 0.1]),
   // how hard each beat voice flashes this run: the only thing that follows the beat
   ...amountKnobs(),
   // fixed in code: the flash gain
@@ -41,7 +40,7 @@ export function warpNoiseParams(v: Values): ShaderParams {
     u_offset: vec(v, 'offset', 2),
     u_offset2: vec(v, 'offset2', 2),
     u_warp: v.warp!,
-    u_rotate: v.rotateSign! * v.rotate!,
+    u_rotate: v.rotate!,
     u_flashGain: v.flashGain!,
   };
 }
