@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { FrameInputs } from '../algorithm';
 import { drawKnobs } from '../knobs';
+import { MotionClock, steadyRate } from '../motion';
 import { drawMoving, movingAt, movingRange } from '../moving';
 import { createRng } from '../rng';
 import { TUNNEL_KNOBS, TUNNEL_MOVING_GROUPS, divePhases, drawTunnelMoving, tunnelParams } from './tunnel';
@@ -53,6 +54,23 @@ describe('divePhases', () => {
     const after = phases({ ...values, twist: 0.3, hueDrift: 0.05 }, at(101));
     expect(after.u_twistPhase as number).toBeCloseTo(2 * 0.1 * 100 + 2 * 0.3, 9);
     expect(after.u_huePhase as number).toBeCloseTo(2 * 0.03 * 100 + 2 * 0.05, 9);
+  });
+
+  it('follows the steady clock: ×1.75 at intensity 1 against 0, in a straight line, with no jump when the slider moves', () => {
+    const clock = new MotionClock();
+    const phases = divePhases();
+    const run = (intensity: number, seconds: number): number => {
+      const before = phases(values, at(clock.update(0, 1))).u_twistPhase as number;
+      let now = before;
+      for (let i = 0; i < seconds * 60; i++) now = phases(values, at(clock.update(1 / 60, steadyRate(intensity)))).u_twistPhase as number;
+      return now - before;
+    };
+    const slow = run(0, 10);
+    const half = run(0.5, 10);
+    const fast = run(1, 10);
+    expect(fast / slow).toBeCloseTo(1.75, 6);
+    expect(half / slow).toBeCloseTo(1.375, 6);
+    expect(slow).toBeCloseTo(2 * 0.1 * 10, 6);
   });
 
   it('never goes back when the clock does', () => {

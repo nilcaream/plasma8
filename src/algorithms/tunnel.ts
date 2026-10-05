@@ -95,6 +95,7 @@ export const drawTunnelMoving = (rng: Rng, bounds: (key: string) => readonly [nu
 export const tunnel: AlgorithmDef = {
   name: TUNNEL_NAME,
   home: 0.9,
+  steadySpeed: true,
   knobs: TUNNEL_KNOBS,
   create: (gl, values, rng, options) =>
     shaderAlgorithm(gl, TUNNEL_NAME, source, tunnelParams, values, relativeAmountsOf, options?.moves === false ? [] : drawTunnelMoving(rng, options?.bounds), divePhases()),
