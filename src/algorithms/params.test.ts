@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DEFAULT_GAIN, VOICE_NAMES, amountsOf, flash } from '../beatVoices';
 import { drawKnobs } from '../knobs';
 import { stepShape } from '../motion';
 import { createRng, type Rng } from '../rng';
@@ -60,8 +61,7 @@ describe('julia\'s fixed values', () => {
 
 describe('plasma\'s and warp noise\'s fixed values', () => {
   const PLASMA_FIXED = {
-    u_beatBreath: 0, u_barBreath: 0, u_swirlSpin: 0, u_orbitSpeed: 0,
-    u_colourDrift: 0, u_beatColour: 0.005, u_beatLight: 0.726, u_barLight: 0.532,
+    u_flashGain: 1, u_swirlSpin: 0, u_orbitSpeed: 0, u_colourDrift: 0,
   };
   const WARP_FIXED = {
     u_beatBreath: 0.1, u_barBreath: 0.18, u_beatColour: 0.06, u_barColour: 0.15, u_beatLight: 0.09, u_barLight: 0.06,
@@ -77,6 +77,40 @@ describe('plasma\'s and warp noise\'s fixed values', () => {
   it('are each read by the shader as a uniform', () => {
     for (const key of Object.keys(PLASMA_FIXED)) expect(plasmaSource).toContain(`uniform float ${key};`);
     for (const key of Object.keys(WARP_FIXED)) expect(warpSource).toContain(`uniform float ${key};`);
+  });
+});
+
+describe('plasma\'s beat flash', () => {
+  it('draws each voice\'s strength from 0 to 1, reaching both ends', () => {
+    const rng = createRng(4);
+    const draws = Array.from({ length: 3000 }, () => amountsOf(drawKnobs(PLASMA_KNOBS, rng)));
+    for (const name of VOICE_NAMES) {
+      const seen = draws.map((a) => a[name]);
+      expect(Math.min(...seen)).toBeGreaterThanOrEqual(0);
+      expect(Math.max(...seen)).toBeLessThan(1);
+      expect(Math.min(...seen)).toBeLessThan(0.02);
+      expect(Math.max(...seen)).toBeGreaterThan(0.98);
+    }
+  });
+
+  it('takes each strength from its own knob', () => {
+    expect(amountsOf({ 'A.kick': 0.1, 'A.snare': 0.2, 'A.crash': 0.3 })).toEqual({ kick: 0.1, snare: 0.2, crash: 0.3 });
+  });
+
+  it('never flashes at intensity 0, whatever the strengths and the beat', () => {
+    const rng = createRng(5);
+    for (let i = 0; i < 50; i++) {
+      const amounts = amountsOf(drawKnobs(PLASMA_KNOBS, rng));
+      for (let beats = 0; beats < 8; beats += 0.05) expect(flash(beats, 0, amounts).total).toBe(0);
+    }
+  });
+
+  it('starts from the beats page\'s gain, and the shader has no other beat or bar pulse', () => {
+    expect(plasmaParams(drawKnobs(PLASMA_KNOBS, createRng(1))).u_flashGain).toBe(DEFAULT_GAIN);
+    expect(plasmaSource).toContain('u_flash');
+    for (const gone of ['beatPulse', 'barPulse', 'u_beatLight', 'u_barLight', 'u_beatColour', 'u_beatBreath', 'u_barBreath']) {
+      expect(plasmaSource).not.toContain(gone);
+    }
   });
 });
 

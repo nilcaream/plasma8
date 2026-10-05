@@ -7,6 +7,7 @@
  * Positions are in beats from beat 1 of a bar: 0 is beat 1, 1 is beat 2.
  */
 
+import { range, type Knob, type Values } from './knobs';
 import type { Rng } from './rng';
 
 export type VoiceName = 'kick' | 'snare' | 'crash';
@@ -65,6 +66,12 @@ export const AMOUNT_RANGE = [0, 1] as const;
 export function drawAmounts(rng: Rng): Amounts {
   return { kick: rng.range(...AMOUNT_RANGE), snare: rng.range(...AMOUNT_RANGE), crash: rng.range(...AMOUNT_RANGE) };
 }
+
+/** The voices' strengths as an algorithm's random knobs, drawn from AMOUNT_RANGE: `A.kick`, `A.snare`, `A.crash`. */
+export const amountKnobs = (): Knob[] => VOICE_NAMES.map((name) => range(`A.${name}`, ...AMOUNT_RANGE, AMOUNT_RANGE));
+
+/** The strengths out of an algorithm's knob values. */
+export const amountsOf = (v: Values): Amounts => ({ kick: v['A.kick']!, snare: v['A.snare']!, crash: v['A.crash']! });
 
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 

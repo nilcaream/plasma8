@@ -1,6 +1,7 @@
 import type { Algorithm, FrameInputs } from './algorithm';
 import { FULLSCREEN_VERTEX, createProgram } from './gl';
 import { BEATS_PER_BAR } from './clock';
+import { flash, type Amounts } from './beatVoices';
 import type { Values } from './knobs';
 import { BarSteps, stepShape } from './motion';
 
@@ -21,6 +22,7 @@ uniform float u_beatPulse;
 uniform float u_barPulse;
 uniform float u_barSteps;
 uniform float u_intensity;
+uniform float u_flash; // the beat voices' flash F, 0..1 (src/beatVoices.ts); 0 for an algorithm without voices
 out vec4 fragColor;
 
 float hash12(vec2 p) {
@@ -52,7 +54,7 @@ void main() {
 }
 `;
 
-const COMMON_UNIFORMS = ['u_resolution', 'u_time', 'u_beatPhase', 'u_barPhase', 'u_beatPulse', 'u_barPulse', 'u_barSteps', 'u_intensity'] as const;
+const COMMON_UNIFORMS = ['u_resolution', 'u_time', 'u_beatPhase', 'u_barPhase', 'u_beatPulse', 'u_barPulse', 'u_barSteps', 'u_intensity', 'u_flash'] as const;
 
 /**
  * Programs by shader body: every change makes a new instance with new
@@ -77,6 +79,8 @@ export class ShaderAlgorithm {
   private readonly frameLocations = new Map<string, WebGLUniformLocation | null>();
   /** Its own bar steps, so each algorithm can have its own step shape (its fixed knobs, src/motion.ts). */
   readonly steps = new BarSteps();
+  /** The strengths of its beat voices; without them there is no flash. */
+  amounts: Amounts | undefined;
 
   /** `perFrame`, when given, returns uniforms of the algorithm's own that change every frame. */
   constructor(
@@ -120,6 +124,7 @@ export class ShaderAlgorithm {
     gl.uniform1f(c.get('u_barPulse') ?? null, inputs.barPulse);
     gl.uniform1f(c.get('u_barSteps') ?? null, this.steps.update(Math.floor(inputs.beats / BEATS_PER_BAR), inputs.barPhase, inputs.intensity));
     gl.uniform1f(c.get('u_intensity') ?? null, inputs.intensity);
+    gl.uniform1f(c.get('u_flash') ?? null, this.amounts ? flash(inputs.beats, inputs.intensity, this.amounts).total : 0);
     for (const { location, value } of this.params) setUniform(gl, location, value);
     if (this.perFrame) {
       for (const [uniform, value] of Object.entries(this.perFrame(inputs))) {
@@ -142,9 +147,11 @@ export function shaderAlgorithm(
   shaderBody: string,
   params: (values: Values) => ShaderParams,
   values: Values,
+  amounts?: (values: Values) => Amounts,
 ): Algorithm {
   const shader = new ShaderAlgorithm(gl, name, shaderBody, params(values));
   shader.steps.shape = stepShape(values);
+  shader.amounts = amounts?.(values);
   return {
     name,
     draw: (target, inputs) => shader.draw(target, inputs),
@@ -152,6 +159,7 @@ export function shaderAlgorithm(
     tune: (v) => {
       shader.tune(params(v));
       shader.steps.shape = stepShape(v);
+      shader.amounts = amounts?.(v);
     },
   };
 }

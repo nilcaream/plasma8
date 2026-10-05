@@ -1,4 +1,5 @@
 import type { AlgorithmDef } from '../algorithm';
+import { DEFAULT_GAIN, GAIN_RANGE, amountKnobs, amountsOf } from '../beatVoices';
 import { drawKnobs, fixed, range, int, sign, triple, unit, vec, type Knob, type Values } from '../knobs';
 import { STEP_KNOBS } from '../motion';
 import type { Rng } from '../rng';
@@ -37,15 +38,13 @@ export const PLASMA_KNOBS: readonly Knob[] = [
   range('cycles', 0.6, 1.3, [0.1, 3]),
   sign('barShiftSign'),
   range('barShift', 0.12, 0.3, [0, 0.6]),
-  // fixed in code: how the picture follows the music (set on the debug panel), and the bar step's shape
-  fixed('beatBreath', 0, [0, 0.45]),
-  fixed('barBreath', 0, [0, 0.45]),
+  // how hard each beat voice flashes this run
+  ...amountKnobs(),
+  // fixed in code: the flash gain, how the field moves (set on the debug panel), and the bar step's shape
+  fixed('flashGain', DEFAULT_GAIN, GAIN_RANGE),
   fixed('swirlSpin', 0, [0, 0.5]),
   fixed('orbitSpeed', 0, [0, 4]),
   fixed('colourDrift', 0, [0, 0.5]),
-  fixed('beatColour', 0.005, [0, 0.5]),
-  fixed('beatLight', 0.726, [0, 1]),
-  fixed('barLight', 0.532, [0, 1]),
   ...STEP_KNOBS,
 ];
 
@@ -65,14 +64,10 @@ export function plasmaParams(v: Values): ShaderParams {
     u_mode: v.mode!,
     u_cycles: v.cycles!,
     u_barShift: v.barShiftSign! * v.barShift!,
-    u_beatBreath: v.beatBreath!,
-    u_barBreath: v.barBreath!,
+    u_flashGain: v.flashGain!,
     u_swirlSpin: v.swirlSpin!,
     u_orbitSpeed: v.orbitSpeed!,
     u_colourDrift: v.colourDrift!,
-    u_beatColour: v.beatColour!,
-    u_beatLight: v.beatLight!,
-    u_barLight: v.barLight!,
   };
 }
 
@@ -83,5 +78,5 @@ export const plasma: AlgorithmDef = {
   home: 0.35,
   strobe: 'snare',
   knobs: PLASMA_KNOBS,
-  create: (gl, values) => shaderAlgorithm(gl, PLASMA_NAME, source, plasmaParams, values),
+  create: (gl, values) => shaderAlgorithm(gl, PLASMA_NAME, source, plasmaParams, values, amountsOf),
 };
