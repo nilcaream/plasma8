@@ -36,6 +36,7 @@
       /* The reserved corner: about 100x100 px, never a tap area. */
       #corner {
         position: fixed;
+        z-index: 1; /* above the ?debug knob panel, so the menu is never covered */
         top: env(safe-area-inset-top, 0px);
         right: env(safe-area-inset-right, 0px);
         width: 100px;
@@ -160,12 +161,12 @@
         display: block;
       }
 
-      /* ?debug only: the running algorithm's random values, under the reserved corner. */
+      /* ?debug only: the running algorithm's random values, on the left under the overlay and above the metronome. */
       #knobs {
         position: fixed;
-        top: calc(env(safe-area-inset-top, 0px) + 100px);
-        right: calc(env(safe-area-inset-right, 0px) + 12px);
-        bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+        top: calc(env(safe-area-inset-top, 0px) + 116px);
+        left: calc(env(safe-area-inset-left, 0px) + 12px);
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 70px);
         width: min(340px, calc(100vw - 24px));
         display: none;
         flex-direction: column;
