@@ -29,7 +29,7 @@ export const TUNNEL_KNOBS: readonly Knob[] = [
   // how hard each beat voice flashes this run: the only thing that follows the beat
   ...amountKnobs(),
   // fixed in code: the flash gain
-  fixed('flashGain', 0.5, GAIN_RANGE, 'follows the beat'),
+  fixed('flashGain', 1, GAIN_RANGE, 'follows the beat'),
 ];
 
 export function tunnelParams(v: Values): ShaderParams {

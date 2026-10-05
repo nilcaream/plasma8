@@ -184,8 +184,8 @@ describe('plasma\'s random ranges', () => {
 });
 
 describe('tunnel\'s beat flash', () => {
-  it('has the flash gain 0.5 as a fixed value "follows the beat", read by the shader', () => {
-    expect(tunnelParams(drawKnobs(TUNNEL_KNOBS, createRng(1))).u_flashGain).toBe(0.5);
+  it('has the flash gain 1 as a fixed value "follows the beat", read by the shader', () => {
+    expect(tunnelParams(drawKnobs(TUNNEL_KNOBS, createRng(1))).u_flashGain).toBe(1);
     expect(fixedGroups(TUNNEL_KNOBS).map((g) => [g.group, g.knobs.map((k) => k.key)])).toEqual([['follows the beat', ['flashGain']]]);
     expect(tunnelSource).toContain('u_flashGain * u_flash');
     expect(drawKnobs(TUNNEL_KNOBS, createRng(2))).toHaveProperty('A.kick');
