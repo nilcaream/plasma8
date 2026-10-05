@@ -96,6 +96,6 @@ export const tunnel: AlgorithmDef = {
   name: TUNNEL_NAME,
   home: 0.9,
   knobs: TUNNEL_KNOBS,
-  create: (gl, values, rng) =>
-    shaderAlgorithm(gl, TUNNEL_NAME, source, tunnelParams, values, relativeAmountsOf, drawTunnelMoving(rng), divePhases()),
+  create: (gl, values, rng, options) =>
+    shaderAlgorithm(gl, TUNNEL_NAME, source, tunnelParams, values, relativeAmountsOf, options?.moves === false ? [] : drawTunnelMoving(rng), divePhases()),
 };

@@ -155,10 +155,12 @@ export function shaderAlgorithm(
   // the moving values are worked out again every frame, over the latest values of the rest; `phases`, when given,
   // is called once a frame with them and adds the uniforms of its own (an algorithm's running sums)
   let latest = values;
+  let held = false;
   const perFrame = moving.length > 0 || phases
     ? (inputs: FrameInputs): ShaderParams => {
-        const now = moving.length > 0 ? { ...latest, ...movingValues(moving, inputs.intensity, inputs.beats) } : latest;
-        return { ...(moving.length > 0 ? params(now) : {}), ...phases?.(now, inputs) };
+        const moves = moving.length > 0 && !held;
+        const now = moves ? { ...latest, ...movingValues(moving, inputs.intensity, inputs.beats) } : latest;
+        return { ...(moves ? params(now) : {}), ...phases?.(now, inputs) };
       }
     : undefined;
   const shader = new ShaderAlgorithm(gl, name, shaderBody, params(values), perFrame);
@@ -169,6 +171,9 @@ export function shaderAlgorithm(
     moving,
     draw: (target, inputs) => shader.draw(target, inputs),
     dispose: () => shader.dispose(),
+    hold: (on) => {
+      held = on;
+    },
     tune: (v) => {
       latest = v;
       shader.tune(params(v));

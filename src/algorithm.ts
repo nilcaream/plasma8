@@ -39,7 +39,15 @@ export interface Algorithm {
   draw(target: WebGLFramebuffer | null, inputs: FrameInputs): void;
   /** Takes new values for its knobs while it runs (the debug panel's overrides). */
   tune(values: Values): void;
+  /** While held, its moving values stand at the values last given to `tune`; released, they move again (the debug panel's "Moves off"). */
+  hold?(on: boolean): void;
   dispose(): void;
+}
+
+/** What the debug panel asks of a new instance. */
+export interface CreateOptions {
+  /** false: no value moves; every value stays as drawn. */
+  moves: boolean;
 }
 
 /** Makes an algorithm from values for its knobs; `rng` is for what it draws as it runs. */
@@ -51,5 +59,5 @@ export interface AlgorithmDef {
   readonly steadySpeed?: boolean;
   /** Everything it draws at random when it starts. */
   readonly knobs: readonly Knob[];
-  create(gl: WebGL2RenderingContext, values: Values, rng: Rng): Algorithm;
+  create(gl: WebGL2RenderingContext, values: Values, rng: Rng, options?: CreateOptions): Algorithm;
 }

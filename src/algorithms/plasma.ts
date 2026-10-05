@@ -92,5 +92,6 @@ export const plasma: AlgorithmDef = {
   home: 0.35,
   steadySpeed: true,
   knobs: PLASMA_KNOBS,
-  create: (gl, values, rng) => shaderAlgorithm(gl, PLASMA_NAME, source, plasmaParams, values, relativeAmountsOf, drawPlasmaMoving(rng)),
+  create: (gl, values, rng, options) =>
+    shaderAlgorithm(gl, PLASMA_NAME, source, plasmaParams, values, relativeAmountsOf, options?.moves === false ? [] : drawPlasmaMoving(rng)),
 };

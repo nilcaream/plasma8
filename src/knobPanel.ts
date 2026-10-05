@@ -9,7 +9,7 @@
  * (how the picture follows the music), starting at the code's value (the tick).
  */
 
-import type { Algorithm, AlgorithmDef } from './algorithm';
+import type { Algorithm, AlgorithmDef, CreateOptions } from './algorithm';
 import {
   drawBounds, drawFrom, fixedGroups, formatRanges, isFixed, setFixed, setMax, setMin, setValue, share, startRange, step,
   type Knob, type UserRange, type Values,
@@ -50,8 +50,10 @@ export class KnobPanel {
   private rows: Row[] = [];
   private shown: Shown | undefined;
   private ranges: Record<string, UserRange> = {};
-  /** The shown algorithm's moving values by knob key. */
+  /** The shown algorithm's moving values by knob key; empty while the moves are off. */
   private moving = new Map<string, MovingValue>();
+  /** The "Moves off" switch; this load only. */
+  private movesOff = false;
 
   constructor(
     private readonly enabled: boolean,
@@ -67,6 +69,7 @@ export class KnobPanel {
           <button type="button" data-do="again" title="Start this algorithm again now, every value drawn from your min..max">Draw again</button>
           <button type="button" data-do="copy" title="Copy every random knob's min and max, and every fixed value, as text">Copy</button>
         </div>
+        <label class="switch" title="Nothing moves: every value stays where it is and its sliders work like any other knob's. Not remembered across loads."><input type="checkbox" data-do="moves"> Moves off</label>
         <textarea readonly rows="6" hidden></textarea>
         <div class="list"></div>
       </div>`;
@@ -80,6 +83,23 @@ export class KnobPanel {
     });
     this.root.querySelector('[data-do=again]')!.addEventListener('click', onDrawAgain);
     this.root.querySelector('[data-do=copy]')!.addEventListener('click', () => void this.copy());
+    this.root.querySelector<HTMLInputElement>('[data-do=moves]')!.addEventListener('change', (e) => {
+      this.setMovesOff((e.target as HTMLInputElement).checked);
+    });
+  }
+
+  /** What a new instance is asked for: no moving values while "Moves off" is on. */
+  options(): CreateOptions {
+    return { moves: !this.movesOff };
+  }
+
+  /** Switches the moves off (every moving value stays where it is now) or on again (they move from their sub-ranges). */
+  private setMovesOff(off: boolean): void {
+    this.movesOff = off;
+    const s = this.shown;
+    if (!s) return;
+    if (off) for (const key of this.moving.keys()) s.values[key] = this.ranges[key]!.value;
+    this.show(s);
   }
 
   contains(target: EventTarget | null): boolean {
@@ -99,7 +119,8 @@ export class KnobPanel {
     const same = this.shown?.def === s.def;
     this.shown = s;
     this.ranges = {};
-    this.moving = new Map((s.algorithm.moving ?? []).map((m) => [m.key, m]));
+    this.moving = new Map((this.movesOff ? [] : s.algorithm.moving ?? []).map((m) => [m.key, m]));
+    s.algorithm.hold?.(this.movesOff);
     for (const knob of s.def.knobs) {
       const m = this.moving.get(knob.key);
       if (m) {

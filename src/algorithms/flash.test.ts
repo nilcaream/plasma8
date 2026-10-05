@@ -59,6 +59,34 @@ describe('plasma\'s moving values', () => {
     return floats;
   };
 
+  it('stands still at the value it is given while held, and moves again when released', () => {
+    const { gl, floats } = mockGl();
+    const values = drawKnobs(plasma.knobs, createRng(1));
+    const algorithm = shaderAlgorithm(gl, 'plasma', plasmaSource, plasmaParams, values, undefined, [{ key: 'scale', lo: 0.9, hi: 1.8, draw }]);
+    const scaleAt = (beats: number): number | undefined => {
+      algorithm.draw(null, frame(beats, 0, 1, 120));
+      return floats.get('u_scale');
+    };
+    algorithm.hold!(true);
+    algorithm.tune({ ...values, scale: 1.3 });
+    expect([scaleAt(0.3), scaleAt(5.7), scaleAt(11.1)]).toEqual([1.3, 1.3, 1.3]);
+    algorithm.hold!(false);
+    expect(scaleAt(0.3)).not.toBe(scaleAt(5.7));
+    expect(scaleAt(0.3)).not.toBe(1.3);
+  });
+
+  it('has no moving values when made with the moves off, and some when made with them on or by default', () => {
+    for (const def of [plasma, tunnel]) {
+      for (let seed = 1; seed <= 20; seed++) {
+        const { gl } = mockGl();
+        const values = drawKnobs(def.knobs, createRng(seed));
+        expect(def.create(gl, values, createRng(seed), { moves: false }).moving).toEqual([]);
+        expect(def.create(gl, values, createRng(seed), { moves: true }).moving!.length).toBeGreaterThanOrEqual(2);
+        expect(def.create(gl, values, createRng(seed)).moving!.length).toBeGreaterThanOrEqual(2);
+      }
+    }
+  });
+
   it('sends the moving value from the harmonics each frame, and every other value as drawn', () => {
     const a = uniformsAt(0.3);
     const b = uniformsAt(5.7);
