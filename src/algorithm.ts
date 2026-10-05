@@ -1,4 +1,5 @@
 import type { Knob, Values } from './knobs';
+import type { MovingValue } from './moving';
 import type { Rng } from './rng';
 
 /** What every algorithm gets each frame, whatever it draws. */
@@ -33,6 +34,8 @@ export interface FrameInputs {
  */
 export interface Algorithm {
   readonly name: string;
+  /** The values that move this instance, when it has any: they follow the harmonics every frame instead of holding a drawn number. */
+  readonly moving?: readonly MovingValue[];
   draw(target: WebGLFramebuffer | null, inputs: FrameInputs): void;
   /** Takes new values for its knobs while it runs (the debug panel's overrides). */
   tune(values: Values): void;

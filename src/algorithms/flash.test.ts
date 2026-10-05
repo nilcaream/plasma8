@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import type { AlgorithmDef, FrameInputs } from '../algorithm';
 import { drawKnobs } from '../knobs';
 import { createRng } from '../rng';
-import { plasma } from './plasma';
+import { shaderAlgorithm } from '../shaderAlgorithm';
+import { plasma, plasmaParams } from './plasma';
+import plasmaSource from './plasma.frag?raw';
 import { warpNoise } from './warpNoise';
 
 /** A stand-in WebGL context that accepts everything and records the one-float uniforms by name. */
@@ -43,6 +45,32 @@ function flashWith(def: AlgorithmDef, amounts: { kick: number; snare: number; cr
   def.create(gl, values, createRng(2)).draw(null, frame(beats, 1, 0.5, 120));
   return floats.get('u_flash');
 }
+
+describe('plasma\'s moving values', () => {
+  const draw = { seed: 12345, widthShare: 0.5, offsetShare: 0.5, factors: [1, 1, 1, 1] };
+  const uniformsAt = (beats: number): Map<string, number> => {
+    const { gl, floats } = mockGl();
+    const values = drawKnobs(plasma.knobs, createRng(1));
+    const moving = [{ key: 'scale', lo: 0.9, hi: 1.8, draw }];
+    shaderAlgorithm(gl, 'plasma', plasmaSource, plasmaParams, values, undefined, moving).draw(null, frame(beats, 0, 1, 120));
+    floats.set('drawn scale', values.scale!);
+    floats.set('drawn swirl', values.swirl!);
+    return floats;
+  };
+
+  it('sends the moving value from the harmonics each frame, and every other value as drawn', () => {
+    const a = uniformsAt(0.3);
+    const b = uniformsAt(5.7);
+    expect(a.get('u_scale')).not.toBe(b.get('u_scale'));
+    for (const f of [a, b]) {
+      // width 0.5 of 0.9..1.8 placed half way: 1.125..1.575
+      expect(f.get('u_scale')).toBeGreaterThanOrEqual(1.125 - 1e-9);
+      expect(f.get('u_scale')).toBeLessThanOrEqual(1.575 + 1e-9);
+      expect(f.get('u_scale')).not.toBe(f.get('drawn scale'));
+      expect(Math.abs(f.get('u_swirl')!)).toBeCloseTo(f.get('drawn swirl')!, 12);
+    }
+  });
+});
 
 describe('the strongest voice', () => {
   it('flashes plasma at exactly the strobe level, the others in proportion', () => {

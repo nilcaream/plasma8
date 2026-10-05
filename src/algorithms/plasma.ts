@@ -1,6 +1,7 @@
 import type { AlgorithmDef } from '../algorithm';
 import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
-import { drawKnobs, fixed, range, int, sign, triple, unit, vec, type Knob, type Values } from '../knobs';
+import { drawBounds, drawKnobs, fixed, range, int, sign, triple, unit, vec, type Knob, type Values } from '../knobs';
+import { drawMoving, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './plasma.frag?raw';
@@ -68,10 +69,28 @@ export function plasmaParams(v: Values): ShaderParams {
 
 export const drawPlasmaParams = (rng: Rng): ShaderParams => plasmaParams(drawKnobs(PLASMA_KNOBS, rng));
 
+/**
+ * The values that may move, in five groups of what they change on screen; an
+ * instance moves one value from each of 2 to 5 groups. The wave speeds never
+ * move: they multiply the running time, so a change would jump the picture.
+ */
+export const PLASMA_MOVING_GROUPS: readonly (readonly string[])[] = [
+  ['scale', 'swirl'], // zoom and twist
+  ['orbit.0', 'orbit.1', 'freq.2'], // ripples
+  ['dir1', 'dir2', 'freq.0', 'freq.1'], // stripes
+  ['palA.0', 'palA.1', 'palA.2', 'palB.0', 'palB.1', 'palB.2'], // colour tone
+  ['palC.0', 'palC.1', 'palC.2', 'palD.0', 'palD.1', 'palD.2', 'cycles'], // colour pattern
+];
+
+/** A moving value's outer bounds: the range it is drawn from in code. */
+const boundsOf = (key: string): [number, number] => drawBounds(PLASMA_KNOBS.find((k) => k.key === key)!.draw);
+
+export const drawPlasmaMoving = (rng: Rng): MovingValue[] => drawMoving(PLASMA_MOVING_GROUPS, boundsOf, rng);
+
 export const plasma: AlgorithmDef = {
   name: PLASMA_NAME,
   home: 0.35,
   steadySpeed: true,
   knobs: PLASMA_KNOBS,
-  create: (gl, values) => shaderAlgorithm(gl, PLASMA_NAME, source, plasmaParams, values, relativeAmountsOf),
+  create: (gl, values, rng) => shaderAlgorithm(gl, PLASMA_NAME, source, plasmaParams, values, relativeAmountsOf, drawPlasmaMoving(rng)),
 };

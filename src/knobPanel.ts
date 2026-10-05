@@ -14,6 +14,7 @@ import {
   drawBounds, drawFrom, fixedGroups, formatRanges, isFixed, setFixed, setMax, setMin, setValue, share, startRange, step,
   type Knob, type UserRange, type Values,
 } from './knobs';
+import { movingAt, movingRange, type MovingValue } from './moving';
 import type { Rng } from './rng';
 
 export interface Shown {
@@ -26,6 +27,8 @@ type Part = 'min' | 'max' | 'value';
 const PARTS: readonly Part[] = ['min', 'max', 'value'];
 
 interface Row {
+  el: HTMLElement;
+  name: HTMLElement;
   knob: Knob;
   /** min, max and value for a drawn knob; value alone for a fixed one. */
   parts: readonly Part[];
@@ -47,6 +50,8 @@ export class KnobPanel {
   private rows: Row[] = [];
   private shown: Shown | undefined;
   private ranges: Record<string, UserRange> = {};
+  /** The shown algorithm's moving values by knob key. */
+  private moving = new Map<string, MovingValue>();
 
   constructor(
     private readonly enabled: boolean,
@@ -94,7 +99,15 @@ export class KnobPanel {
     const same = this.shown?.def === s.def;
     this.shown = s;
     this.ranges = {};
+    this.moving = new Map((s.algorithm.moving ?? []).map((m) => [m.key, m]));
     for (const knob of s.def.knobs) {
+      const m = this.moving.get(knob.key);
+      if (m) {
+        // a moving value shows its sub-range; its value is read live (tick)
+        const { min, max } = movingRange(m);
+        this.ranges[knob.key] = { min, max, value: (min + max) / 2 };
+        continue;
+      }
       const r = this.rangeOf(s.def.name, knob, s.values[knob.key]!);
       // made a bar ahead: a min or max moved since pulls its value inside
       this.ranges[knob.key] = setValue(knob, r, r.value);
@@ -102,7 +115,25 @@ export class KnobPanel {
     this.tune();
     this.head.textContent = `${s.def.name}  seed ${this.seed}`;
     if (!same) this.build(s.def.knobs);
-    for (const r of this.rows) this.paint(r);
+    for (const r of this.rows) {
+      const moves = this.moving.has(r.knob.key);
+      r.el.classList.toggle('moving', moves);
+      r.name.textContent = moves ? `${r.knob.key}  (moves)` : r.knob.key;
+      for (const input of Object.values(r.inputs)) input.disabled = moves;
+      this.paint(r);
+    }
+  }
+
+  /** Once a frame: the live value of every moving value. */
+  tick(intensity: number, beats: number): void {
+    for (const r of this.rows) {
+      const m = this.moving.get(r.knob.key);
+      if (!m) continue;
+      const v = movingAt(m, intensity, beats);
+      this.ranges[r.knob.key]!.value = v;
+      r.inputs.value!.value = String(v);
+      r.outs.value!.textContent = show(v);
+    }
   }
 
   private rangeOf(name: string, knob: Knob, value: number): UserRange {
@@ -140,7 +171,7 @@ export class KnobPanel {
       <label for="${id}-${part}">${part}</label>
       <span class="track">${part === 'value' && !isFixed(knob) ? '<i class="band"></i>' : codeTicks}<input id="${id}-${part}" data-part="${part}" type="range" min="${lo}" max="${hi}" step="${step(knob)}"></span>
       <output for="${id}-${part}"></output>`).join('');
-    const r: Row = { knob, parts, inputs: {}, outs: {}, band: row.querySelector('.band') };
+    const r: Row = { el: row, name: row.querySelector<HTMLElement>('.name')!, knob, parts, inputs: {}, outs: {}, band: row.querySelector('.band') };
     for (const part of parts) {
       const input = row.querySelector<HTMLInputElement>(`input[data-part=${part}]`)!;
       r.inputs[part] = input;
@@ -185,7 +216,7 @@ export class KnobPanel {
   private async copy(): Promise<void> {
     const s = this.shown;
     if (!s) return;
-    const text = formatRanges(s.def.name, s.def.knobs, this.ranges);
+    const text = formatRanges(s.def.name, s.def.knobs, this.ranges, new Set(this.moving.keys()));
     this.copied.value = text;
     try {
       await navigator.clipboard.writeText(text);

@@ -11,6 +11,7 @@ import { createRng, formatSeed, freshSeed } from './rng';
 import { Sequencer, type Change } from './sequence';
 import { loadSettings, saveSettings, type Settings } from './settings';
 import { MotionClock, motionRate, motionTimeFor } from './motion';
+import { movingRange } from './moving';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
 import { Corner, DebugOverlay, Metronome, showFatal } from './ui';
 
@@ -62,7 +63,15 @@ function main(): void {
   // every value it draws at start: from the code's ranges, or from the debug panel's min..max once moved
   const create = (def: AlgorithmDef): Running => {
     const values = knobPanel.start(def, rng);
-    return { def, values, algorithm: def.create(gl, values, rng) };
+    const algorithm = def.create(gl, values, rng);
+    if (params.debug && algorithm.moving?.length) {
+      const list = algorithm.moving.map((m) => {
+        const { min, max } = movingRange(m);
+        return `${m.key} ${min.toFixed(3)}..${max.toFixed(3)} (of ${m.lo.toFixed(3)}..${m.hi.toFixed(3)})`;
+      });
+      console.info(`[plasma8] ${def.name}: ${algorithm.moving.length} values move: ${list.join('; ')}`);
+    }
+    return { def, values, algorithm };
   };
   const make = (intensity: number, running?: AlgorithmDef): Running => {
     const { def, unknown } = chooseAlgorithm(params.algo, intensity, rng, running);
@@ -164,8 +173,10 @@ function main(): void {
       width,
       height,
     });
+    const drawn = inputsFor(current.def);
+    knobPanel.tick(drawn.intensity, drawn.beats);
     stage.render(current.algorithm, incoming?.algorithm, look, {
-      inputs: inputsFor(current.def),
+      inputs: drawn,
       incomingInputs: incoming ? inputsFor(incoming.def) : undefined,
       fade,
     });

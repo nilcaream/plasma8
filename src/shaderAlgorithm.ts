@@ -3,6 +3,7 @@ import { FULLSCREEN_VERTEX, createProgram } from './gl';
 import { BEATS_PER_BAR } from './clock';
 import { DEFAULT_SHAPE, flash, flashStep, type Amounts } from './beatVoices';
 import type { Values } from './knobs';
+import { movingValues, type MovingValue } from './moving';
 import { BarSteps, stepShape } from './motion';
 
 /** An algorithm's own random parameters: a name that is a uniform in its shader, and its value. */
@@ -148,15 +149,23 @@ export function shaderAlgorithm(
   params: (values: Values) => ShaderParams,
   values: Values,
   amounts?: (values: Values) => Amounts,
+  moving: readonly MovingValue[] = [],
 ): Algorithm {
-  const shader = new ShaderAlgorithm(gl, name, shaderBody, params(values));
+  // the moving values are worked out again every frame, over the latest values of the rest
+  let latest = values;
+  const perFrame = moving.length > 0
+    ? (inputs: FrameInputs): ShaderParams => params({ ...latest, ...movingValues(moving, inputs.intensity, inputs.beats) })
+    : undefined;
+  const shader = new ShaderAlgorithm(gl, name, shaderBody, params(values), perFrame);
   shader.steps.shape = stepShape(values);
   shader.amounts = amounts?.(values);
   return {
     name,
+    moving,
     draw: (target, inputs) => shader.draw(target, inputs),
     dispose: () => shader.dispose(),
     tune: (v) => {
+      latest = v;
       shader.tune(params(v));
       shader.steps.shape = stepShape(v);
       shader.amounts = amounts?.(v);
