@@ -61,7 +61,7 @@ describe('julia\'s fixed values', () => {
 
 describe('plasma\'s and warp noise\'s fixed values', () => {
   const PLASMA_FIXED = {
-    u_flashGain: 0.445, u_swirlSpin: 0.011, u_orbitSpeed: 0.02, u_colourDrift: 0.021,
+    u_flashGain: 0.5, u_swirlSpin: 0.011, u_orbitSpeed: 0.02, u_colourDrift: 0.021,
   };
   const WARP_FIXED = { u_flashGain: DEFAULT_GAIN };
 
