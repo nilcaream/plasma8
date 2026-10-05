@@ -102,10 +102,35 @@ export function windowEnvelope(t: number, length: number, r: number, p: number):
   return (1 - t / fall) ** p;
 }
 
-/** A voice at a position in beats, from its nearest onset: the one before it, or the next one's rise. */
-export function voiceEnvelope(voice: Voice, beats: number, r: number, p: number): number {
-  const t = (((beats - voice.onset) % voice.period) + voice.period) % voice.period;
-  return Math.max(windowEnvelope(t, voice.length, r, p), windowEnvelope(t - voice.period, voice.length, r, p));
+/**
+ * A voice at a position in beats, from its nearest onset: the one before it, or the next one's rise.
+ * Only onsets on every `step`-th beat sound (1 = all of them); the others are dropped, rise and fall too.
+ */
+export function voiceEnvelope(voice: Voice, beats: number, r: number, p: number, step = 1): number {
+  const n = Math.floor((beats - voice.onset) / voice.period);
+  let e = 0;
+  for (const k of [n, n + 1]) {
+    const at = voice.onset + k * voice.period;
+    if (((at % step) + step) % step !== 0) continue;
+    e = Math.max(e, windowEnvelope(beats - at, voice.length, r, p));
+  }
+  return e;
+}
+
+/** Flashes are more than this far apart on the grid, so any 4 of them span more than a second. */
+export const MIN_FLASH_GAP_S = 1 / 3;
+/** At most this many strong flashes in any one second (WCAG 2.3.1). */
+export const MAX_FLASHES_PER_S = 3;
+
+/**
+ * How many beats apart the onsets that sound are at this tempo: 1, 2, 4 or 8. The beat grid is the
+ * same for every voice, so with onsets only on every `step`-th beat there are never more than 3 in a second.
+ */
+export function flashStep(bpm: number): number {
+  const beatS = 60 / bpm;
+  let step = 1;
+  while (step * beatS <= MIN_FLASH_GAP_S && step < 8) step *= 2;
+  return step;
 }
 
 export interface Flash {
@@ -115,15 +140,15 @@ export interface Flash {
   total: number;
 }
 
-/** F = min(1, I·Σ A_v·e_v) at a position in beats. */
-export function flash(beats: number, intensity: number, amounts: Amounts, shape: Shape = DEFAULT_SHAPE): Flash {
+/** F = min(1, I·Σ A_v·e_v) at a position in beats; `step` thins the onsets to every step-th beat (flashStep). */
+export function flash(beats: number, intensity: number, amounts: Amounts, shape: Shape = DEFAULT_SHAPE, step = 1): Flash {
   const I = clamp01(intensity);
   const r = rise(I, shape);
   const p = fallPower(I, shape);
   const voices = { kick: 0, snare: 0, crash: 0 };
   let sum = 0;
   for (const name of VOICE_NAMES) {
-    voices[name] = I * amounts[name] * voiceEnvelope(VOICES[name], beats, r, p);
+    voices[name] = I * amounts[name] * voiceEnvelope(VOICES[name], beats, r, p, step);
     sum += voices[name];
   }
   return { voices, total: Math.min(1, sum) };

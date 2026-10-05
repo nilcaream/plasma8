@@ -71,7 +71,6 @@ export const drawJuliaParams = (rng: Rng): ShaderParams => juliaParams(drawKnobs
 export const julia: AlgorithmDef = {
   name: JULIA_NAME,
   home: 0.65,
-  strobe: 'kick',
   knobs: JULIA_KNOBS,
   create: (gl, values) => shaderAlgorithm(gl, JULIA_NAME, source, juliaParams, values),
 };

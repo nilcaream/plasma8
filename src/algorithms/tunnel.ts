@@ -57,7 +57,6 @@ const swingBeat = (v: Values): SwingBeat => (v.swingSnare! >= 0.5 ? 'snare' : 'k
 export const tunnel: AlgorithmDef = {
   name: TUNNEL_NAME,
   home: 0.9,
-  strobe: 'kick',
   knobs: TUNNEL_KNOBS,
   create: (gl, values, rng) => {
     const swing = new Swing(rng, swingBeat(values), vec(values, 'swingWay', 4));

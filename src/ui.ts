@@ -123,6 +123,8 @@ export interface DebugInfo {
   /** How the next change goes, once it is decided: "cut", "fade 2 beats". */
   change: string | undefined;
   intensity: number;
+  /** The strobe slider: the flash's size and shape. */
+  strobe: number;
   /** Motion speed against the algorithm's designed speed. */
   rate: number;
 }
@@ -148,7 +150,7 @@ export class DebugOverlay {
       `${info.name}  home ${info.home.toFixed(2)}`,
       next,
       `bar ${r.bar + 1}  beat ${r.beatInBar + 1}  ${formatTempo(r.bpm, r.bpmError)} BPM`,
-      `intensity ${info.intensity.toFixed(2)}  speed x${info.rate.toFixed(2)}`,
+      `intensity ${info.intensity.toFixed(2)}  speed x${info.rate.toFixed(2)}  strobe ${info.strobe === 0 ? 'off' : info.strobe.toFixed(2)}`,
       `seed ${this.seed}`,
     ].join('\n');
     if (text !== this.text) {

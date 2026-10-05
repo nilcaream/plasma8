@@ -12,7 +12,6 @@ import { Sequencer, type Change } from './sequence';
 import { loadSettings, saveSettings, type Settings } from './settings';
 import { MotionClock, motionRate } from './motion';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
-import { FlashGate, flashLevel } from './strobe';
 import { Corner, DebugOverlay, Metronome, showFatal } from './ui';
 
 interface Running {
@@ -80,7 +79,6 @@ function main(): void {
   const stage = new Stage(gl);
   // an algorithm forced by name never changes: it keeps its draw until "Draw again" or a reload
   const sequencer = new Sequencer(rng, 0, ALGORITHMS.some((a) => a.name === params.algo));
-  const gate = new FlashGate();
   const motion = new MotionClock();
   let current = make(live.intensity);
   let incoming: Running | undefined;
@@ -114,13 +112,11 @@ function main(): void {
 
   const start = performance.now();
   let last = start;
-  let lastBeat = -1;
   let pending = 'change';
 
   const frame = (): void => {
     const now = performance.now();
     const dt = (now - last) / 1000;
-    const seconds = (now - start) / 1000;
     last = now;
 
     const r = clock.read(now);
@@ -149,14 +145,6 @@ function main(): void {
     const rateOut = motionRate(current.def.home, intensity);
     const rate = incoming && fade > 0 ? rateOut + (motionRate(incoming.def.home, intensity) - rateOut) * eased : rateOut;
 
-    // Strobe: off at 0; the running algorithm says kick or snare, the gate keeps the cap.
-    const beatIndex = Math.floor(r.beats);
-    if (beatIndex !== lastBeat) {
-      lastBeat = beatIndex;
-      if (live.strobe > 0) gate.onBeat(current.def.strobe, beatIndex, r.bpm, seconds);
-    }
-    const flash = flashLevel(seconds - gate.lastFlash, live.strobe);
-
     const ratio = Math.min(window.devicePixelRatio || 1, MAX_PIXEL_RATIO);
     const width = Math.max(1, Math.round(canvas.clientWidth * ratio));
     const height = Math.max(1, Math.round(canvas.clientHeight * ratio));
@@ -169,11 +157,12 @@ function main(): void {
       inputs: {
         ...beat,
         time: motion.update(dt, rate),
+        strobe: live.strobe,
+        bpm: r.bpm,
         width,
         height,
       },
       fade,
-      flash,
     });
 
     if (live.metronome) metronome.update(r);
@@ -183,6 +172,7 @@ function main(): void {
       barsLeft: sequencer.barsLeft(r.beats),
       change: describeChange(sequencer.change, look),
       intensity,
+      strobe: live.strobe,
       rate,
     });
     requestAnimationFrame(frame);

@@ -1,7 +1,7 @@
 import type { Algorithm, FrameInputs } from './algorithm';
 import { FULLSCREEN_VERTEX, createProgram } from './gl';
 import { BEATS_PER_BAR } from './clock';
-import { flash, type Amounts } from './beatVoices';
+import { DEFAULT_SHAPE, flash, flashStep, type Amounts } from './beatVoices';
 import type { Values } from './knobs';
 import { BarSteps, stepShape } from './motion';
 
@@ -22,7 +22,7 @@ uniform float u_beatPulse;
 uniform float u_barPulse;
 uniform float u_barSteps;
 uniform float u_intensity;
-uniform float u_flash; // the beat voices' flash F, 0..1 (src/beatVoices.ts); 0 for an algorithm without voices
+uniform float u_flash; // the beat voices' flash F, 0..1, set by the strobe slider (src/beatVoices.ts); 0 for an algorithm without voices
 out vec4 fragColor;
 
 float hash12(vec2 p) {
@@ -124,7 +124,7 @@ export class ShaderAlgorithm {
     gl.uniform1f(c.get('u_barPulse') ?? null, inputs.barPulse);
     gl.uniform1f(c.get('u_barSteps') ?? null, this.steps.update(Math.floor(inputs.beats / BEATS_PER_BAR), inputs.barPhase, inputs.intensity));
     gl.uniform1f(c.get('u_intensity') ?? null, inputs.intensity);
-    gl.uniform1f(c.get('u_flash') ?? null, this.amounts ? flash(inputs.beats, inputs.intensity, this.amounts).total : 0);
+    gl.uniform1f(c.get('u_flash') ?? null, this.amounts ? flash(inputs.beats, inputs.strobe, this.amounts, DEFAULT_SHAPE, flashStep(inputs.bpm)).total : 0);
     for (const { location, value } of this.params) setUniform(gl, location, value);
     if (this.perFrame) {
       for (const [uniform, value] of Object.entries(this.perFrame(inputs))) {

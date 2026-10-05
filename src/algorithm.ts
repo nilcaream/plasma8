@@ -1,6 +1,5 @@
 import type { Knob, Values } from './knobs';
 import type { Rng } from './rng';
-import type { StrobeBeat } from './strobe';
 
 /** What every algorithm gets each frame, whatever it draws. */
 export interface FrameInputs {
@@ -18,6 +17,10 @@ export interface FrameInputs {
   beats: number;
   /** 0 soft … 1 hard: how hard the beat hits and how far beat moves reach; never the colours. */
   intensity: number;
+  /** The strobe slider, 0 off … 1: the size and the shape of the beat voices' flash (src/beatVoices.ts); never the intensity. */
+  strobe: number;
+  /** The tempo in beats per minute: the flash keeps to at most 3 flashes a second by it. */
+  bpm: number;
   /** Size of the drawing surface in pixels. */
   width: number;
   height: number;
@@ -41,8 +44,6 @@ export interface AlgorithmDef {
   readonly name: string;
   /** The intensity (0 soft … 1 hard) it is at home at: picked most there, and runs at its designed speed there. */
   readonly home: number;
-  /** Which beats its strobe flashes on. */
-  readonly strobe: StrobeBeat;
   /** Everything it draws at random when it starts. */
   readonly knobs: readonly Knob[];
   create(gl: WebGL2RenderingContext, values: Values, rng: Rng): Algorithm;

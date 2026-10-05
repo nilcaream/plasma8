@@ -51,7 +51,6 @@ export const drawWarpNoiseParams = (rng: Rng): ShaderParams => warpNoiseParams(d
 export const warpNoise: AlgorithmDef = {
   name: WARP_NOISE_NAME,
   home: 0.15,
-  strobe: 'snare',
   knobs: WARP_NOISE_KNOBS,
   create: (gl, values) => shaderAlgorithm(gl, WARP_NOISE_NAME, source, warpNoiseParams, values, amountsOf),
 };

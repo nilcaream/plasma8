@@ -71,7 +71,6 @@ export const drawPlasmaParams = (rng: Rng): ShaderParams => plasmaParams(drawKno
 export const plasma: AlgorithmDef = {
   name: PLASMA_NAME,
   home: 0.35,
-  strobe: 'snare',
   knobs: PLASMA_KNOBS,
   create: (gl, values) => shaderAlgorithm(gl, PLASMA_NAME, source, plasmaParams, values, amountsOf),
 };
