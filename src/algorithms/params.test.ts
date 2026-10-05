@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_GAIN, VOICE_NAMES, amountsOf, flash } from '../beatVoices';
+import { VOICE_NAMES, amountsOf, flash } from '../beatVoices';
 import { drawKnobs, fixedGroups } from '../knobs';
 import { stepShape } from '../motion';
 import { createRng, type Rng } from '../rng';
@@ -61,7 +61,7 @@ describe('julia\'s fixed values', () => {
 
 describe('plasma\'s and warp noise\'s fixed values', () => {
   const PLASMA_FIXED = {
-    u_flashGain: 1, u_swirlSpin: 0, u_orbitSpeed: 0, u_colourDrift: 0,
+    u_flashGain: 0.445, u_swirlSpin: 0.011, u_orbitSpeed: 0.02, u_colourDrift: 0.021,
   };
   const WARP_FIXED = {
     u_beatBreath: 0.1, u_barBreath: 0.18, u_beatColour: 0.06, u_barColour: 0.15, u_beatLight: 0.09, u_barLight: 0.06,
@@ -119,8 +119,8 @@ describe('plasma\'s beat flash', () => {
     ]);
   });
 
-  it('starts from the beats page\'s gain, and the shader has no other beat or bar pulse', () => {
-    expect(plasmaParams(drawKnobs(PLASMA_KNOBS, createRng(1))).u_flashGain).toBe(DEFAULT_GAIN);
+  it('has the shader read the gain, and no other beat or bar pulse', () => {
+    expect(plasmaSource).toContain('u_flashGain * u_flash');
     expect(plasmaSource).toContain('u_flash');
     for (const gone of ['beatPulse', 'barPulse', 'u_beatLight', 'u_barLight', 'u_beatColour', 'u_beatBreath', 'u_barBreath']) {
       expect(plasmaSource).not.toContain(gone);
@@ -133,7 +133,7 @@ describe('plasma\'s random ranges', () => {
     'palA.0': [0.089, 0.868], 'palA.1': [0.211, 0.853], 'palA.2': [0.226, 0.868],
     'palB.0': [0, 1], 'palB.1': [0, 1], 'palB.2': [0, 0.732],
     'freq.0': [1.891, 5.226], 'freq.1': [1.466, 6.25], 'freq.2': [2.872, 8.172],
-    'speed.0': [0.3, 0.843], 'orbit.0': [0, 1.5], 'orbit.1': [0, 0.7],
+    'speed.0': [0.3, 0.843], 'speed.1': [0.3, 0.882], 'orbit.0': [0, 1.5], 'orbit.1': [0, 0.7],
   };
 
   it('are the ones set on the debug panel: every draw inside, both ends reached', () => {

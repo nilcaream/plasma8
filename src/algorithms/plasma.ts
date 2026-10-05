@@ -1,5 +1,5 @@
 import type { AlgorithmDef } from '../algorithm';
-import { DEFAULT_GAIN, GAIN_RANGE, amountKnobs, amountsOf } from '../beatVoices';
+import { GAIN_RANGE, amountKnobs, amountsOf } from '../beatVoices';
 import { drawKnobs, fixed, range, int, sign, triple, unit, vec, type Knob, type Values } from '../knobs';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
@@ -25,7 +25,7 @@ export const PLASMA_KNOBS: readonly Knob[] = [
   range('freq.1', 1.466, 6.25, [0.5, 12]),
   range('freq.2', 2.872, 8.172, [0.5, 16]),
   range('speed.0', 0.3, 0.843, [0, 2.5]),
-  range('speed.1', 0.3, 0.9, [0, 2.5]),
+  range('speed.1', 0.3, 0.882, [0, 2.5]),
   range('speed.2', 0.4, 1.1, [0, 3]),
   range('speed.3', 0.2, 0.8, [0, 2.5]),
   range('orbit.0', 0, 1.5, [0, 1.5]),
@@ -38,10 +38,10 @@ export const PLASMA_KNOBS: readonly Knob[] = [
   // how hard each beat voice flashes this run: the only thing that follows the beat
   ...amountKnobs(),
   // fixed in code: the flash gain, and how the field moves with time (set on the debug panel)
-  fixed('flashGain', DEFAULT_GAIN, GAIN_RANGE, 'follows the beat'),
-  fixed('swirlSpin', 0, [0, 0.5], 'moves with time'),
-  fixed('orbitSpeed', 0, [0, 4], 'moves with time'),
-  fixed('colourDrift', 0, [0, 0.5], 'moves with time'),
+  fixed('flashGain', 0.445, GAIN_RANGE, 'follows the beat'),
+  fixed('swirlSpin', 0.011, [0, 0.5], 'moves with time'),
+  fixed('orbitSpeed', 0.02, [0, 4], 'moves with time'),
+  fixed('colourDrift', 0.021, [0, 0.5], 'moves with time'),
 ];
 
 export function plasmaParams(v: Values): ShaderParams {
