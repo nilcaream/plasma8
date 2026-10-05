@@ -1,5 +1,5 @@
 import type { AlgorithmDef } from '../algorithm';
-import { GAIN_RANGE, amountKnobs, amountsOf } from '../beatVoices';
+import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
 import { drawKnobs, fixed, range, int, sign, triple, unit, vec, type Knob, type Values } from '../knobs';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
@@ -72,5 +72,5 @@ export const plasma: AlgorithmDef = {
   name: PLASMA_NAME,
   home: 0.35,
   knobs: PLASMA_KNOBS,
-  create: (gl, values) => shaderAlgorithm(gl, PLASMA_NAME, source, plasmaParams, values, amountsOf),
+  create: (gl, values) => shaderAlgorithm(gl, PLASMA_NAME, source, plasmaParams, values, relativeAmountsOf),
 };

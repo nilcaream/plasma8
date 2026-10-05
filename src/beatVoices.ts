@@ -73,6 +73,14 @@ export const amountKnobs = (): Knob[] => VOICE_NAMES.map((name) => range(`A.${na
 /** The strengths out of an algorithm's knob values. */
 export const amountsOf = (v: Values): Amounts => ({ kick: v['A.kick']!, snare: v['A.snare']!, crash: v['A.crash']! });
 
+/** The strengths divided by the largest, so the strongest voice flashes at exactly the strobe level and the others keep their proportions; all 0 stays 0. */
+export function relativeAmountsOf(v: Values): Amounts {
+  const a = amountsOf(v);
+  const top = Math.max(a.kick, a.snare, a.crash);
+  if (top <= 0) return { kick: 0, snare: 0, crash: 0 };
+  return { kick: a.kick / top, snare: a.snare / top, crash: a.crash / top };
+}
+
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 
 /** The rise r, in beats: long and soft at intensity 0, short at 1. */

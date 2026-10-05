@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_GAIN, VOICE_NAMES, amountsOf, flash } from '../beatVoices';
+import { DEFAULT_GAIN, VOICE_NAMES, amountsOf, flash, relativeAmountsOf } from '../beatVoices';
 import { drawKnobs, fixedGroups } from '../knobs';
 import { stepShape } from '../motion';
 import { createRng, type Rng } from '../rng';
@@ -93,6 +93,11 @@ describe('plasma\'s beat flash', () => {
 
   it('takes each strength from its own knob', () => {
     expect(amountsOf({ 'A.kick': 0.1, 'A.snare': 0.2, 'A.crash': 0.3 })).toEqual({ kick: 0.1, snare: 0.2, crash: 0.3 });
+  });
+
+  it('scales the strengths by the largest, and keeps all-zero at zero', () => {
+    expect(relativeAmountsOf({ 'A.kick': 0.2, 'A.snare': 0.1, 'A.crash': 0.05 })).toEqual({ kick: 1, snare: 0.5, crash: 0.25 });
+    expect(relativeAmountsOf({ 'A.kick': 0, 'A.snare': 0, 'A.crash': 0 })).toEqual({ kick: 0, snare: 0, crash: 0 });
   });
 
   it('never flashes at intensity 0, whatever the strengths and the beat', () => {
