@@ -60,14 +60,14 @@ describe('julia\'s fixed values', () => {
 
 describe('plasma\'s and warp noise\'s fixed values', () => {
   const PLASMA_FIXED = {
-    u_beatBreath: 0.07, u_barBreath: 0.05, u_swirlSpin: 0.03, u_orbitSpeed: 1,
-    u_colourDrift: 0.04, u_beatColour: 0.05, u_beatLight: 0.12, u_barLight: 0.08,
+    u_beatBreath: 0, u_barBreath: 0, u_swirlSpin: 0, u_orbitSpeed: 0,
+    u_colourDrift: 0, u_beatColour: 0.005, u_beatLight: 0.726, u_barLight: 0.532,
   };
   const WARP_FIXED = {
     u_beatBreath: 0.1, u_barBreath: 0.18, u_beatColour: 0.06, u_barColour: 0.15, u_beatLight: 0.09, u_barLight: 0.06,
   };
 
-  it('start at the values the shaders had in code, so the picture is unchanged', () => {
+  it('are plasma\'s as set on the debug panel, and warp noise\'s as the shader had them', () => {
     const p = plasmaParams(drawKnobs(PLASMA_KNOBS, createRng(1)));
     for (const [key, value] of Object.entries(PLASMA_FIXED)) expect(p[key]).toBe(value);
     const w = warpNoiseParams(drawKnobs(WARP_NOISE_KNOBS, createRng(1)));
@@ -77,6 +77,27 @@ describe('plasma\'s and warp noise\'s fixed values', () => {
   it('are each read by the shader as a uniform', () => {
     for (const key of Object.keys(PLASMA_FIXED)) expect(plasmaSource).toContain(`uniform float ${key};`);
     for (const key of Object.keys(WARP_FIXED)) expect(warpSource).toContain(`uniform float ${key};`);
+  });
+});
+
+describe('plasma\'s random ranges', () => {
+  const RANGES: Record<string, [number, number]> = {
+    'palA.0': [0.089, 0.868], 'palA.1': [0.211, 0.853], 'palA.2': [0.226, 0.868],
+    'palB.0': [0, 1], 'palB.1': [0, 1], 'palB.2': [0, 0.732],
+    'freq.0': [1.891, 5.226], 'freq.1': [1.466, 6.25], 'freq.2': [2.872, 8.172],
+    'speed.0': [0.3, 0.843], 'orbit.0': [0, 1.5], 'orbit.1': [0, 0.7],
+  };
+
+  it('are the ones set on the debug panel: every draw inside, both ends reached', () => {
+    const rng = createRng(3);
+    const draws = Array.from({ length: 3000 }, () => drawKnobs(PLASMA_KNOBS, rng));
+    for (const [key, [lo, hi]] of Object.entries(RANGES)) {
+      const seen = draws.map((v) => v[key]!);
+      expect(Math.min(...seen)).toBeGreaterThanOrEqual(lo);
+      expect(Math.max(...seen)).toBeLessThan(hi);
+      expect(Math.min(...seen)).toBeLessThan(lo + (hi - lo) * 0.02);
+      expect(Math.max(...seen)).toBeGreaterThan(hi - (hi - lo) * 0.02);
+    }
   });
 });
 
