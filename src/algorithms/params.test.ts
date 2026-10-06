@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_GAIN, VOICE_NAMES, amountsOf, flash, relativeAmountsOf } from '../beatVoices';
+import { VOICE_NAMES, amountsOf, flash, relativeAmountsOf } from '../beatVoices';
 import { drawBounds, drawKnobs, fixedGroups } from '../knobs';
 import { stepShape } from '../motion';
 import { createRng, type Rng } from '../rng';
@@ -64,9 +64,9 @@ describe('plasma\'s and warp noise\'s fixed values', () => {
   const PLASMA_FIXED = {
     u_flashGain: 1, u_swirlSpin: 0.011, u_orbitSpeed: 0.02, u_colourDrift: 0.021,
   };
-  const WARP_FIXED = { u_flashGain: DEFAULT_GAIN };
+  const WARP_FIXED = { u_flashGain: 0.5 };
 
-  it('are plasma\'s as set on the debug panel, and warp noise\'s the beats page\'s gain', () => {
+  it('are plasma\'s and warp noise\'s as set on the debug panel', () => {
     const p = plasmaParams(drawKnobs(PLASMA_KNOBS, createRng(1)));
     for (const [key, value] of Object.entries(PLASMA_FIXED)) expect(p[key]).toBe(value);
     const w = warpNoiseParams(drawKnobs(WARP_NOISE_KNOBS, createRng(1)));
@@ -173,6 +173,28 @@ describe('plasma\'s random ranges', () => {
   it('are the ones set on the debug panel: every draw inside, both ends reached', () => {
     const rng = createRng(3);
     const draws = Array.from({ length: 3000 }, () => drawKnobs(PLASMA_KNOBS, rng));
+    for (const [key, [lo, hi]] of Object.entries(RANGES)) {
+      const seen = draws.map((v) => v[key]!);
+      expect(Math.min(...seen)).toBeGreaterThanOrEqual(lo);
+      expect(Math.max(...seen)).toBeLessThan(hi);
+      expect(Math.min(...seen)).toBeLessThan(lo + (hi - lo) * 0.02);
+      expect(Math.max(...seen)).toBeGreaterThan(hi - (hi - lo) * 0.02);
+    }
+  });
+});
+
+describe('warp noise\'s random ranges', () => {
+  // the ones set on the debug panel (8 Oct 19:29) that differ from the earlier code's
+  const RANGES: Record<string, [number, number]> = {
+    'palB.0': [0.14, 0.432], 'palB.1': [0.14, 0.447], 'palB.2': [0.14, 0.447],
+    palCBase: [0.696, 1.215],
+    'palCStep.0': [-0.158, 0.151], 'palCStep.1': [-0.151, 0.151], 'palCStep.2': [-0.17, 0.145],
+    scale: [1.402, 3.138], 'speed.0': [0.033, 0.115],
+  };
+
+  it('are the ones set on the debug panel: every draw inside, both ends reached', () => {
+    const rng = createRng(3);
+    const draws = Array.from({ length: 3000 }, () => drawKnobs(WARP_NOISE_KNOBS, rng));
     for (const [key, [lo, hi]] of Object.entries(RANGES)) {
       const seen = draws.map((v) => v[key]!);
       expect(Math.min(...seen)).toBeGreaterThanOrEqual(lo);

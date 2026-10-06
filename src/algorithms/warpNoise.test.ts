@@ -17,15 +17,15 @@ describe('drawWarpNoiseParams', () => {
       const scale = p.u_scale as number;
       const warp = p.u_warp as number;
       const [flow, warpSpeed] = p.u_speed as number[];
-      expect(scale).toBeGreaterThanOrEqual(1.2);
-      expect(scale).toBeLessThan(2.6);
+      expect(scale).toBeGreaterThanOrEqual(1.402);
+      expect(scale).toBeLessThan(3.138);
       expect(warp).toBeGreaterThanOrEqual(2.5);
       expect(warp).toBeLessThan(4.5);
-      expect(flow).toBeLessThan(0.09);
+      expect(flow).toBeLessThan(0.115);
       expect(warpSpeed).toBeLessThan(0.12);
-      // the palette swings at most 0.3 around a mid grey: no hard black or white
+      // the palette swings at most 0.447 around a middle of at least 0.5: it stays inside 0.05..1.09
       for (const v of p.u_palA as number[]) expect(v).toBeGreaterThanOrEqual(0.5);
-      for (const v of p.u_palB as number[]) expect(v).toBeLessThan(0.3);
+      for (const v of p.u_palB as number[]) expect(v).toBeLessThan(0.447);
     }
   });
 });

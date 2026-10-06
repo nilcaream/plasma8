@@ -1,5 +1,5 @@
 import type { AlgorithmDef } from '../algorithm';
-import { DEFAULT_GAIN, GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
+import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
 import { drawBounds, drawKnobs, fixed, range, triple, vec, type Knob, type Values } from '../knobs';
 import { drawMoving, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
@@ -11,12 +11,16 @@ export const WARP_NOISE_NAME = 'domain-warped-noise';
 /** This run's own look: palette, scale, speeds, offsets and warp strength. palC is one base plus a small step per channel. */
 export const WARP_NOISE_KNOBS: readonly Knob[] = [
   ...triple('palA', 0.5, 0.64, [0, 1]),
-  ...triple('palB', 0.14, 0.3, [0, 1]),
-  range('palCBase', 0.6, 1.1, [0, 3]),
-  ...triple('palCStep', -0.15, 0.15, [-0.6, 0.6]),
+  range('palB.0', 0.14, 0.432, [0, 1]),
+  range('palB.1', 0.14, 0.447, [0, 1]),
+  range('palB.2', 0.14, 0.447, [0, 1]),
+  range('palCBase', 0.696, 1.215, [0, 3]),
+  range('palCStep.0', -0.158, 0.151, [-0.6, 0.6]),
+  range('palCStep.1', -0.151, 0.151, [-0.6, 0.6]),
+  range('palCStep.2', -0.17, 0.145, [-0.6, 0.6]),
   ...triple('palD', 0, 1, [0, 1]),
-  range('scale', 1.2, 2.6, [0.4, 6]),
-  range('speed.0', 0.03, 0.09, [0, 0.3]),
+  range('scale', 1.402, 3.138, [0.4, 6]),
+  range('speed.0', 0.033, 0.115, [0, 0.3]),
   range('speed.1', 0.04, 0.12, [0, 0.36]),
   range('offset.0', 0, 60, [0, 60]),
   range('offset.1', 0, 60, [0, 60]),
@@ -27,7 +31,7 @@ export const WARP_NOISE_KNOBS: readonly Knob[] = [
   // how hard each beat voice flashes this run: the only thing that follows the beat
   ...amountKnobs(),
   // fixed in code: the flash gain
-  fixed('flashGain', DEFAULT_GAIN, GAIN_RANGE, 'follows the beat'),
+  fixed('flashGain', 0.5, GAIN_RANGE, 'follows the beat'),
 ];
 
 export function warpNoiseParams(v: Values): ShaderParams {
