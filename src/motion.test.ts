@@ -41,8 +41,8 @@ describe('motionTimeFor', () => {
     expect(motionTimeFor({ steadySpeed: false }, 7, 3)).toBe(7);
   });
 
-  it('is on for plasma and the tunnel alone', () => {
-    expect(ALGORITHMS.filter((a) => a.steadySpeed).map((a) => a.name)).toEqual(['plasma', 'tunnel']);
+  it('is on for domain-warped noise, plasma and the tunnel, not julia', () => {
+    expect(ALGORITHMS.filter((a) => a.steadySpeed).map((a) => a.name)).toEqual(['domain-warped-noise', 'plasma', 'tunnel']);
   });
 });
 
