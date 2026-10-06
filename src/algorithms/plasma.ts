@@ -38,7 +38,7 @@ export const PLASMA_KNOBS: readonly Knob[] = [
   // how hard each beat voice flashes this run: the only thing that follows the beat
   ...amountKnobs(),
   // fixed in code: the flash gain, and how the field moves with time (set on the debug panel)
-  fixed('flashGain', 0.5, GAIN_RANGE, 'follows the beat'),
+  fixed('flashGain', 1, GAIN_RANGE, 'follows the beat'),
   fixed('swirlSpin', 0.011, [0, 0.5], 'moves with time'),
   fixed('orbitSpeed', 0.02, [0, 4], 'moves with time'),
   fixed('colourDrift', 0.021, [0, 0.5], 'moves with time'),
