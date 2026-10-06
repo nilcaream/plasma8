@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PLASMA_KNOBS, PLASMA_MOVING_GROUPS, drawPlasmaMoving } from './algorithms/plasma';
+import { VOICE_NAMES } from './beatVoices';
+import { TRAVEL_AT_0, TRAVEL_AT_1, crossfade, hitTime } from './crossfader';
 import { drawBounds } from './knobs';
 import { MOVING_COUNT, drawMoving, movingAt, movingRange, movingValues } from './moving';
 import { createRng } from './rng';
@@ -57,6 +59,42 @@ describe('drawMoving', () => {
           expect(v).toBeGreaterThanOrEqual(min);
           expect(v).toBeLessThanOrEqual(max);
         }
+      }
+    }
+  });
+
+  it('gives each moving value a voice at random, kick, snare and crash alike, drawn once', () => {
+    const rng = createRng(8);
+    const count: Record<string, number> = { kick: 0, snare: 0, crash: 0 };
+    for (let i = 0; i < 600; i++) for (const m of drawMoving(GROUPS, bounds, rng)) count[m.voice]!++;
+    const total = count.kick! + count.snare! + count.crash!;
+    for (const name of VOICE_NAMES) expect(count[name]! / total).toBeGreaterThan(0.28);
+    expect(VOICE_NAMES).toContain(drawMoving(GROUPS, bounds, createRng(9))[0]!.voice);
+  });
+
+  it('is the crossfader of its sub-range and voice, at the stroke lengths in code', () => {
+    const rng = createRng(10);
+    for (let i = 0; i < 40; i++) {
+      for (const m of drawMoving(GROUPS, bounds, rng)) {
+        for (const intensity of [0, 0.5, 1]) {
+          for (let beats = -2; beats < 17; beats += 0.0625) {
+            const p = { min: m.min, max: m.max, intensity, voice: m.voice, travel0: TRAVEL_AT_0, travel1: TRAVEL_AT_1 };
+            expect(movingAt(m, intensity, beats)).toBe(crossfade(beats, p));
+          }
+        }
+      }
+    }
+  });
+
+  it('puts a value on an edge of its band on every hit of its voice, at intensity 1 the edges of its sub-range', () => {
+    const rng = createRng(11);
+    for (let i = 0; i < 40; i++) {
+      for (const m of drawMoving(GROUPS, bounds, rng)) {
+        for (let n = 0; n < 6; n++) {
+          const v = movingAt(m, 1, hitTime(m.voice, n));
+          expect(Math.min(Math.abs(v - m.min), Math.abs(v - m.max))).toBeLessThan(1e-9);
+        }
+        expect(movingAt(m, 0, 3.3)).toBeCloseTo((m.min + m.max) / 2, 12);
       }
     }
   });

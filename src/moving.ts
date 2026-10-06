@@ -2,22 +2,25 @@
  * Moving values: for an algorithm that lists its knobs in groups, an instance
  * picks a few groups at random and one value from each; those values stop
  * having a single drawn number and move inside a sub-range of their bounds,
- * by the harmonics (src/harmonics.ts), every frame. Every other value stays as
- * it was drawn.
+ * pushed between the edges of a band by one beat voice (src/crossfader.ts),
+ * every frame. Every other value stays as it was drawn.
  */
 
-import { drawHarmonic, harmonicRange, harmonicValue, type HarmonicDraw } from './harmonics';
+import { VOICE_NAMES, type VoiceName } from './beatVoices';
+import { TRAVEL_AT_0, TRAVEL_AT_1, crossfade, drawRange } from './crossfader';
 import type { Rng } from './rng';
 
 /** How many groups an instance moves a value in: this many to this many, drawn once at start. */
 export const MOVING_COUNT = [2, 5] as const;
 
-/** One value that moves: its key, its outer bounds and its harmonics draw. */
+/** One value that moves: its key, its outer bounds, the sub-range it moves in and the voice that pushes it. */
 export interface MovingValue {
   key: string;
   lo: number;
   hi: number;
-  draw: HarmonicDraw;
+  min: number;
+  max: number;
+  voice: VoiceName;
 }
 
 /**
@@ -26,7 +29,7 @@ export interface MovingValue {
  */
 export type MovingGroup = readonly (string | readonly string[])[];
 
-/** N in `count` (at most the number of groups) different groups, one entry from each; each of its values gets its own harmonics draw. */
+/** N in `count` (at most the number of groups) different groups, one entry from each; each of its values gets its own sub-range and its own voice. */
 export function drawMoving(
   groups: readonly MovingGroup[],
   bounds: (key: string) => readonly [number, number],
@@ -42,18 +45,19 @@ export function drawMoving(
     const entry = rng.pick(group);
     for (const key of typeof entry === 'string' ? [entry] : entry) {
       const [lo, hi] = bounds(key);
-      out.push({ key, lo, hi, draw: drawHarmonic(rng) });
+      const { min, max } = drawRange(rng, lo, hi);
+      out.push({ key, lo, hi, min, max, voice: rng.pick(VOICE_NAMES) });
     }
   }
   return out;
 }
 
 /** The sub-range a moving value moves in. */
-export const movingRange = (m: MovingValue): { min: number; max: number } => harmonicRange(m.draw, m.lo, m.hi);
+export const movingRange = (m: MovingValue): { min: number; max: number } => ({ min: m.min, max: m.max });
 
 /** A moving value now. */
 export const movingAt = (m: MovingValue, intensity: number, beats: number): number =>
-  harmonicValue(m.draw, m.lo, m.hi, intensity, beats);
+  crossfade(beats, { min: m.min, max: m.max, intensity, voice: m.voice, travel0: TRAVEL_AT_0, travel1: TRAVEL_AT_1 });
 
 /** Every moving value now, by key. */
 export function movingValues(moving: readonly MovingValue[], intensity: number, beats: number): Record<string, number> {

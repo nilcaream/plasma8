@@ -67,7 +67,7 @@ function main(): void {
     if (params.debug && algorithm.moving?.length) {
       const list = algorithm.moving.map((m) => {
         const { min, max } = movingRange(m);
-        return `${m.key} ${min.toFixed(3)}..${max.toFixed(3)} (of ${m.lo.toFixed(3)}..${m.hi.toFixed(3)})`;
+        return `${m.key} ${min.toFixed(3)}..${max.toFixed(3)} (of ${m.lo.toFixed(3)}..${m.hi.toFixed(3)}) by the ${m.voice}`;
       });
       console.info(`[plasma8] ${def.name}: ${algorithm.moving.length} values move: ${list.join('; ')}`);
     }

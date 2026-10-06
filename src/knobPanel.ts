@@ -143,9 +143,10 @@ export class KnobPanel {
     this.head.textContent = `${s.def.name}  seed ${this.seed}`;
     if (!same) this.build(s.def.knobs);
     for (const r of this.rows) {
-      const moves = this.moving.has(r.knob.key);
+      const moving = this.moving.get(r.knob.key);
+      const moves = moving !== undefined;
       r.el.classList.toggle('moving', moves);
-      r.name.textContent = moves ? `${r.knob.key}  (moves)` : r.knob.key;
+      r.name.textContent = moving ? `${r.knob.key}  (moves) ${moving.voice}` : r.knob.key;
       for (const input of Object.values(r.inputs)) input.disabled = moves;
       this.paint(r);
     }

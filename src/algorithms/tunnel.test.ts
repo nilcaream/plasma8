@@ -163,16 +163,23 @@ describe('the tunnel\'s moving values', () => {
     expect([...keysSeen].sort()).toEqual(TUNNEL_MOVING_GROUPS.flat(2).sort());
   });
 
-  it('gives the two far-end values a harmonics draw each', () => {
+  it('gives the two far-end values a sub-range and a voice each', () => {
     const rng = createRng(10);
-    for (let i = 0; i < 200; i++) {
+    let pairs = 0;
+    let otherRange = 0;
+    let otherVoice = 0;
+    for (let i = 0; i < 400; i++) {
       const moving = drawTunnelMoving(rng);
       const x = moving.find((m) => m.key === 'farEnd.x');
       const y = moving.find((m) => m.key === 'farEnd.y');
       if (!x || !y) continue;
-      expect(x.draw.seed).not.toBe(y.draw.seed);
-      return;
+      pairs++;
+      if (x.min !== y.min) otherRange++;
+      if (x.voice !== y.voice) otherVoice++;
     }
-    throw new Error('the far end was never drawn');
+    expect(pairs).toBeGreaterThan(20);
+    expect(otherRange).toBe(pairs);
+    expect(otherVoice).toBeGreaterThan(0);
+    expect(otherVoice).toBeLessThan(pairs);
   });
 });

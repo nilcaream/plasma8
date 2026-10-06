@@ -49,11 +49,12 @@ function flashWith(def: AlgorithmDef, amounts: { kick: number; snare: number; cr
 }
 
 describe('plasma\'s moving values', () => {
-  const draw = { seed: 12345, widthShare: 0.5, offsetShare: 0.5, factors: [1, 1, 1, 1] };
+  // width 0.5 of 0.9..1.8 placed half way: 1.125..1.575, pushed by the kick
+  const scale = { key: 'scale', lo: 0.9, hi: 1.8, min: 1.125, max: 1.575, voice: 'kick' as const };
   const uniformsAt = (beats: number): Map<string, number> => {
     const { gl, floats } = mockGl();
     const values = drawKnobs(plasma.knobs, createRng(1));
-    const moving = [{ key: 'scale', lo: 0.9, hi: 1.8, draw }];
+    const moving = [scale];
     shaderAlgorithm(gl, 'plasma', plasmaSource, plasmaParams, values, undefined, moving).draw(null, frame(beats, 0, 1, 120));
     floats.set('drawn scale', values.scale!);
     floats.set('drawn swirl', values.swirl!);
@@ -63,7 +64,7 @@ describe('plasma\'s moving values', () => {
   it('stands still at the value it is given while held, and moves again when released', () => {
     const { gl, floats } = mockGl();
     const values = drawKnobs(plasma.knobs, createRng(1));
-    const algorithm = shaderAlgorithm(gl, 'plasma', plasmaSource, plasmaParams, values, undefined, [{ key: 'scale', lo: 0.9, hi: 1.8, draw }]);
+    const algorithm = shaderAlgorithm(gl, 'plasma', plasmaSource, plasmaParams, values, undefined, [scale]);
     const scaleAt = (beats: number): number | undefined => {
       algorithm.draw(null, frame(beats, 0, 1, 120));
       return floats.get('u_scale');
@@ -107,12 +108,11 @@ describe('plasma\'s moving values', () => {
     }
   });
 
-  it('sends the moving value from the harmonics each frame, and every other value as drawn', () => {
+  it('sends the moving value from the crossfader each frame, and every other value as drawn', () => {
     const a = uniformsAt(0.3);
     const b = uniformsAt(5.7);
     expect(a.get('u_scale')).not.toBe(b.get('u_scale'));
     for (const f of [a, b]) {
-      // width 0.5 of 0.9..1.8 placed half way: 1.125..1.575
       expect(f.get('u_scale')).toBeGreaterThanOrEqual(1.125 - 1e-9);
       expect(f.get('u_scale')).toBeLessThanOrEqual(1.575 + 1e-9);
       expect(f.get('u_scale')).not.toBe(f.get('drawn scale'));
