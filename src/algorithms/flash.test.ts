@@ -151,15 +151,9 @@ describe('the strongest voice', () => {
     expect(flashWith(plasma, { kick: 0, snare: 0, crash: 0 }, 1)).toBe(0);
   });
 
-  it('leaves the domain-warped noise at the drawn strengths', () => {
-    const drawn = { kick: 0.1, snare: 0.2, crash: 0.05 };
-    expect(flashWith(warpNoise, drawn, 1)).toBeCloseTo(0.3, 12);
-    expect(flashWith(warpNoise, drawn, 2)).toBeCloseTo(0.1, 12);
-    expect(flashWith(warpNoise, drawn, 4)).toBeCloseTo(0.15, 12);
-  });
 });
 
-describe.each([plasma, tunnel])('$name\'s strongest voice', (def) => {
+describe.each([plasma, warpNoise, tunnel])('$name\'s strongest voice', (def) => {
   it('flashes at exactly the strobe level, the others in proportion', () => {
     const drawn = { kick: 0.1, snare: 0.2, crash: 0.05 };
     expect(flashWith(def, drawn, 1)).toBe(1);

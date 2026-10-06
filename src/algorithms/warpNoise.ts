@@ -1,5 +1,5 @@
 import type { AlgorithmDef } from '../algorithm';
-import { DEFAULT_GAIN, GAIN_RANGE, amountKnobs, amountsOf } from '../beatVoices';
+import { DEFAULT_GAIN, GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
 import { drawBounds, drawKnobs, fixed, range, triple, vec, type Knob, type Values } from '../knobs';
 import { drawMoving, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
@@ -72,5 +72,5 @@ export const warpNoise: AlgorithmDef = {
   home: 0.15,
   knobs: WARP_NOISE_KNOBS,
   create: (gl, values, rng, options) =>
-    shaderAlgorithm(gl, WARP_NOISE_NAME, source, warpNoiseParams, values, amountsOf, options?.moves === false ? [] : drawWarpNoiseMoving(rng, options?.bounds)),
+    shaderAlgorithm(gl, WARP_NOISE_NAME, source, warpNoiseParams, values, relativeAmountsOf, options?.moves === false ? [] : drawWarpNoiseMoving(rng, options?.bounds)),
 };
