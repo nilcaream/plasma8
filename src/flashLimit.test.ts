@@ -45,7 +45,8 @@ describe('the flash cap against the clock', () => {
         expect(mostPeaksInASecond(frames(bpm, [tap], tap + 2500)), `${bpm} BPM, tap at ${tap} ms`).toBeLessThanOrEqual(MAX_FLASHES_PER_S);
       }
     }
-  });
+    // a sweep of about 5000 runs: 2 to 5 s depending on the machine, so more than vitest's 5 s default
+  }, 60000);
 
   it('holds 3 flashes a second at 180 BPM when a tap cuts a rising flash short', () => {
     // free running at 180 BPM the flashes peak at 3333, 3667, 4000 and 4333 ms; the tap at 4329 ms lands in the rise of the fourth,
