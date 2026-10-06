@@ -21,7 +21,7 @@ export type Edge = 'low' | 'high';
  * Over a whole gap the stroke is close to a sine, so the low end can be dialled
  * from a flick to a sine.
  */
-export const TRAVEL_AT_0 = 1;
+export const TRAVEL_AT_0 = 0.75;
 export const TRAVEL_AT_1 = 0.125;
 export const MIN_TRAVEL = 0.01;
 export const MAX_TRAVEL = Math.min(...Object.values(VOICES).map((v) => v.period));
