@@ -144,8 +144,8 @@ describe('the value', () => {
 
 describe('the stroke length by intensity', () => {
   it('is travel0 at intensity 0 and travel1 at 1, a straight line between, cut to the beats between two hits', () => {
-    // the values set on the page: three quarters of a beat at intensity 0, an eighth at 1
-    expect(TRAVEL_AT_0).toBe(0.75);
+    // the values set on the page: half a beat at intensity 0, an eighth at 1
+    expect(TRAVEL_AT_0).toBe(0.5);
     expect(TRAVEL_AT_1).toBe(0.125);
     expect(travelFor(base('kick', 0, 0.5, 0.125))).toBe(0.5);
     expect(travelFor(base('kick', 1, 0.5, 0.125))).toBe(0.125);
