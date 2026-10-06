@@ -1,4 +1,4 @@
-import { formatTempo, type ClockReading } from './clock';
+import type { ClockReading } from './clock';
 import type { Settings } from './settings';
 
 /** How long the menu icon stays visible after the last movement or touch. */
@@ -79,14 +79,11 @@ export class Corner {
   }
 }
 
-/** A dot that pulses on every beat and looks different on beat 1, with the tempo beside it. */
+/** A dot that pulses on every beat and looks different on beat 1. The tempo is written by the tapping widget (src/tapWidget.ts). */
 export class Metronome {
   private readonly root = byId('metronome');
   private readonly dot = byId('dot');
-  private readonly bpm = byId('bpm');
   private first: boolean | undefined;
-  private text = '';
-  private free: boolean | undefined;
 
   setEnabled(on: boolean): void {
     this.root.classList.toggle('on', on);
@@ -100,17 +97,6 @@ export class Metronome {
     }
     const pulse = 1 + (first ? 0.7 : 0.5) * (1 - r.beatPhase) ** 3;
     this.dot.style.transform = `scale(${pulse.toFixed(3)})`;
-
-    const text = formatTempo(r.bpm, r.bpmError);
-    if (text !== this.text) {
-      this.text = text;
-      this.bpm.textContent = text;
-    }
-    const free = !r.synced;
-    if (free !== this.free) {
-      this.free = free;
-      this.bpm.classList.toggle('free', free);
-    }
   }
 }
 
@@ -149,7 +135,7 @@ export class DebugOverlay {
     const text = [
       `${info.name}  home ${info.home.toFixed(2)}`,
       next,
-      `bar ${r.bar + 1}  beat ${r.beatInBar + 1}  ${formatTempo(r.bpm, r.bpmError)} BPM`,
+      `bar ${r.bar + 1}  beat ${r.beatInBar + 1}`,
       `intensity ${info.intensity.toFixed(2)}  speed x${info.rate.toFixed(2)}  strobe ${info.strobe === 0 ? 'off' : info.strobe.toFixed(2)}`,
       `seed ${this.seed}`,
     ].join('\n');

@@ -14,6 +14,7 @@ import { loadSettings, saveSettings, type Settings } from './settings';
 import { MotionClock, motionRate, motionTimeFor, steadyRate } from './motion';
 import { movingRange } from './moving';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
+import { TapWidget, widgetView } from './tapWidget';
 import { Corner, DebugOverlay, Metronome, showFatal } from './ui';
 
 interface Running {
@@ -100,6 +101,7 @@ function main(): void {
   const clock = new TapClock(performance.now(), params.bpm);
   const flashLimiter = new FlashLimiter();
 
+  const tapWidget = new TapWidget();
   const metronome = new Metronome();
   metronome.setEnabled(live.metronome);
   const debug = new DebugOverlay(params.debug, seedText);
@@ -185,6 +187,7 @@ function main(): void {
       fade,
     });
 
+    tapWidget.update(widgetView(r, clock.tapMarks(), now));
     if (live.metronome) metronome.update(r);
     debug.update(r, {
       name: current.def.name,

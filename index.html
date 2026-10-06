@@ -135,14 +135,91 @@
         background: var(--accent);
         box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 0 0 4px rgba(0, 0, 0, 0.35);
       }
-      #bpm {
-        font-size: 11px;
-        letter-spacing: 0.04em;
-        font-variant-numeric: tabular-nums;
+      /* The tapping widget, lower right: 4 dots while counting in, then the early/late strip, and the tempo under it. */
+      #tap-widget {
+        position: fixed;
+        right: calc(env(safe-area-inset-right, 0px) + 18px);
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+        width: 180px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 8px;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.8s ease;
         text-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
       }
-      #bpm.free {
-        opacity: 0.55;
+      #tap-widget.shown {
+        opacity: 1;
+        transition-duration: 0.12s;
+      }
+      #tap-dots,
+      #tap-strip {
+        height: 20px;
+        box-sizing: border-box;
+      }
+      #tap-dots {
+        display: none;
+        align-items: center;
+        gap: 14px;
+      }
+      #tap-widget.counting #tap-dots {
+        display: flex;
+      }
+      #tap-dots i {
+        width: 12px;
+        height: 12px;
+        box-sizing: border-box;
+        border-radius: 50%;
+        border: 2px solid rgba(255, 255, 255, 0.55);
+        background: transparent;
+      }
+      #tap-dots i.on {
+        background: rgba(255, 255, 255, 0.92);
+        border-color: rgba(255, 255, 255, 0.92);
+      }
+      #tap-strip {
+        position: relative;
+        width: 100%;
+        border-radius: 4px;
+        background: rgba(0, 0, 0, 0.35);
+      }
+      #tap-widget.counting #tap-strip {
+        display: none;
+      }
+      #tap-strip::before {
+        /* the beat mark */
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        margin-left: -1px;
+        background: var(--accent);
+      }
+      #tap-strip i {
+        position: absolute;
+        top: 3px;
+        bottom: 3px;
+        width: 3px;
+        margin-left: -1.5px;
+        border-radius: 1px;
+        background: #fff;
+      }
+      #tap-strip i.old {
+        background: rgba(255, 255, 255, 0.7);
+      }
+      #tap-number {
+        font-size: 13px;
+        letter-spacing: 0.04em;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        transition: color 0.3s ease;
+      }
+      #tap-number.green {
+        color: #5fe08a;
       }
 
       #debug {
@@ -369,7 +446,12 @@
 
     <div id="metronome" aria-hidden="true">
       <div id="dot"></div>
-      <div id="bpm"></div>
+    </div>
+
+    <div id="tap-widget" aria-hidden="true">
+      <div id="tap-dots"><i></i><i></i><i></i><i></i></div>
+      <div id="tap-strip"></div>
+      <div id="tap-number"></div>
     </div>
 
     <div id="debug"></div>
