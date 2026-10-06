@@ -39,8 +39,17 @@ export class Sliders {
 
 /** A dot that pulses on every beat and looks different on beat 1, a part of the panel in the band. The tempo is written by the tapping widget (src/tapWidget.ts). */
 export class Metronome {
+  private readonly root = byId('metronome');
   private readonly dot = byId('dot');
   private first: boolean | undefined;
+  private visible: boolean | undefined;
+
+  /** Shows the metronome on its own, when the panel is not up: while the tapping widget shows. */
+  show(visible: boolean): void {
+    if (visible === this.visible) return;
+    this.visible = visible;
+    this.root.classList.toggle('shown', visible);
+  }
 
   update(r: ClockReading): void {
     const first = r.beatInBar === 0;

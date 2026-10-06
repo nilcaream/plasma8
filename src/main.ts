@@ -192,10 +192,11 @@ function main(): void {
       fade,
     });
 
-    // the panel up (a press in the band) shows the widget as it was last seen, whatever the taps
+    // the panel up (a press in the band) shows the widget as it was last seen, whatever the taps; taps alone show the widget and the metronome
     const panel = band.update(now);
     const widget = widgetView(r, clock.tapMarks(), now);
     tapWidget.update({ ...widget, visible: widget.visible || panel });
+    metronome.show(widget.visible);
     wheel.show(r.bpm);
     metronome.update(r);
     debug.update(r, {
