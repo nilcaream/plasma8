@@ -15,6 +15,7 @@ import { MotionClock, motionRate, motionTimeFor, steadyRate } from './motion';
 import { movingRange } from './moving';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
 import { TapWidget, widgetView } from './tapWidget';
+import { TempoWheel } from './tempoWheel';
 import { Corner, DebugOverlay, Metronome, showFatal } from './ui';
 
 interface Running {
@@ -102,6 +103,8 @@ function main(): void {
   const flashLimiter = new FlashLimiter();
 
   const tapWidget = new TapWidget();
+  // dragging the wheel sets the tempo to the whole number it shows, and the beat stays where it is
+  const wheel = new TempoWheel((bpm) => clock.setBpm(bpm, performance.now()));
   const metronome = new Metronome();
   metronome.setEnabled(live.metronome);
   const debug = new DebugOverlay(params.debug, seedText);
@@ -115,12 +118,12 @@ function main(): void {
   // Taps: pointer down and key down, anywhere except the reserved corner. A tap
   // is timed when the event happened, not when a busy page got round to it.
   window.addEventListener('pointerdown', (e) => {
-    if (corner.contains(e.target) || knobPanel.contains(e.target) || !isTapPointer(e)) return;
+    if (corner.contains(e.target) || knobPanel.contains(e.target) || wheel.contains(e.target) || !isTapPointer(e)) return;
     clock.tap(e.timeStamp);
   });
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && corner.isOpen()) corner.setOpen(false);
-    if (corner.contains(e.target) || knobPanel.contains(e.target) || !isTapKey(e)) return;
+    if (corner.contains(e.target) || knobPanel.contains(e.target) || wheel.contains(e.target) || !isTapKey(e)) return;
     clock.tap(e.timeStamp);
   });
 
@@ -187,7 +190,10 @@ function main(): void {
       fade,
     });
 
-    tapWidget.update(widgetView(r, clock.tapMarks(), now));
+    const widget = widgetView(r, clock.tapMarks(), now);
+    tapWidget.update(widget);
+    wheel.show(r.bpm);
+    wheel.hold(widget.visible);
     if (live.metronome) metronome.update(r);
     debug.update(r, {
       name: current.def.name,
