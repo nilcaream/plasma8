@@ -3,7 +3,7 @@ import {
   DEFAULT_GAIN, DEFAULT_SHAPE, VOICES, VOICE_NAMES, drawAmounts, voiceEnvelope, windowEnvelope,
 } from './beatVoices';
 import { TapClock, clampBpm } from './clock';
-import { TRAVEL_DEFAULT, drawRange } from './crossfader';
+import { TRAVEL_AT_1, drawRange } from './crossfader';
 import { DAMPING, drawHarmonic, weights } from './harmonics';
 import { BEATS, CROSSFADER, HARMONICS, LIVE, type Range } from './pageRanges';
 import { createRng } from './rng';
@@ -83,7 +83,7 @@ describe('the fixed sliders stay where the code works', () => {
   it('the stroke stays above 0 and within the beats between two hits of every voice', () => {
     expect(CROSSFADER.travel.min).toBeGreaterThan(0);
     for (const name of VOICE_NAMES) expect(CROSSFADER.travel.max).toBeLessThanOrEqual(VOICES[name].period);
-    expect(CROSSFADER.travel.max).toBeGreaterThanOrEqual(5 * TRAVEL_DEFAULT);
+    expect(CROSSFADER.travel.max).toBeGreaterThanOrEqual(5 * TRAVEL_AT_1);
   });
 
   it('the damping stays where its powers are defined and finite', () => {

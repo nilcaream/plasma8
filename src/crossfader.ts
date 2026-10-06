@@ -15,8 +15,14 @@ import type { Rng } from './rng';
 
 export type Edge = 'low' | 'high';
 
-/** Beats a stroke takes, and the span the page tries (a stroke never outlasts the beats between two hits). */
-export const TRAVEL_DEFAULT = 1 / 8;
+/**
+ * Beats a stroke takes at intensity 0 and at 1 (a straight line between), and
+ * the span the page tries; a stroke never outlasts the beats between two hits.
+ * Over a whole gap the stroke is close to a sine, so the low end can be dialled
+ * from a flick to a sine.
+ */
+export const TRAVEL_AT_0 = 0.5;
+export const TRAVEL_AT_1 = 1 / 8;
 export const MIN_TRAVEL = 0.01;
 export const MAX_TRAVEL = Math.min(...Object.values(VOICES).map((v) => v.period));
 export const TRAVEL_RANGE = [MIN_TRAVEL, MAX_TRAVEL] as const;
@@ -28,8 +34,15 @@ export interface Crossfader {
   /** 0 holds the middle, 1 uses the whole range. */
   intensity: number;
   voice: VoiceName;
-  /** Beats a stroke takes, ending on the hit. */
-  travel: number;
+  /** Beats a stroke takes at intensity 0 and at 1, ending on the hit. */
+  travel0: number;
+  travel1: number;
+}
+
+/** The stroke's length in beats: travel0 + (travel1 − travel0)·I, cut to the beats between two hits of the voice. */
+export function travelFor(p: Crossfader): number {
+  const i = Math.min(1, Math.max(0, p.intensity));
+  return Math.min(Math.max(p.travel0 + (p.travel1 - p.travel0) * i, 0), VOICES[p.voice].period);
 }
 
 /** The band's two edges: mid ± intensity · half. */
@@ -77,7 +90,7 @@ export function crossfaderState(beats: number, p: Crossfader): CrossfaderState {
   const n = Math.floor((beats - v.onset) / v.period);
   const last = { n, time: hitTime(p.voice, n), edge: edgeOf(p.voice, n) };
   const next = { n: n + 1, time: hitTime(p.voice, n + 1), edge: edgeOf(p.voice, n + 1) };
-  const length = Math.min(Math.max(p.travel, 0), v.period);
+  const length = travelFor(p);
   const progress = length > 0 ? Math.min(1, Math.max(0, (beats - (next.time - length)) / length)) : 0;
   const from = last.edge === 'low' ? low : high;
   const to = next.edge === 'low' ? low : high;

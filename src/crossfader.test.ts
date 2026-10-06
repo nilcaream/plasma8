@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { VoiceName } from './beatVoices';
-import { MAX_TRAVEL, TRAVEL_DEFAULT, bandOf, crossfade, crossfaderState, drawRange, edgeOf, hitTime, stroke, type Crossfader } from './crossfader';
+import { MAX_TRAVEL, TRAVEL_AT_0, TRAVEL_AT_1, bandOf, crossfade, crossfaderState, drawRange, edgeOf, hitTime, stroke, travelFor, type Crossfader } from './crossfader';
 import { createRng } from './rng';
 
-const base = (voice: VoiceName, intensity = 1, travel = TRAVEL_DEFAULT): Crossfader => ({ min: 2, max: 6, intensity, voice, travel });
+/** One stroke length at every intensity, unless the test gives the two ends. */
+const base = (voice: VoiceName, intensity = 1, travel = TRAVEL_AT_1, travel1 = travel): Crossfader =>
+  ({ min: 2, max: 6, intensity, voice, travel0: travel, travel1 });
 
 describe('bandOf', () => {
   it('is the middle at intensity 0 and the whole range at 1, mid ± I · half in between', () => {
@@ -60,7 +62,7 @@ describe('the value', () => {
   it('arrives on the hit exactly, whatever the intensity and the travel', () => {
     for (const voice of VOICE_LIST) {
       for (const intensity of [0, 0.3, 1]) {
-        for (const travel of [0.01, TRAVEL_DEFAULT, 0.5, MAX_TRAVEL]) {
+        for (const travel of [0.01, TRAVEL_AT_1, 0.5, MAX_TRAVEL]) {
           const p = base(voice, intensity, travel);
           const { low, high } = bandOf(p.min, p.max, p.intensity);
           for (let n = -2; n < 6; n++) {
@@ -92,7 +94,7 @@ describe('the value', () => {
 
   it('stays inside the band and never moves faster than the steepest slope of a stroke', () => {
     for (const voice of VOICE_LIST) {
-      for (const travel of [0.05, TRAVEL_DEFAULT, 0.5]) {
+      for (const travel of [0.05, TRAVEL_AT_1, 0.5]) {
         const p = base(voice, 0.6, travel);
         const { low, high } = bandOf(p.min, p.max, p.intensity);
         let previous = crossfade(-3, p);
@@ -137,6 +139,31 @@ describe('the value', () => {
     expect(crossfade(1, p)).toBe(6);
     expect(crossfade(2, p)).toBe(2);
     expect(crossfade(1.5, p)).toBeCloseTo(4, 12);
+  });
+});
+
+describe('the stroke length by intensity', () => {
+  it('is travel0 at intensity 0 and travel1 at 1, a straight line between, cut to the beats between two hits', () => {
+    expect(TRAVEL_AT_0).toBeGreaterThan(TRAVEL_AT_1);
+    expect(travelFor(base('kick', 0, 0.5, 0.125))).toBe(0.5);
+    expect(travelFor(base('kick', 1, 0.5, 0.125))).toBe(0.125);
+    expect(travelFor(base('kick', 0.5, 0.5, 0.125))).toBeCloseTo(0.3125, 12);
+    expect(travelFor(base('kick', 0.25, 0.5, 0.125))).toBeCloseTo(0.40625, 12);
+    expect(travelFor(base('kick', 9, 0.5, 0.125))).toBe(0.125);
+    expect(travelFor(base('kick', 0, 3, 0.125))).toBe(1); // the kick's gap
+    expect(travelFor(base('snare', 0, 3, 0.125))).toBe(2); // the snare's gap
+  });
+
+  it('starts the stroke that long before the hit at that intensity, and still arrives on it', () => {
+    // I = 0.5: L = 0.3125; the kick goes from low (beat 1) to high (beat 2), so it leaves at 0.6875 beats
+    const p = base('kick', 0.5, 0.5, 0.125);
+    expect(crossfade(0.6875, p)).toBe(crossfade(0, p));
+    expect(crossfade(0.6875 + 0.3125 / 2, p)).toBeCloseTo(4, 12);
+    expect(crossfade(1, p)).toBe(crossfaderState(1, p).high);
+    // at I = 1 the stroke is 0.125 long: at 0.7 the value has not left
+    const hard = base('kick', 1, 0.5, 0.125);
+    expect(crossfade(0.7, hard)).toBe(2);
+    expect(crossfade(0.875 + 0.125 / 2, hard)).toBeCloseTo(4, 12);
   });
 });
 

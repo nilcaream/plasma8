@@ -5,7 +5,7 @@
  */
 import { VOICES, VOICE_NAMES, type VoiceName } from './beatVoices';
 import {
-  TRAVEL_DEFAULT, crossfade, crossfaderState, drawRange, edgeOf, hitTime, type Crossfader,
+  TRAVEL_AT_0, TRAVEL_AT_1, crossfade, crossfaderState, drawRange, edgeOf, hitTime, travelFor, type Crossfader,
 } from './crossfader';
 import {
   button, colors, controlGroup, dot, el, frame, plot, playhead, samples, setup, slider, tempoControls,
@@ -32,7 +32,7 @@ const PATTERN: Record<VoiceName, string> = {
 let seed = freshSeed();
 const drawn = drawRange(createRng(seed), CROSSFADER.bounds.lo, CROSSFADER.bounds.hi);
 const P: Crossfader = {
-  min: round2(drawn.min), max: round2(drawn.max), intensity: 0.5, voice: 'kick', travel: TRAVEL_DEFAULT,
+  min: round2(drawn.min), max: round2(drawn.max), intensity: 0.5, voice: 'kick', travel0: TRAVEL_AT_0, travel1: TRAVEL_AT_1,
 };
 
 // --- controls -------------------------------------------------------------
@@ -72,7 +72,8 @@ button(random, 'Draw again', 'redraw').addEventListener('click', () => {
 });
 
 const fixed = controlGroup(controls, 'Fixed in code',
-  `Which voice drives the value, and how many beats a stroke takes (${TRAVEL_DEFAULT} in code, ending on the hit; a stroke is cut to the beats between two hits).`);
+  `Which voice drives the value, and how many beats a stroke takes at intensity 0 and at 1 (${TRAVEL_AT_0} and ${TRAVEL_AT_1} in code; a straight line between them by I, ending on the hit, cut to the beats between two hits). `
+  + 'Over a whole gap the stroke is close to a sine.');
 const voiceRow = document.createElement('div');
 voiceRow.className = 'ctl';
 voiceRow.innerHTML = `<label for="voice">voice</label><select id="voice">${VOICE_NAMES.map((n) => `<option value="${n}">${n}</option>`).join('')}</select>`;
@@ -80,12 +81,15 @@ fixed.appendChild(voiceRow);
 const voiceSelect = voiceRow.querySelector('select')!;
 voiceSelect.value = P.voice;
 voiceSelect.addEventListener('change', () => { P.voice = voiceSelect.value as VoiceName; });
-const setTravel = slider(fixed, { label: 'travel', ...CROSSFADER.travel, step: 0.005, value: P.travel, digits: 3 }, (v) => { P.travel = v; });
+const setTravel0 = slider(fixed, { label: 'travel I=0', ...CROSSFADER.travel, step: 0.005, value: P.travel0, digits: 3 }, (v) => { P.travel0 = v; });
+const setTravel1 = slider(fixed, { label: 'travel I=1', ...CROSSFADER.travel, step: 0.005, value: P.travel1, digits: 3 }, (v) => { P.travel1 = v; });
 button(fixed, 'Reset to code values', 'reset-fixed').addEventListener('click', () => {
   P.voice = 'kick';
-  P.travel = TRAVEL_DEFAULT;
+  P.travel0 = TRAVEL_AT_0;
+  P.travel1 = TRAVEL_AT_1;
   voiceSelect.value = P.voice;
-  setTravel(P.travel);
+  setTravel0(P.travel0);
+  setTravel1(P.travel1);
 });
 
 // --- drawing --------------------------------------------------------------
@@ -132,7 +136,8 @@ function writeFormulas(pos: number): void {
   const mid = (P.min + P.max) / 2;
   const half = (P.max - P.min) / 2;
   const v = VOICES[P.voice];
-  const length = Math.min(P.travel, v.period);
+  const length = travelFor(P);
+  const blended = P.travel0 + (P.travel1 - P.travel0) * Math.min(1, Math.max(0, P.intensity));
   const bar = Math.floor(pos / BAR) + 1;
   const beat = Math.floor(pos % BAR) + 1;
   const lines = [
@@ -144,7 +149,9 @@ function writeFormulas(pos: number): void {
     `hits of the ${P.voice}: hit n at t_n = ${v.onset} + n·${v.period} beats (t in beats from beat 1 of bar 1);  ${PATTERN[P.voice]}`,
     `edge e_n = ${edgeOf(P.voice, 0)} for even n, ${edgeOf(P.voice, 1)} for odd n  (hits counted on in both directions, so a value before the first hit is where the pattern puts it)`,
     '',
-    `stroke:  L = ${f3(length)} beats${P.travel > length ? ` (travel ${f3(P.travel)} cut to the ${v.period} beats between two hits)` : ''};  s(x) = 3x² − 2x³ on x ∈ [0, 1]`,
+    `stroke length by intensity:  L = L0 + (L1 − L0)·I = ${f3(P.travel0)} + (${f3(P.travel1)} − ${f3(P.travel0)})·${f2(P.intensity)} = ${f3(blended)} beats`
+      + (blended > length ? `, cut to the ${v.period} beats between two hits of the ${P.voice} = ${f3(length)}` : ''),
+    's(x) = 3x² − 2x³ on x ∈ [0, 1]   (over a whole gap between two hits it is close to a sine; the shorter L, the nearer a flick)',
     'for t_n ≤ t < t_(n+1):   x = clamp((t − (t_(n+1) − L)) / L, 0, 1)',
     '                        value = e_n + (e_(n+1) − e_n)·s(x)     it holds e_n, then arrives on e_(n+1) exactly at t_(n+1)',
     '',
