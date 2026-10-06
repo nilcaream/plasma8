@@ -177,9 +177,10 @@ describe.each([plasma, warpNoise, julia, tunnel])('$name\'s flash', (def) => {
     expect(flashOn(def, 0, 0, 1)).toBe(0);
   });
 
-  it('skips the beats the flash cap thins out: beat 2 is silent above 180 BPM, and sounds at 120', () => {
-    expect(flashOn(def, 1, 1, 0.5, 120)).toBe(1);
-    expect(flashOn(def, 1, 1, 0.5, 200)).toBe(0);
-    expect(flashOn(def, 2, 1, 0.5, 200)).toBe(1);
+  it('flashes on every beat at every tempo: the tempo thins nothing', () => {
+    for (const bpm of [60, 120, 180]) {
+      expect(flashOn(def, 1, 1, 0.5, bpm)).toBe(1);
+      expect(flashOn(def, 2, 1, 0.5, bpm)).toBe(1);
+    }
   });
 });

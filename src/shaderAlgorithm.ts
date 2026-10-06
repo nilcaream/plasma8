@@ -1,7 +1,7 @@
 import type { Algorithm, FrameInputs } from './algorithm';
 import { FULLSCREEN_VERTEX, createProgram } from './gl';
 import { BEATS_PER_BAR } from './clock';
-import { DEFAULT_SHAPE, flash, flashStep, type Amounts } from './beatVoices';
+import { DEFAULT_SHAPE, flash, type Amounts } from './beatVoices';
 import type { Values } from './knobs';
 import { movingValues, type MovingValue } from './moving';
 import { BarSteps, stepShape } from './motion';
@@ -125,7 +125,7 @@ export class ShaderAlgorithm {
     gl.uniform1f(c.get('u_barPulse') ?? null, inputs.barPulse);
     gl.uniform1f(c.get('u_barSteps') ?? null, this.steps.update(Math.floor(inputs.beats / BEATS_PER_BAR), inputs.barPhase, inputs.intensity));
     gl.uniform1f(c.get('u_intensity') ?? null, inputs.intensity);
-    gl.uniform1f(c.get('u_flash') ?? null, this.amounts ? flash(inputs.beats, inputs.strobe, this.amounts, DEFAULT_SHAPE, flashStep(inputs.bpm)).total : 0);
+    gl.uniform1f(c.get('u_flash') ?? null, this.amounts ? flash(inputs.beats, inputs.strobe, this.amounts, DEFAULT_SHAPE).total : 0);
     for (const { location, value } of this.params) setUniform(gl, location, value);
     if (this.perFrame) {
       for (const [uniform, value] of Object.entries(this.perFrame(inputs))) {

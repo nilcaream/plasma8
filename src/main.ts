@@ -1,7 +1,6 @@
 import { ALGORITHMS, chooseAlgorithm } from './algorithms';
 import type { Algorithm, AlgorithmDef, FrameInputs } from './algorithm';
 import { TapClock } from './clock';
-import { flashStep } from './beatVoices';
 import { beatInputs } from './drive';
 import { FlashLimiter } from './flashLimit';
 import { createContext } from './gl';
@@ -169,7 +168,7 @@ function main(): void {
     const shared = motion.update(dt, rate);
     const steadyTime = steady.update(dt, steadyRate(intensity));
     // a flash window the clock put too close to the last one stays dark (src/flashLimit.ts)
-    const strobe = flashLimiter.allow(r.beats, r.bpm, flashStep(r.bpm), now) ? live.strobe : 0;
+    const strobe = flashLimiter.allow(r.beats, r.bpm, now) ? live.strobe : 0;
     const inputsFor = (def: AlgorithmDef): FrameInputs => ({
       ...beat,
       time: motionTimeFor(def, shared, steadyTime),
