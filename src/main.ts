@@ -14,6 +14,7 @@ import { loadSettings, saveSettings, type Settings } from './settings';
 import { MotionClock, motionRate, motionTimeFor, steadyRate } from './motion';
 import { movingRange } from './moving';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
+import { TapAreas } from './tapAreas';
 import { TapWidget, widgetView } from './tapWidget';
 import { TempoWheel } from './tempoWheel';
 import { Corner, DebugOverlay, Metronome, showFatal } from './ui';
@@ -105,6 +106,15 @@ function main(): void {
   const tapWidget = new TapWidget();
   // dragging the wheel sets the tempo to the whole number it shows, and the beat stays where it is
   const wheel = new TempoWheel((bpm) => clock.setBpm(bpm, performance.now()));
+  // where a tap is not a tempo tap: the corner and its open menu, the widget, the wheel (src/tapAreas.ts)
+  const noTapAreas = new TapAreas(
+    [
+      { name: 'menu', ids: ['corner', 'menu'] },
+      { name: 'widget', ids: ['tap-widget'] },
+      { name: 'wheel', ids: ['tempo-wheel'] },
+    ],
+    params.debug,
+  );
   const metronome = new Metronome();
   metronome.setEnabled(live.metronome);
   const debug = new DebugOverlay(params.debug, seedText);
@@ -119,6 +129,7 @@ function main(): void {
   // is timed when the event happened, not when a busy page got round to it.
   window.addEventListener('pointerdown', (e) => {
     if (corner.contains(e.target) || knobPanel.contains(e.target) || wheel.contains(e.target) || !isTapPointer(e)) return;
+    if (noTapAreas.contains(e.clientX, e.clientY)) return;
     clock.tap(e.timeStamp);
   });
   window.addEventListener('keydown', (e) => {
@@ -194,6 +205,7 @@ function main(): void {
     tapWidget.update(widget);
     wheel.show(r.bpm);
     wheel.hold(widget.visible);
+    noTapAreas.update();
     if (live.metronome) metronome.update(r);
     debug.update(r, {
       name: current.def.name,
