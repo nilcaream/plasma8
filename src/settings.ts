@@ -8,7 +8,7 @@ export interface Settings {
   metronome: boolean;
 }
 
-export const DEFAULT_SETTINGS: Readonly<Settings> = { intensity: 0.5, strobe: 0, metronome: false };
+export const DEFAULT_SETTINGS: Readonly<Settings> = { intensity: 0.15, strobe: 0.15, metronome: false };
 
 export const STORAGE_KEY = 'plasma8.settings';
 

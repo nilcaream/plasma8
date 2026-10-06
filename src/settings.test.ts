@@ -11,6 +11,18 @@ function fakeStorage(initial?: string) {
   };
 }
 
+describe('DEFAULT_SETTINGS', () => {
+  it('is what a first visit starts with: intensity 0.15, strobe 0.15, metronome off', () => {
+    expect(DEFAULT_SETTINGS).toEqual({ intensity: 0.15, strobe: 0.15, metronome: false });
+    expect(loadSettings(() => fakeStorage())).toEqual({ intensity: 0.15, strobe: 0.15, metronome: false });
+  });
+
+  it('is kept only for what was never saved: a saved value stays, a missing one takes the new default', () => {
+    expect(loadSettings(() => fakeStorage('{"intensity":0.5,"strobe":0}'))).toEqual({ intensity: 0.5, strobe: 0, metronome: false });
+    expect(loadSettings(() => fakeStorage('{"intensity":0.7}'))).toEqual({ intensity: 0.7, strobe: 0.15, metronome: false });
+  });
+});
+
 describe('sanitizeSettings', () => {
   it('keeps valid values and clamps the sliders', () => {
     expect(sanitizeSettings({ intensity: 0.8, strobe: 0.3, metronome: true })).toEqual({
