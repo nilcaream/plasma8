@@ -1,7 +1,9 @@
 import { ALGORITHMS, chooseAlgorithm } from './algorithms';
 import type { Algorithm, AlgorithmDef, FrameInputs } from './algorithm';
 import { TapClock } from './clock';
+import { flashStep } from './beatVoices';
 import { beatInputs } from './drive';
+import { FlashLimiter } from './flashLimit';
 import { createContext } from './gl';
 import { isTapKey, isTapPointer } from './input';
 import { KnobPanel } from './knobPanel';
@@ -97,6 +99,7 @@ function main(): void {
   knobPanel.show(current);
 
   const clock = new TapClock(performance.now(), params.bpm);
+  const flashLimiter = new FlashLimiter();
 
   const metronome = new Metronome();
   metronome.setEnabled(live.metronome);
@@ -165,10 +168,12 @@ function main(): void {
 
     const shared = motion.update(dt, rate);
     const steadyTime = steady.update(dt, steadyRate(intensity));
+    // a flash window the clock put too close to the last one stays dark (src/flashLimit.ts)
+    const strobe = flashLimiter.allow(r.beats, r.bpm, flashStep(r.bpm), now) ? live.strobe : 0;
     const inputsFor = (def: AlgorithmDef): FrameInputs => ({
       ...beat,
       time: motionTimeFor(def, shared, steadyTime),
-      strobe: live.strobe,
+      strobe,
       bpm: r.bpm,
       width,
       height,

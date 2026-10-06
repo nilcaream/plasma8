@@ -18,7 +18,7 @@ export interface FrameInputs {
   beats: number;
   /** 0 soft … 1 hard: how hard the beat hits and how far beat moves reach; never the colours. */
   intensity: number;
-  /** The strobe slider, 0 off … 1: the size and the shape of the beat voices' flash (src/beatVoices.ts); never the intensity. */
+  /** The strobe slider, 0 off … 1: the size and the shape of the beat voices' flash (src/beatVoices.ts); never the intensity. 0 while the flash limiter holds a window dark (src/flashLimit.ts). */
   strobe: number;
   /** The tempo in beats per minute: the flash keeps to at most 3 flashes a second by it. */
   bpm: number;
