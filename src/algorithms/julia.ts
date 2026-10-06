@@ -25,7 +25,7 @@ export const JULIA_KNOBS: readonly Knob[] = [
   range('zoom', 1.311, 1.8, [0.4, 4]),
   range('spin', -0.05, 0.05, [-0.2, 0.2]),
   range('bands', 1.5, 5.101, [0.3, 10]),
-  // how hard each beat voice flashes this run: the only thing that follows the beat
+  // how hard each beat voice flashes this run (the moving values follow the voices too)
   ...amountKnobs(),
   // fixed in code: the flash gain, the glow's strength and how fast c drifts
   fixed('flashGain', 0.5, GAIN_RANGE, 'follows the beat'),

@@ -28,7 +28,7 @@ export const WARP_NOISE_KNOBS: readonly Knob[] = [
   range('offset2.1', 0, 60, [0, 60]),
   range('warp', 2.5, 4.5, [0, 8]),
   range('rotate', -0.03, 0.03, [-0.1, 0.1]),
-  // how hard each beat voice flashes this run: the only thing that follows the beat
+  // how hard each beat voice flashes this run (the moving values follow the voices too)
   ...amountKnobs(),
   // fixed in code: the flash gain
   fixed('flashGain', 0.5, GAIN_RANGE, 'follows the beat'),

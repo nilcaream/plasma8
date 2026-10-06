@@ -29,7 +29,7 @@ export const TUNNEL_KNOBS: readonly Knob[] = [
   // where the far end sits on screen (uv); the tube bends to it
   range('farEnd.x', -0.271, 0.271, [-0.6, 0.6]),
   range('farEnd.y', -0.271, 0.271, [-0.6, 0.6]),
-  // how hard each beat voice flashes this run: the only thing that follows the beat
+  // how hard each beat voice flashes this run (the moving values follow the voices too)
   ...amountKnobs(),
   // fixed in code: the flash gain
   fixed('flashGain', 1, GAIN_RANGE, 'follows the beat'),

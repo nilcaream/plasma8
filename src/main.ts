@@ -194,7 +194,8 @@ function main(): void {
       change: describeChange(sequencer.change, look),
       intensity,
       strobe: live.strobe,
-      rate,
+      // the speed the picture really runs at: a steady-speed algorithm keeps its own clock
+      rate: current.def.steadySpeed ? steadyRate(intensity) : rate,
     });
     requestAnimationFrame(frame);
   };

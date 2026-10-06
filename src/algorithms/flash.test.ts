@@ -144,7 +144,7 @@ describe('the tunnel\'s dive phases', () => {
 
 describe('the strongest voice', () => {
   it('flashes plasma at exactly the strobe level, the others in proportion', () => {
-    // Beat 1 is the snare (with the kick), beat 2 the kick alone, beat 4 the crash (with the kick): the voices add up.
+    // Position 1 (beat 2) is the snare with the kick, position 2 (beat 3) the kick alone, position 4 (beat 1 of bar 2) the crash with the kick: the voices add up.
     const drawn = { kick: 0.1, snare: 0.2, crash: 0.05 };
     expect(flashWith(plasma, drawn, 1)).toBe(1);
     expect(flashWith(plasma, drawn, 2)).toBeCloseTo(0.5, 12);

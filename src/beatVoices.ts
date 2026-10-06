@@ -133,6 +133,7 @@ export const MAX_FLASHES_PER_S = 3;
 /**
  * How many beats apart the onsets that sound are at this tempo: 1, 2, 4 or 8. The beat grid is the
  * same for every voice, so with onsets only on every `step`-th beat there are never more than 3 in a second.
+ * From 180 BPM the step is 2: the snare, whose onsets are the odd beats, no longer sounds.
  */
 export function flashStep(bpm: number): number {
   const beatS = 60 / bpm;

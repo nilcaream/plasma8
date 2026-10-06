@@ -35,7 +35,7 @@ export const PLASMA_KNOBS: readonly Knob[] = [
   range('swirl', -1.2, 1.2, [-3, 3]),
   int('mode', 0, 2, [0, 2]),
   range('cycles', 0.6, 1.3, [0.1, 3]),
-  // how hard each beat voice flashes this run: the only thing that follows the beat
+  // how hard each beat voice flashes this run (the moving values follow the voices too)
   ...amountKnobs(),
   // fixed in code: the flash gain, and how the field moves with time (set on the debug panel)
   fixed('flashGain', 1, GAIN_RANGE, 'follows the beat'),

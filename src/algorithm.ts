@@ -16,7 +16,7 @@ export interface FrameInputs {
   barPulse: number;
   /** Beats since beat 1 of bar 1, fractional; starts again from 0 when a tap starts a fresh count. */
   beats: number;
-  /** 0 soft … 1 hard: how hard the beat hits and how far beat moves reach; never the colours. */
+  /** 0 soft … 1 hard: how hard the beat hits and how far beat moves reach; it reaches the colours only through the width of the moving values' band. */
   intensity: number;
   /** The strobe slider, 0 off … 1: the size and the shape of the beat voices' flash (src/beatVoices.ts); never the intensity. 0 while the flash limiter holds a window dark (src/flashLimit.ts). */
   strobe: number;
@@ -34,7 +34,7 @@ export interface FrameInputs {
  */
 export interface Algorithm {
   readonly name: string;
-  /** The values that move this instance, when it has any: they follow the harmonics every frame instead of holding a drawn number. */
+  /** The values that move this instance, when it has any: they follow a beat voice through the crossfader every frame instead of holding a drawn number. */
   readonly moving?: readonly MovingValue[];
   draw(target: WebGLFramebuffer | null, inputs: FrameInputs): void;
   /** Takes new values for its knobs while it runs (the debug panel's overrides). */
