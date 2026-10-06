@@ -11,8 +11,6 @@ import { MAX_BPM, MIN_BPM } from './clock';
 export const WHEEL_ROW_PX = 24;
 /** Rows drawn: the one in the middle and two each side. */
 export const WHEEL_ROWS = 5;
-/** The wheel stays this long after the last movement anywhere on the page. */
-const AWAKE_MS = 3500;
 
 /** The wheel's position after dragging `dyPx` (positive is down) from the whole number `start`: up is a faster tempo. */
 export function wheelPosition(start: number, dyPx: number): number {
@@ -55,7 +53,6 @@ export class TempoWheel {
   private startY = 0;
   private startValue = 0;
   private lastSet = 0;
-  private idleTimer: number | undefined;
   private drawn = '';
 
   constructor(private readonly onSet: (bpm: number) => void) {
@@ -94,14 +91,6 @@ export class TempoWheel {
       e.preventDefault();
       this.move(wheelPosition(Math.round(this.position), -step * WHEEL_ROW_PX));
     });
-    for (const type of ['pointermove', 'pointerdown', 'touchstart']) {
-      window.addEventListener(type, () => this.wake(), { passive: true });
-    }
-    this.wake();
-  }
-
-  contains(target: EventTarget | null): boolean {
-    return target instanceof Node && this.root.contains(target);
   }
 
   /** Follows the clock's tempo (rounded) unless a finger is on the wheel. */
@@ -109,11 +98,6 @@ export class TempoWheel {
     if (this.dragging) return;
     this.position = Math.min(MAX_BPM, Math.max(MIN_BPM, Math.round(bpm)));
     this.draw();
-  }
-
-  /** Keeps the wheel visible while the tapping widget is. */
-  hold(on: boolean): void {
-    this.root.classList.toggle('held', on);
   }
 
   private move(position: number): void {
@@ -124,12 +108,6 @@ export class TempoWheel {
       this.onSet(value);
     }
     this.draw();
-  }
-
-  private wake(): void {
-    this.root.classList.add('awake');
-    window.clearTimeout(this.idleTimer);
-    this.idleTimer = window.setTimeout(() => this.root.classList.remove('awake'), AWAKE_MS);
   }
 
   private draw(): void {

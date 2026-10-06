@@ -33,92 +33,81 @@
         display: block;
       }
 
-      /* The reserved corner: about 100x100 px, never a tap area. */
-      #corner {
+      /*
+       * The band: the whole width at the top, the one place for every control and the only place where a tap is not a tempo tap.
+       * One row of parts of the same height, the metronome left, the tapping widget at the centre, the wheel and the sliders right;
+       * on a narrow screen (a phone held upright) a second row takes the wheel and the sliders. A press in it shows all the parts for 5 s.
+       */
+      :root {
+        --gap: 8px;
+        --part-h: 72px;
+        --radius: 10px;
+        --band-h: calc(env(safe-area-inset-top, 0px) + var(--gap) + var(--part-h) + var(--gap));
+      }
+      #bar {
         position: fixed;
-        z-index: 1; /* above the ?debug knob panel, so the menu is never covered */
-        top: env(safe-area-inset-top, 0px);
-        right: env(safe-area-inset-right, 0px);
-        width: 100px;
-        height: 100px;
+        z-index: 1; /* above the ?debug knob panel, so a part is never covered */
+        top: 0;
+        left: 0;
+        right: 0;
+        height: var(--band-h);
+        box-sizing: border-box;
+        padding: calc(env(safe-area-inset-top, 0px) + var(--gap)) calc(env(safe-area-inset-right, 0px) + var(--gap)) var(--gap)
+          calc(env(safe-area-inset-left, 0px) + var(--gap));
+        display: grid;
+        grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
+        align-items: start;
+        column-gap: var(--gap);
+      }
+      #controls {
+        justify-self: end;
         display: flex;
-        justify-content: flex-end;
-        align-items: flex-start;
+        gap: var(--gap);
       }
-      #menu-button {
-        margin: 12px;
-        width: 40px;
-        height: 40px;
-        padding: 8px;
+      @media (max-width: 599px) {
+        :root {
+          --band-h: calc(env(safe-area-inset-top, 0px) + var(--gap) + 2 * (var(--part-h) + var(--gap)));
+        }
+        #bar {
+          row-gap: var(--gap);
+        }
+        #controls {
+          grid-column: 1 / -1;
+          justify-self: stretch;
+          justify-content: flex-end;
+        }
+        #menu {
+          flex: 1;
+          max-width: 300px;
+        }
+      }
+
+      /* Every part of the panel: the same height, background, radius and text, and invisible and out of the way until the panel is up. */
+      .part {
+        height: var(--part-h);
         box-sizing: border-box;
-        border: 0;
-        border-radius: 50%;
-        background: transparent;
-        color: #fff;
-        cursor: pointer;
-        opacity: 0;
-        transition: opacity 0.6s ease;
-      }
-      #corner.awake #menu-button,
-      #menu-button:focus-visible {
-        opacity: 0.35;
-      }
-      #corner.awake #menu-button:hover,
-      #corner.open #menu-button {
-        opacity: 0.8;
-      }
-      #menu-button svg {
-        display: block;
-        width: 100%;
-        height: 100%;
-      }
-      #menu {
-        position: absolute;
-        top: 58px;
-        right: 12px;
-        width: 220px;
-        padding: 12px 14px;
-        box-sizing: border-box;
-        border-radius: 10px;
+        border-radius: var(--radius);
         background: var(--panel);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
-        display: none;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.8s ease;
       }
-      #corner.open #menu {
-        display: block;
+      #bar.shown .part,
+      #tap-widget.shown {
+        opacity: 1;
+        transition-duration: 0.12s;
       }
-      #menu label {
-        display: block;
-        margin: 4px 0 10px;
-      }
-      #menu .row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-      #menu input[type='range'] {
-        width: 100%;
-        margin: 4px 0 0;
-        accent-color: var(--accent);
-      }
-      #menu input[type='checkbox'] {
-        accent-color: var(--accent);
-        width: 18px;
-        height: 18px;
+      #bar.shown .part {
+        pointer-events: auto;
       }
 
       #metronome {
-        position: fixed;
-        left: calc(env(safe-area-inset-left, 0px) + 18px);
-        bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
-        display: none;
-        align-items: center;
-        gap: 22px;
-        pointer-events: none;
-      }
-      #metronome.on {
+        width: var(--part-h);
         display: flex;
+        align-items: center;
+        justify-content: center;
       }
       #dot {
         width: 18px;
@@ -135,28 +124,16 @@
         background: var(--accent);
         box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.9), 0 0 0 4px rgba(0, 0, 0, 0.35);
       }
-      /* The tapping widget, lower right: 4 dots while counting in, then the early/late strip, and the tempo under it. */
+
+      /* The tapping widget: 4 dots while counting in, then the early/late strip, and the tempo under it. */
       #tap-widget {
-        position: fixed;
-        right: calc(env(safe-area-inset-right, 0px) + 18px);
-        bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
-        box-sizing: border-box;
         width: 200px;
-        padding: 8px 10px;
-        border-radius: 10px;
-        background: rgba(0, 0, 0, 0.4);
+        padding: 0 10px;
         display: flex;
         flex-direction: column;
+        justify-content: center;
         align-items: center;
         gap: 8px;
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.8s ease;
-        text-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
-      }
-      #tap-widget.shown {
-        opacity: 1;
-        transition-duration: 0.12s;
       }
       #tap-dots,
       #tap-strip {
@@ -216,8 +193,6 @@
         background: rgba(255, 255, 255, 0.7);
       }
       #tap-number {
-        font-size: 13px;
-        letter-spacing: 0.04em;
         font-variant-numeric: tabular-nums;
         white-space: nowrap;
         transition: color 0.3s ease;
@@ -226,29 +201,23 @@
         color: #5fe08a;
       }
 
-      /* The whole-number tempo wheel, left of the tapping widget: three rows show, the middle one is the tempo. */
+      /* The whole-number tempo wheel, left of the sliders: three rows show, the middle one is the tempo. */
       #tempo-wheel {
-        position: fixed;
-        right: calc(env(safe-area-inset-right, 0px) + 18px + 200px + 10px);
-        bottom: calc(env(safe-area-inset-bottom, 0px) + 18px);
+        position: relative;
         width: 56px;
-        height: 72px;
         overflow: hidden;
-        border-radius: 10px;
-        background: rgba(0, 0, 0, 0.35);
         cursor: ns-resize;
         outline: none;
-        opacity: 0;
-        transition: opacity 0.6s ease;
         touch-action: none;
+      }
+      #tempo-wheel:focus-visible {
+        box-shadow: 0 0 0 2px var(--accent);
+      }
+      #tempo-wheel-rows {
+        position: absolute;
+        inset: 0;
         -webkit-mask-image: linear-gradient(transparent, #000 28%, #000 72%, transparent);
         mask-image: linear-gradient(transparent, #000 28%, #000 72%, transparent);
-      }
-      #tempo-wheel.awake,
-      #tempo-wheel.held,
-      #tempo-wheel.dragging,
-      #tempo-wheel:focus-visible {
-        opacity: 0.9;
       }
       #tempo-wheel::before {
         /* the row that is the tempo */
@@ -256,7 +225,7 @@
         position: absolute;
         left: 6px;
         right: 6px;
-        top: 24px;
+        top: calc(50% - 12px);
         height: 24px;
         border-radius: 6px;
         background: rgba(255, 255, 255, 0.14);
@@ -265,19 +234,44 @@
         position: absolute;
         left: 0;
         right: 0;
-        top: 24px;
+        top: calc(50% - 12px);
         height: 24px;
         line-height: 24px;
         text-align: center;
-        font-size: 16px;
         font-variant-numeric: tabular-nums;
-        text-shadow: 0 0 3px rgba(0, 0, 0, 0.7);
         pointer-events: none;
+      }
+
+      /* The intensity and strobe sliders. */
+      #menu {
+        width: 220px;
+        padding: 0 12px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        gap: 8px;
+      }
+      #menu label {
+        display: grid;
+        grid-template-columns: 62px 1fr 34px;
+        align-items: center;
+        gap: 8px;
+      }
+      #menu output {
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      #menu input[type='range'] {
+        width: 100%;
+        min-width: 0;
+        height: 20px;
+        margin: 0;
+        accent-color: var(--accent);
       }
 
       #debug {
         position: fixed;
-        top: calc(env(safe-area-inset-top, 0px) + 10px);
+        top: calc(var(--band-h) + 4px);
         left: calc(env(safe-area-inset-left, 0px) + 12px);
         display: none;
         padding: 4px 8px;
@@ -291,12 +285,12 @@
         display: block;
       }
 
-      /* ?debug only: the running algorithm's random values, on the left under the overlay and above the metronome. */
+      /* ?debug only: the running algorithm's random values, on the left under the overlay. */
       #knobs {
         position: fixed;
-        top: calc(env(safe-area-inset-top, 0px) + 116px);
+        top: calc(var(--band-h) + 110px);
         left: calc(env(safe-area-inset-left, 0px) + 12px);
-        bottom: calc(env(safe-area-inset-bottom, 0px) + 70px);
+        bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
         width: min(340px, calc(100vw - 24px));
         display: none;
         flex-direction: column;
@@ -494,40 +488,35 @@
   <body>
     <canvas id="stage"></canvas>
 
-    <div id="corner">
-      <button id="menu-button" type="button" aria-label="Menu" aria-expanded="false" aria-controls="menu">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-          <path d="M4 7h16M4 12h16M4 17h16" />
-        </svg>
-      </button>
-      <div id="menu" role="group" aria-label="Settings">
-        <label for="intensity">
-          <span class="row"><span>Intensity</span><span id="intensity-value"></span></span>
-          <input id="intensity" type="range" min="0" max="1" step="0.01" />
-        </label>
-        <label for="strobe">
-          <span class="row"><span>Strobe</span><span id="strobe-value"></span></span>
-          <input id="strobe" type="range" min="0" max="1" step="0.01" />
-        </label>
-        <label for="metronome-toggle" class="row">
-          <span>Metronome</span>
-          <input id="metronome-toggle" type="checkbox" />
-        </label>
+    <div id="bar">
+      <div id="metronome" class="part" aria-hidden="true">
+        <div id="dot"></div>
       </div>
-    </div>
 
-    <div id="metronome" aria-hidden="true">
-      <div id="dot"></div>
-    </div>
+      <div id="tap-widget" class="part" aria-hidden="true">
+        <div id="tap-dots"><i></i><i></i><i></i><i></i></div>
+        <div id="tap-strip"></div>
+        <div id="tap-number"></div>
+      </div>
 
-    <div id="tempo-wheel" role="slider" tabindex="0" aria-label="Tempo in BPM" aria-orientation="vertical" aria-valuemin="60" aria-valuemax="180">
-      <div id="tempo-wheel-rows"><span></span><span></span><span></span><span></span><span></span></div>
-    </div>
+      <div id="controls">
+        <div id="tempo-wheel" class="part" role="slider" tabindex="0" aria-label="Tempo in BPM" aria-orientation="vertical" aria-valuemin="60" aria-valuemax="180">
+          <div id="tempo-wheel-rows"><span></span><span></span><span></span><span></span><span></span></div>
+        </div>
 
-    <div id="tap-widget" aria-hidden="true">
-      <div id="tap-dots"><i></i><i></i><i></i><i></i></div>
-      <div id="tap-strip"></div>
-      <div id="tap-number"></div>
+        <div id="menu" class="part" role="group" aria-label="Settings">
+          <label for="intensity">
+            <span>Intensity</span>
+            <input id="intensity" type="range" min="0" max="1" step="0.01" />
+            <output id="intensity-value"></output>
+          </label>
+          <label for="strobe">
+            <span>Strobe</span>
+            <input id="strobe" type="range" min="0" max="1" step="0.01" />
+            <output id="strobe-value"></output>
+          </label>
+        </div>
+      </div>
     </div>
 
     <div id="debug"></div>

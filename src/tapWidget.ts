@@ -1,5 +1,5 @@
 /**
- * The tapping widget in the lower-right corner: while the first taps of a run
+ * The tapping widget at the top centre, a part of the panel in the band (src/band.ts): while the first taps of a run
  * come in, 4 dots fill; once the tempo is set, a strip shows each tap left
  * (early) or right (late) of the beat mark, and the tempo is written under it.
  * It fades a while after the last tap.
@@ -7,7 +7,7 @@
 
 import { formatTempo, TEMPO_TAPS, type ClockReading, type TapMark } from './clock';
 
-/** The widget stays this long after the last tap, then fades. */
+/** The widget stays this long after the last tap outside the band, then fades; the panel (src/band.ts) shows it too. */
 export const HOLD_MS = 3500;
 /** The strip spans this many ms each side of the beat mark; a tap further off sits at the end. */
 export const STRIP_RANGE_MS = 100;

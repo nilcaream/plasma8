@@ -1,26 +1,16 @@
 import type { ClockReading } from './clock';
 import type { Settings } from './settings';
 
-/** How long the menu icon stays visible after the last movement or touch. */
-const ICON_IDLE_MS = 3500;
-
 function byId<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
   if (!el) throw new Error(`missing element #${id}`);
   return el as T;
 }
 
-/**
- * The reserved upper-right corner: a faint icon that fades when nothing moves,
- * and the small menu it opens. Nothing in here is a tap area.
- */
-export class Corner {
-  private readonly root = byId('corner');
-  private readonly button = byId<HTMLButtonElement>('menu-button');
+/** The intensity and strobe sliders, a part of the panel in the band (src/band.ts). */
+export class Sliders {
   private readonly intensity = byId<HTMLInputElement>('intensity');
   private readonly strobe = byId<HTMLInputElement>('strobe');
-  private readonly metronome = byId<HTMLInputElement>('metronome-toggle');
-  private idleTimer: number | undefined;
 
   constructor(
     settings: Settings,
@@ -28,10 +18,8 @@ export class Corner {
   ) {
     this.intensity.value = String(settings.intensity);
     this.strobe.value = String(settings.strobe);
-    this.metronome.checked = settings.metronome;
     this.showValues();
 
-    this.button.addEventListener('click', () => this.setOpen(!this.isOpen()));
     this.intensity.addEventListener('input', () => {
       this.showValues();
       this.onChange('intensity', this.intensity.valueAsNumber);
@@ -40,36 +28,6 @@ export class Corner {
       this.showValues();
       this.onChange('strobe', this.strobe.valueAsNumber);
     });
-    this.metronome.addEventListener('change', () => this.onChange('metronome', this.metronome.checked));
-
-    for (const type of ['pointermove', 'pointerdown', 'touchstart']) {
-      window.addEventListener(type, () => this.wake(), { passive: true });
-    }
-    this.wake();
-  }
-
-  contains(target: EventTarget | null): boolean {
-    return target instanceof Node && this.root.contains(target);
-  }
-
-  isOpen(): boolean {
-    return this.root.classList.contains('open');
-  }
-
-  setOpen(open: boolean): void {
-    this.root.classList.toggle('open', open);
-    this.button.setAttribute('aria-expanded', String(open));
-    // Keys are taps unless the focus is in here, so give the focus back.
-    if (!open && this.contains(document.activeElement)) (document.activeElement as HTMLElement).blur();
-    this.wake();
-  }
-
-  private wake(): void {
-    this.root.classList.add('awake');
-    window.clearTimeout(this.idleTimer);
-    this.idleTimer = window.setTimeout(() => {
-      if (!this.isOpen()) this.root.classList.remove('awake');
-    }, ICON_IDLE_MS);
   }
 
   private showValues(): void {
@@ -79,15 +37,10 @@ export class Corner {
   }
 }
 
-/** A dot that pulses on every beat and looks different on beat 1. The tempo is written by the tapping widget (src/tapWidget.ts). */
+/** A dot that pulses on every beat and looks different on beat 1, a part of the panel in the band. The tempo is written by the tapping widget (src/tapWidget.ts). */
 export class Metronome {
-  private readonly root = byId('metronome');
   private readonly dot = byId('dot');
   private first: boolean | undefined;
-
-  setEnabled(on: boolean): void {
-    this.root.classList.toggle('on', on);
-  }
 
   update(r: ClockReading): void {
     const first = r.beatInBar === 0;

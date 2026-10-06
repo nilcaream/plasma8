@@ -5,10 +5,9 @@ export interface Settings {
   intensity: number;
   /** 0 = off. */
   strobe: number;
-  metronome: boolean;
 }
 
-export const DEFAULT_SETTINGS: Readonly<Settings> = { intensity: 0.15, strobe: 0.15, metronome: false };
+export const DEFAULT_SETTINGS: Readonly<Settings> = { intensity: 0.15, strobe: 0.15 };
 
 export const STORAGE_KEY = 'plasma8.settings';
 
@@ -23,7 +22,6 @@ export function sanitizeSettings(raw: unknown): Settings {
   const o = raw as Record<string, unknown>;
   if (typeof o.intensity === 'number' && Number.isFinite(o.intensity)) out.intensity = clamp01(o.intensity);
   if (typeof o.strobe === 'number' && Number.isFinite(o.strobe)) out.strobe = clamp01(o.strobe);
-  if (typeof o.metronome === 'boolean') out.metronome = o.metronome;
   return out;
 }
 

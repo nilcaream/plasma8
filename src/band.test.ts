@@ -1,0 +1,35 @@
+import { describe, expect, it } from 'vitest';
+import { PANEL_MS, inBand, panelShown } from './band';
+
+describe('inBand', () => {
+  it('holds every height down to the bottom edge of the band, and not the edge itself', () => {
+    expect(inBand(0, 88)).toBe(true);
+    expect(inBand(87.9, 88)).toBe(true);
+    expect(inBand(88, 88)).toBe(false);
+    expect(inBand(400, 88)).toBe(false);
+  });
+
+  it('holds a point above the page, where a pointer dragged out of the window reports', () => {
+    expect(inBand(-5, 88)).toBe(true);
+  });
+});
+
+describe('panelShown', () => {
+  it('is up for PANEL_MS after the last touch and fades after', () => {
+    expect(panelShown(1000, 1000, false)).toBe(true);
+    expect(panelShown(1000, 1000 + PANEL_MS - 1, false)).toBe(true);
+    expect(panelShown(1000, 1000 + PANEL_MS, false)).toBe(false);
+  });
+
+  it('stays up while a finger is down, however long', () => {
+    expect(panelShown(1000, 1000 + 4 * PANEL_MS, true)).toBe(true);
+  });
+
+  it('is down before any touch', () => {
+    expect(panelShown(-Infinity, 0, false)).toBe(false);
+  });
+
+  it('lasts 5 seconds', () => {
+    expect(PANEL_MS).toBe(5000);
+  });
+});

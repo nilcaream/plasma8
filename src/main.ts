@@ -1,5 +1,6 @@
 import { ALGORITHMS, chooseAlgorithm } from './algorithms';
 import type { Algorithm, AlgorithmDef, FrameInputs } from './algorithm';
+import { Band } from './band';
 import { TapClock } from './clock';
 import { beatInputs } from './drive';
 import { FlashLimiter } from './flashLimit';
@@ -14,10 +15,9 @@ import { loadSettings, saveSettings, type Settings } from './settings';
 import { MotionClock, motionRate, motionTimeFor, steadyRate } from './motion';
 import { movingRange } from './moving';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
-import { TapAreas } from './tapAreas';
 import { TapWidget, widgetView } from './tapWidget';
 import { TempoWheel } from './tempoWheel';
-import { Corner, DebugOverlay, Metronome, showFatal } from './ui';
+import { DebugOverlay, Metronome, Sliders, showFatal } from './ui';
 
 interface Running {
   def: AlgorithmDef;
@@ -106,35 +106,25 @@ function main(): void {
   const tapWidget = new TapWidget();
   // dragging the wheel sets the tempo to the whole number it shows, and the beat stays where it is
   const wheel = new TempoWheel((bpm) => clock.setBpm(bpm, performance.now()));
-  // where a tap is not a tempo tap: the corner and its open menu, the widget, the wheel (src/tapAreas.ts)
-  const noTapAreas = new TapAreas(
-    [
-      { name: 'menu', ids: ['corner', 'menu'] },
-      { name: 'widget', ids: ['tap-widget'] },
-      { name: 'wheel', ids: ['tempo-wheel'] },
-    ],
-    params.debug,
-  );
+  // the band across the top: every control lives there, and a tap there is never a tempo tap (src/band.ts)
+  const band = new Band(params.debug);
   const metronome = new Metronome();
-  metronome.setEnabled(live.metronome);
   const debug = new DebugOverlay(params.debug, seedText);
-  const corner = new Corner(live, (key, value) => {
+  new Sliders(live, (key, value) => {
     live[key] = value;
     remembered[key] = value;
     saveSettings(remembered);
-    if (key === 'metronome') metronome.setEnabled(live.metronome);
   });
 
-  // Taps: pointer down and key down, anywhere except the reserved corner. A tap
+  // Taps: pointer down and key down, anywhere except the band. A tap
   // is timed when the event happened, not when a busy page got round to it.
   window.addEventListener('pointerdown', (e) => {
-    if (corner.contains(e.target) || knobPanel.contains(e.target) || wheel.contains(e.target) || !isTapPointer(e)) return;
-    if (noTapAreas.contains(e.clientX, e.clientY)) return;
+    if (band.hasTarget(e.target) || band.contains(e.clientY) || knobPanel.contains(e.target) || !isTapPointer(e)) return;
     clock.tap(e.timeStamp);
   });
   window.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && corner.isOpen()) corner.setOpen(false);
-    if (corner.contains(e.target) || knobPanel.contains(e.target) || wheel.contains(e.target) || !isTapKey(e)) return;
+    if (e.key === 'Escape') band.hide();
+    if (band.hasTarget(e.target) || knobPanel.contains(e.target) || !isTapKey(e)) return;
     clock.tap(e.timeStamp);
   });
 
@@ -202,12 +192,12 @@ function main(): void {
       fade,
     });
 
+    // the panel up (a press in the band) shows the widget as it was last seen, whatever the taps
+    const panel = band.update(now);
     const widget = widgetView(r, clock.tapMarks(), now);
-    tapWidget.update(widget);
+    tapWidget.update({ ...widget, visible: widget.visible || panel });
     wheel.show(r.bpm);
-    wheel.hold(widget.visible);
-    noTapAreas.update();
-    if (live.metronome) metronome.update(r);
+    metronome.update(r);
     debug.update(r, {
       name: current.def.name,
       home: current.def.home,
