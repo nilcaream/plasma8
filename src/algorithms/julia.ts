@@ -78,6 +78,7 @@ export const drawJuliaMoving = (rng: Rng, bounds: (key: string) => readonly [num
 export const julia: AlgorithmDef = {
   name: JULIA_NAME,
   home: 0.65,
+  steadySpeed: true,
   knobs: JULIA_KNOBS,
   create: (gl, values, rng, options) =>
     shaderAlgorithm(gl, JULIA_NAME, source, juliaParams, values, relativeAmountsOf, options?.moves === false ? [] : drawJuliaMoving(rng, options?.bounds)),
