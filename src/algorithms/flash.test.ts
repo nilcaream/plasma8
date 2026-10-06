@@ -78,7 +78,7 @@ describe('plasma\'s moving values', () => {
   });
 
   it('has no moving values when made with the moves off, and some when made with them on or by default', () => {
-    for (const def of [plasma, tunnel]) {
+    for (const def of [plasma, tunnel, warpNoise]) {
       for (let seed = 1; seed <= 20; seed++) {
         const { gl } = mockGl();
         const values = drawKnobs(def.knobs, createRng(seed));
@@ -90,7 +90,7 @@ describe('plasma\'s moving values', () => {
   });
 
   it('moves every value inside the bounds it is given, as the panel\'s min and max, and in the code\'s when it is given none', () => {
-    for (const def of [plasma, tunnel]) {
+    for (const def of [plasma, tunnel, warpNoise]) {
       for (let seed = 1; seed <= 20; seed++) {
         const { gl } = mockGl();
         const values = drawKnobs(def.knobs, createRng(seed));

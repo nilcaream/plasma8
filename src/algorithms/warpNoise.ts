@@ -1,6 +1,7 @@
 import type { AlgorithmDef } from '../algorithm';
 import { DEFAULT_GAIN, GAIN_RANGE, amountKnobs, amountsOf } from '../beatVoices';
-import { drawKnobs, fixed, range, triple, vec, type Knob, type Values } from '../knobs';
+import { drawBounds, drawKnobs, fixed, range, triple, vec, type Knob, type Values } from '../knobs';
+import { drawMoving, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './warpNoise.frag?raw';
@@ -47,9 +48,29 @@ export function warpNoiseParams(v: Values): ShaderParams {
 
 export const drawWarpNoiseParams = (rng: Rng): ShaderParams => warpNoiseParams(drawKnobs(WARP_NOISE_KNOBS, rng));
 
+/**
+ * The values that may move, in three groups of what they change on screen; an
+ * instance moves one value from each of 2 to 3 groups. The flow and warp speeds
+ * and the turn multiply the running time, so a change would jump the picture,
+ * and the offsets are the picture's own place in the noise, so a change would
+ * swap it for another: none of them move.
+ */
+export const WARP_NOISE_MOVING_GROUPS: readonly (readonly string[])[] = [
+  ['scale', 'warp'], // shape
+  ['palA.0', 'palA.1', 'palA.2', 'palB.0', 'palB.1', 'palB.2'], // colour tone
+  ['palCBase', 'palCStep.0', 'palCStep.1', 'palCStep.2', 'palD.0', 'palD.1', 'palD.2'], // colour pattern
+];
+export const WARP_NOISE_MOVING_COUNT = [2, 3] as const;
+
+const boundsOf = (key: string): [number, number] => drawBounds(WARP_NOISE_KNOBS.find((k) => k.key === key)!.draw);
+
+export const drawWarpNoiseMoving = (rng: Rng, bounds: (key: string) => readonly [number, number] = boundsOf): MovingValue[] =>
+  drawMoving(WARP_NOISE_MOVING_GROUPS, bounds, rng, WARP_NOISE_MOVING_COUNT);
+
 export const warpNoise: AlgorithmDef = {
   name: WARP_NOISE_NAME,
   home: 0.15,
   knobs: WARP_NOISE_KNOBS,
-  create: (gl, values) => shaderAlgorithm(gl, WARP_NOISE_NAME, source, warpNoiseParams, values, amountsOf),
+  create: (gl, values, rng, options) =>
+    shaderAlgorithm(gl, WARP_NOISE_NAME, source, warpNoiseParams, values, amountsOf, options?.moves === false ? [] : drawWarpNoiseMoving(rng, options?.bounds)),
 };
