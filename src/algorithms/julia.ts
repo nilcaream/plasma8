@@ -1,6 +1,7 @@
 import type { AlgorithmDef } from '../algorithm';
 import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
-import { drawKnobs, fixed, int, range, triple, vec, type Knob, type Values } from '../knobs';
+import { drawBounds, drawKnobs, fixed, int, range, triple, vec, type Knob, type Values } from '../knobs';
+import { drawMoving, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './julia.frag?raw';
@@ -54,9 +55,30 @@ export function juliaParams(v: Values): ShaderParams {
 
 export const drawJuliaParams = (rng: Rng): ShaderParams => juliaParams(drawKnobs(JULIA_KNOBS, rng));
 
+/**
+ * The values that may move, in four groups of what they change on screen; an
+ * instance moves one value from each of 2 to 4 groups. The spin and the wander
+ * speed multiply the running time, the palette frequency multiplies a growing
+ * number, the wedge count is whole and the centre's angle whips round a circle:
+ * none of them move.
+ */
+export const JULIA_MOVING_GROUPS: readonly (readonly string[])[] = [
+  ['theta', 'edge', 'wander'], // shape of the set
+  ['centreOff', 'zoom'], // framing
+  ['palA.0', 'palA.1', 'palA.2', 'palB.0', 'palB.1', 'palB.2'], // colour tone
+  ['palD.0', 'palD.1', 'palD.2', 'bands'], // colour pattern
+];
+export const JULIA_MOVING_COUNT = [2, 4] as const;
+
+const boundsOf = (key: string): [number, number] => drawBounds(JULIA_KNOBS.find((k) => k.key === key)!.draw);
+
+export const drawJuliaMoving = (rng: Rng, bounds: (key: string) => readonly [number, number] = boundsOf): MovingValue[] =>
+  drawMoving(JULIA_MOVING_GROUPS, bounds, rng, JULIA_MOVING_COUNT);
+
 export const julia: AlgorithmDef = {
   name: JULIA_NAME,
   home: 0.65,
   knobs: JULIA_KNOBS,
-  create: (gl, values) => shaderAlgorithm(gl, JULIA_NAME, source, juliaParams, values, relativeAmountsOf),
+  create: (gl, values, rng, options) =>
+    shaderAlgorithm(gl, JULIA_NAME, source, juliaParams, values, relativeAmountsOf, options?.moves === false ? [] : drawJuliaMoving(rng, options?.bounds)),
 };
