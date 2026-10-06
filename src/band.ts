@@ -47,8 +47,9 @@ export class Band {
     };
     window.addEventListener('pointerup', release);
     window.addEventListener('pointercancel', release);
-    // a slider moved, a key on the wheel, the focus arriving by Tab
+    // a slider moved, a key or the mouse wheel on the tempo wheel, the focus arriving by Tab
     this.root.addEventListener('input', touch);
+    this.root.addEventListener('wheel', touch, { passive: true });
     this.root.addEventListener('keydown', touch);
     this.root.addEventListener('focusin', touch);
   }

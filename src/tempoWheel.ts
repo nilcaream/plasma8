@@ -2,7 +2,7 @@
  * The whole-number tempo wheel, a roller like an alarm clock's. It shows the
  * tempo rounded; dragging it up or down (finger or mouse) moves it one BPM
  * per WHEEL_ROW_PX, between MIN_BPM and MAX_BPM, and each whole number it
- * lands on becomes the tempo exactly.
+ * lands on becomes the tempo exactly. A notch of the mouse wheel over it moves one BPM.
  */
 
 import { MAX_BPM, MIN_BPM } from './clock';
@@ -15,6 +15,12 @@ export const WHEEL_ROWS = 5;
 /** The wheel's position after dragging `dyPx` (positive is down) from the whole number `start`: up is a faster tempo. */
 export function wheelPosition(start: number, dyPx: number): number {
   return Math.min(MAX_BPM, Math.max(MIN_BPM, start - dyPx / WHEEL_ROW_PX));
+}
+
+/** The whole number after one notch of the mouse wheel (`deltaY`, negative is up) from `start`: one BPM, however far it scrolled; up is a faster tempo. */
+export function wheelNotch(start: number, deltaY: number): number {
+  const step = deltaY < 0 ? 1 : deltaY > 0 ? -1 : 0;
+  return Math.min(MAX_BPM, Math.max(MIN_BPM, Math.round(start) + step));
 }
 
 export interface WheelRow {
@@ -85,6 +91,15 @@ export class TempoWheel {
     };
     this.root.addEventListener('pointerup', end);
     this.root.addEventListener('pointercancel', end);
+    // only while the panel is up: a part that is hidden takes no events. The page never scrolls under it.
+    this.root.addEventListener(
+      'wheel',
+      (e) => {
+        e.preventDefault();
+        if (!this.dragging) this.move(wheelNotch(this.position, e.deltaY));
+      },
+      { passive: false },
+    );
     this.root.addEventListener('keydown', (e) => {
       const step = e.key === 'ArrowUp' || e.key === 'ArrowRight' ? 1 : e.key === 'ArrowDown' || e.key === 'ArrowLeft' ? -1 : 0;
       if (step === 0) return;

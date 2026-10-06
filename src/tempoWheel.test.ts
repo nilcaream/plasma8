@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MAX_BPM, MIN_BPM } from './clock';
-import { WHEEL_ROWS, WHEEL_ROW_PX, wheelPosition, wheelRows } from './tempoWheel';
+import { WHEEL_ROWS, WHEEL_ROW_PX, wheelNotch, wheelPosition, wheelRows } from './tempoWheel';
 
 describe('wheelPosition', () => {
   it('moves one BPM per row of drag, up for faster', () => {
@@ -20,6 +20,26 @@ describe('wheelPosition', () => {
   it('rounds to the whole number it is set to', () => {
     expect(Math.round(wheelPosition(120, -0.4 * WHEEL_ROW_PX))).toBe(120);
     expect(Math.round(wheelPosition(120, -0.6 * WHEEL_ROW_PX))).toBe(121);
+  });
+});
+
+describe('wheelNotch', () => {
+  it('moves one BPM a notch, scroll up for faster like a drag up', () => {
+    expect(wheelNotch(120, -100)).toBe(121);
+    expect(wheelNotch(120, 100)).toBe(119);
+  });
+
+  it('ignores how far the notch scrolled and does nothing for none', () => {
+    expect(wheelNotch(120, -1)).toBe(121);
+    expect(wheelNotch(120, -480)).toBe(121);
+    expect(wheelNotch(120, 0.5)).toBe(119);
+    expect(wheelNotch(120, 0)).toBe(120);
+  });
+
+  it('lands on a whole number and stays between 60 and 180', () => {
+    expect(wheelNotch(120.4, -100)).toBe(121);
+    expect(wheelNotch(180, -100)).toBe(MAX_BPM);
+    expect(wheelNotch(60, 100)).toBe(MIN_BPM);
   });
 });
 
