@@ -189,7 +189,7 @@ describe('fixedGroups', () => {
     expect(groups.map((g) => g.group)).toEqual(['how it follows the music']);
     expect(groups[0]!.knobs).toHaveLength(2);
     const julia = ALGORITHMS.find((a) => a.name === 'julia-kaleidoscope')!;
-    expect(fixedGroups(julia.knobs).map((g) => g.group)).toEqual(['how it follows the music']);
+    expect(fixedGroups(julia.knobs).map((g) => g.group)).toEqual(['follows the beat', 'look', 'moves with time']);
     const tunnel = ALGORITHMS.find((a) => a.name === 'tunnel')!;
     expect(fixedGroups(tunnel.knobs).map((g) => g.group)).toEqual(['follows the beat']);
   });

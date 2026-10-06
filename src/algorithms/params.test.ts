@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { VOICE_NAMES, amountsOf, flash, relativeAmountsOf } from '../beatVoices';
 import { drawBounds, drawKnobs, fixedGroups } from '../knobs';
-import { stepShape } from '../motion';
 import { createRng, type Rng } from '../rng';
 import type { ShaderParams } from '../shaderAlgorithm';
 import { JULIA_KNOBS, drawJuliaParams, juliaParams } from './julia';
+import juliaSource from './julia.frag?raw';
 import { PLASMA_KNOBS, drawPlasmaParams, plasmaParams } from './plasma';
 import plasmaSource from './plasma.frag?raw';
 import { TUNNEL_KNOBS, drawTunnelParams, tunnelParams } from './tunnel';
@@ -50,13 +50,23 @@ describe('julia parameters', () => {
   });
 });
 
-describe('julia\'s fixed values', () => {
-  it('are the ones set on the debug panel, its own bar-step shape among them', () => {
-    const v = drawKnobs(JULIA_KNOBS, createRng(1));
-    expect(stepShape(v)).toEqual({ sizeSoft: 0.021, sizeHard: 0.052, easeSoft: 0.793, easeHard: 0.227 });
-    const p = juliaParams(v);
-    expect([p.u_beatZoom, p.u_barZoom, p.u_beatLight, p.u_barLight, p.u_glow, p.u_colourShift, p.u_wanderSpeed])
-      .toEqual([0.011, 0.029, 0.184, 0.089, 0.263, 0.056, 0.105]);
+describe('julia\'s beat flash', () => {
+  it('has the flash gain 0.5, the glow and the wander speed as fixed values, read by the shader', () => {
+    const p = juliaParams(drawKnobs(JULIA_KNOBS, createRng(1)));
+    expect([p.u_flashGain, p.u_glow, p.u_wanderSpeed]).toEqual([0.5, 0.263, 0.105]);
+    for (const key of ['u_flashGain', 'u_glow', 'u_wanderSpeed']) expect(juliaSource).toContain(`uniform float ${key};`);
+    expect(fixedGroups(JULIA_KNOBS).map((g) => [g.group, g.knobs.map((k) => k.key)])).toEqual([
+      ['follows the beat', ['flashGain']], ['look', ['glow']], ['moves with time', ['wanderSpeed']],
+    ]);
+    expect(drawKnobs(JULIA_KNOBS, createRng(2))).toHaveProperty('A.kick');
+  });
+
+  it('has the shader flash by the voices alone: no beat or bar pulse, bar step, zoom, turn, light or colour term', () => {
+    expect(juliaSource).toContain('u_flashGain * u_flash');
+    for (const gone of ['beatPulse', 'barPulse', 'barStep', 'u_barTheta', 'u_barTurn', 'u_beatZoom', 'u_barZoom', 'u_beatLight', 'u_barLight', 'u_colourShift']) {
+      expect(juliaSource).not.toContain(gone);
+    }
+    expect(JULIA_KNOBS.map((k) => k.key).filter((k) => /^bar|^beat|^colourShift|^step/.test(k))).toEqual([]);
   });
 });
 
@@ -101,7 +111,7 @@ describe('plasma\'s beat flash', () => {
     expect(relativeAmountsOf({ 'A.kick': 0, 'A.snare': 0, 'A.crash': 0 })).toEqual({ kick: 0, snare: 0, crash: 0 });
   });
 
-  it('never flashes at intensity 0, whatever the strengths and the beat', () => {
+  it('never flashes at strobe 0, whatever the strengths and the beat', () => {
     const rng = createRng(5);
     for (let i = 0; i < 50; i++) {
       const amounts = amountsOf(drawKnobs(PLASMA_KNOBS, rng));
@@ -145,7 +155,7 @@ describe('warp noise\'s beat flash', () => {
     }
   });
 
-  it('never flashes at intensity 0, and the shader has the flash alone for the beat', () => {
+  it('never flashes at strobe 0, and the shader has the flash alone for the beat', () => {
     const rng = createRng(7);
     for (let i = 0; i < 50; i++) {
       const amounts = amountsOf(drawKnobs(WARP_NOISE_KNOBS, rng));
@@ -220,9 +230,7 @@ describe('signed values', () => {
   it.each([
     ['plasma', PLASMA_KNOBS, 'swirl', 1.2, 3],
     ['domain-warped-noise', WARP_NOISE_KNOBS, 'rotate', 0.03, 0.1],
-    ['julia', JULIA_KNOBS, 'barTheta', 0.04, 0.12],
     ['julia', JULIA_KNOBS, 'spin', 0.05, 0.2],
-    ['julia', JULIA_KNOBS, 'barTurn', 1, 2],
     ['tunnel', TUNNEL_KNOBS, 'twist', 0.5, 0.5],
   ] as const)('%s: %s is drawn from -M to M and tried from -X to X', (_name, knobs, key, m, x) => {
     const knob = knobs.find((k) => k.key === key)!;

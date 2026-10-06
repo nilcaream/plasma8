@@ -41,7 +41,7 @@ vec3 shade(vec2 uv) {
     v = (w1 * w2 + w3 * w4) * 0.5 + 0.25 * (w1 + w3);
   }
 
-  // the same colours at every intensity; the beat only brightens them, by the flash F (zero at intensity 0)
+  // the same colours at every intensity; the beat only brightens them, by the flash F (zero at strobe 0)
   float k = v * u_cycles * 0.85 + u_colourDrift * t;
   vec3 col = cosPalette(k, u_palA, u_palB, u_palC, u_palD);
 

@@ -45,7 +45,7 @@ vec3 shade(vec2 uv) {
                 fbm(p + u_warp * q + vec2(8.3, 2.8) - u_speed.y * t * 0.4));
   float f = fbm(p + u_warp * w + u_offset2);
 
-  // the same colours at every intensity; the beat only brightens them, by the flash F (zero at intensity 0)
+  // the same colours at every intensity; the beat only brightens them, by the flash F (zero at strobe 0)
   float k = 1.1 * f + 0.45 * length(q) + 0.25 * length(w);
   vec3 col = u_palA + u_palB * cos(6.28318 * (u_palC * k + u_palD));
 

@@ -4,6 +4,7 @@ import { drawKnobs } from '../knobs';
 import { createRng } from '../rng';
 import { movingRange } from '../moving';
 import { shaderAlgorithm } from '../shaderAlgorithm';
+import { julia } from './julia';
 import { plasma, plasmaParams } from './plasma';
 import plasmaSource from './plasma.frag?raw';
 import { tunnel } from './tunnel';
@@ -153,7 +154,7 @@ describe('the strongest voice', () => {
 
 });
 
-describe.each([plasma, warpNoise, tunnel])('$name\'s strongest voice', (def) => {
+describe.each([plasma, warpNoise, julia, tunnel])('$name\'s strongest voice', (def) => {
   it('flashes at exactly the strobe level, the others in proportion', () => {
     const drawn = { kick: 0.1, snare: 0.2, crash: 0.05 };
     expect(flashWith(def, drawn, 1)).toBe(1);
@@ -162,7 +163,7 @@ describe.each([plasma, warpNoise, tunnel])('$name\'s strongest voice', (def) => 
   });
 });
 
-describe.each([plasma, warpNoise, tunnel])('$name\'s flash', (def) => {
+describe.each([plasma, warpNoise, julia, tunnel])('$name\'s flash', (def) => {
   it('reaches the shader as u_flash: full on a beat at strobe 1, none at strobe 0', () => {
     expect(flashOn(def, 0, 1)).toBe(1);
     expect(flashOn(def, 0, 0)).toBe(0);

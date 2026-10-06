@@ -1,6 +1,6 @@
 import type { AlgorithmDef } from '../algorithm';
+import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
 import { drawKnobs, fixed, int, range, triple, vec, type Knob, type Values } from '../knobs';
-import { stepKnobs } from '../motion';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './julia.frag?raw';
@@ -9,7 +9,7 @@ export const JULIA_NAME = 'julia-kaleidoscope';
 
 const TAU = 2 * Math.PI;
 
-/** This run's own look: palette, wedges, where c sits and how it moves, zoom, centre, spin. */
+/** This run's own look: palette, wedges, where c sits and how it drifts, zoom, centre, spin. */
 export const JULIA_KNOBS: readonly Knob[] = [
   ...triple('palA', 0.45, 0.6, [0, 1]),
   ...triple('palB', 0.35, 0.5, [0, 1]),
@@ -21,20 +21,15 @@ export const JULIA_KNOBS: readonly Knob[] = [
   range('theta', 0, TAU, [0, TAU]),
   range('edge', 0.94, 1.02, [0.8, 1.15]),
   range('wander', 0.03, 0.12, [0, 0.4]),
-  range('barTheta', -0.04, 0.04, [-0.12, 0.12]),
   range('zoom', 1.0, 1.8, [0.4, 4]),
   range('spin', -0.05, 0.05, [-0.2, 0.2]),
-  range('barTurn', -1, 1, [-2, 2]),
   range('bands', 1.5, 5.101, [0.3, 10]),
-  // fixed in code: how the picture follows the beat, and the bar turn's shape (set on the debug panel)
-  fixed('beatZoom', 0.011, [0, 0.5]),
-  fixed('barZoom', 0.029, [0, 0.5]),
-  fixed('beatLight', 0.184, [0, 1]),
-  fixed('barLight', 0.089, [0, 1]),
-  fixed('glow', 0.263, [0, 1]),
-  fixed('colourShift', 0.056, [0, 0.5]),
-  fixed('wanderSpeed', 0.105, [0, 1]),
-  ...stepKnobs({ sizeSoft: 0.021, sizeHard: 0.052, easeSoft: 0.793, easeHard: 0.227 }),
+  // how hard each beat voice flashes this run: the only thing that follows the beat
+  ...amountKnobs(),
+  // fixed in code: the flash gain, the glow's strength and how fast c drifts
+  fixed('flashGain', 0.5, GAIN_RANGE, 'follows the beat'),
+  fixed('glow', 0.263, [0, 1], 'look'),
+  fixed('wanderSpeed', 0.105, [0, 1], 'moves with time'),
 ];
 
 export function juliaParams(v: Values): ShaderParams {
@@ -47,18 +42,12 @@ export function juliaParams(v: Values): ShaderParams {
     u_theta: v.theta!,
     u_edge: v.edge!,
     u_wander: v.wander!,
-    u_barTheta: v.barTheta!,
     u_zoom: v.zoom!,
     u_center: [v.centreOff! * Math.cos(v.centreAngle!), v.centreOff! * Math.sin(v.centreAngle!)],
     u_spin: v.spin!,
-    u_barTurn: v.barTurn!,
     u_bands: v.bands!,
-    u_beatZoom: v.beatZoom!,
-    u_barZoom: v.barZoom!,
-    u_beatLight: v.beatLight!,
-    u_barLight: v.barLight!,
+    u_flashGain: v.flashGain!,
     u_glow: v.glow!,
-    u_colourShift: v.colourShift!,
     u_wanderSpeed: v.wanderSpeed!,
   };
 }
@@ -69,5 +58,5 @@ export const julia: AlgorithmDef = {
   name: JULIA_NAME,
   home: 0.65,
   knobs: JULIA_KNOBS,
-  create: (gl, values) => shaderAlgorithm(gl, JULIA_NAME, source, juliaParams, values),
+  create: (gl, values) => shaderAlgorithm(gl, JULIA_NAME, source, juliaParams, values, relativeAmountsOf),
 };

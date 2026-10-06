@@ -1,8 +1,8 @@
 // Julia kaleidoscope: the plane is folded into mirrored wedges around the
 // centre, then each point runs the Julia iteration z = z^2 + c, with c near the
 // edge of the Mandelbrot set's main cardioid, where the sets are most detailed.
-// Middle to hard: the picture zooms in on the beat, and every bar start turns
-// the kaleidoscope by a step and moves c along the edge.
+// Middle to hard; flashes brighter on the beat by the beat voices and does
+// nothing else with the beat or the bar.
 uniform vec3 u_palA;
 uniform vec3 u_palB;
 uniform vec3 u_palC;
@@ -11,19 +11,13 @@ uniform float u_segments;   // wedges in the kaleidoscope
 uniform float u_theta;      // where on the cardioid's edge c sits
 uniform float u_edge;       // 1 is on the edge; a little more or less changes the set
 uniform float u_wander;     // how far c drifts along the edge over time
-uniform float u_barTheta;   // how far c steps along the edge at every bar
 uniform float u_zoom;
 uniform vec2 u_center;      // what the folded plane is centred on
 uniform float u_spin;       // turns per second of the whole picture
-uniform float u_barTurn;    // turn of the kaleidoscope at every bar, in wedges
 uniform float u_bands;      // palette cycles along the escape count
-// fixed in code (src/algorithms/julia.ts), how the picture follows the beat:
-uniform float u_beatZoom;    // zoom in on every beat, × intensity
-uniform float u_barZoom;     // and more on beat 1
-uniform float u_beatLight;   // brighter on every beat
-uniform float u_barLight;    // and on beat 1
-uniform float u_glow;        // the orbit-trap glow, lit up by the beat
-uniform float u_colourShift; // palette shift on the beat
+// fixed in code (src/algorithms/julia.ts):
+uniform float u_flashGain;   // G: how much brighter the flash F makes the picture (light = 1 + G·F)
+uniform float u_glow;        // the orbit-trap glow
 uniform float u_wanderSpeed; // how fast c drifts along the edge
 
 const float MAX_ITER = 96.0;
@@ -34,24 +28,19 @@ vec2 cardioid(float a) {
 }
 
 vec3 shade(vec2 uv) {
-  float beat = beatPulse();
-  float bar = barPulse();
-  float I = u_intensity;
   float t = u_time;
-  float bars = barStep();
 
-  // kaleidoscope fold; the turn at each bar start goes through barStep(), sized and eased by julia's own step shape (julia.ts)
+  // kaleidoscope fold
   float wedge = 6.28318 / u_segments;
-  vec2 p = rot2(u_spin * t + u_barTurn * wedge * bars) * uv;
+  vec2 p = rot2(u_spin * t) * uv;
   float a = atan(p.y, p.x);
   float r = length(p);
   a = mod(a, wedge);
   a = abs(a - 0.5 * wedge);
   p = r * vec2(cos(a), sin(a));
 
-  float zoom = u_zoom * (1.0 - u_beatZoom * I * beat - u_barZoom * I * bar);
-  vec2 z = p * zoom + u_center;
-  float theta = u_theta + u_wander * sin(t * u_wanderSpeed) + u_barTheta * bars;
+  vec2 z = p * u_zoom + u_center;
+  float theta = u_theta + u_wander * sin(t * u_wanderSpeed);
   vec2 c = cardioid(theta) * u_edge;
 
   float n = 0.0;
@@ -68,14 +57,14 @@ vec3 shade(vec2 uv) {
   // points that escape at once are far from the set; the ones that linger hug it
   float k = clamp(smoothN / 28.0, 0.0, 1.0);
 
-  // dark background with bright filaments, the same at every intensity
-  vec3 col = cosPalette(k * u_bands + 0.05 * t + u_colourShift * beat, u_palA, u_palB, u_palC, u_palD);
+  // dark background with bright filaments, the same colours at every intensity; the beat only brightens them, by the flash F (zero at strobe 0)
+  vec3 col = cosPalette(k * u_bands + 0.05 * t, u_palA, u_palB, u_palC, u_palD);
   float glow = pow(k, 1.5);
   col *= mix(0.3 + 0.7 * glow, 1.3 * glow, 0.65);
-  vec3 core = cosPalette(0.6 + 0.3 * trap + 0.1 * bars, u_palA, u_palB, u_palC, u_palD) * 0.75;
+  vec3 core = cosPalette(0.6 + 0.3 * trap, u_palA, u_palB, u_palC, u_palD) * 0.75;
   col = mix(col, core, inside);
-  col += u_glow * exp(-trap * 30.0) * (0.4 + beat);
+  col += u_glow * exp(-trap * 30.0) * 0.9;
 
-  col *= 1.0 + u_beatLight * beat + u_barLight * bar;
+  col *= 1.0 + u_flashGain * u_flash;
   return col;
 }
