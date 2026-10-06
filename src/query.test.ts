@@ -16,9 +16,12 @@ describe('parseDebugParams', () => {
     });
   });
 
-  it('clamps the sliders to 0..1 and the tempo to 40..240', () => {
-    expect(parseDebugParams('?intensity=5&strobe=-3&bpm=1000')).toMatchObject({ intensity: 1, strobe: 0, bpm: 240 });
-    expect(parseDebugParams('?bpm=3')).toMatchObject({ bpm: 40 });
+  it('clamps the sliders to 0..1, halves a tempo above 180 once and limits it to 60..180', () => {
+    expect(parseDebugParams('?intensity=5&strobe=-3&bpm=1000')).toMatchObject({ intensity: 1, strobe: 0, bpm: 180 });
+    expect(parseDebugParams('?bpm=3')).toMatchObject({ bpm: 60 });
+    expect(parseDebugParams('?bpm=200')).toMatchObject({ bpm: 100 });
+    expect(parseDebugParams('?bpm=180')).toMatchObject({ bpm: 180 });
+    expect(parseDebugParams('?bpm=170')).toMatchObject({ bpm: 170 });
   });
 
   it('ignores values that are not numbers', () => {

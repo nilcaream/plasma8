@@ -3,7 +3,7 @@
  * there is no parameter that sets the seed.
  */
 
-import { MAX_BPM, MIN_BPM } from './clock';
+import { toBpm } from './clock';
 import { clamp01 } from './settings';
 
 export interface DebugParams {
@@ -13,7 +13,7 @@ export interface DebugParams {
   intensity?: number;
   /** Start with this strobe instead of the remembered one. */
   strobe?: number;
-  /** Start the free-running clock at this tempo; taps still change it. */
+  /** Start the free-running clock at this tempo (above 180 it is halved, as for taps); taps still change it. */
   bpm?: number;
   /** Show the overlay with the algorithm's name and the bar count. */
   debug: boolean;
@@ -39,7 +39,7 @@ export function parseDebugParams(search: string): DebugParams {
   if (strobe !== undefined) out.strobe = clamp01(strobe);
 
   const bpm = number(q.get('bpm'));
-  if (bpm !== undefined) out.bpm = Math.min(MAX_BPM, Math.max(MIN_BPM, bpm));
+  if (bpm !== undefined) out.bpm = toBpm(bpm);
 
   const debug = q.get('debug');
   out.debug = debug !== null && debug !== '0' && debug !== 'false';

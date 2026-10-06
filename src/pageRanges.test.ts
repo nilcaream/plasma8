@@ -53,11 +53,11 @@ describe('the live sliders span exactly what the app accepts', () => {
     expect(clampBpm(1)).toBe(LIVE.bpm.min);
     expect(clampBpm(10000)).toBe(LIVE.bpm.max);
     const fast = new TapClock(0);
-    for (let i = 0; i < 8; i++) fast.tap(i * 130); // as fast as taps count: 461 BPM
+    for (let i = 0; i < 8; i++) fast.tap(i * 130); // as fast as taps count: 461 BPM, halved to 231, then limited
     expect(fast.read(2000).bpm).toBe(LIVE.bpm.max);
     const slow = new TapClock(0);
-    for (let i = 0; i < 4; i++) slow.tap(i * 1900); // as slow as a run allows: 31.6 BPM
-    expect(slow.read(8000).bpm).toBe(LIVE.bpm.min);
+    for (let i = 0; i < 4; i++) slow.tap(i * 1000); // as slow as a run allows: 60 BPM
+    expect(slow.read(8000).bpm).toBeCloseTo(LIVE.bpm.min, 8);
   });
 });
 

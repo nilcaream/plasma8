@@ -1,4 +1,4 @@
-import { TapClock, clampBpm, formatTempo } from './clock';
+import { TapClock, toBpm, formatTempo } from './clock';
 
 /**
  * A graph page's beat position. A tap goes to the app's own tap clock, with
@@ -15,7 +15,7 @@ export class PageTempo {
 
   constructor(now: number, bpm: number) {
     this.t0 = now;
-    this.bpm = clampBpm(bpm);
+    this.bpm = toBpm(bpm);
     this.clock = new TapClock(now, this.bpm);
   }
 
@@ -37,7 +37,7 @@ export class PageTempo {
   setBpm(bpm: number, now: number): void {
     this.beatsAtT0 = this.beats(now);
     this.t0 = now;
-    this.bpm = clampBpm(bpm);
+    this.bpm = toBpm(bpm);
     this.following = false;
     this.clock = new TapClock(now, this.bpm);
   }
