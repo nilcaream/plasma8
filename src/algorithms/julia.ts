@@ -16,12 +16,12 @@ export const JULIA_KNOBS: readonly Knob[] = [
   ...triple('palC', 0.7, 1.3, [0, 3]),
   ...triple('palD', 0, 1, [0, 1]),
   range('centreAngle', 0, TAU, [0, TAU]),
-  range('centreOff', 0, 0.35, [0, 1]),
+  range('centreOff', 0, 0.353, [0, 1]),
   int('segments', 3, 9, [1, 16]),
-  range('theta', 0, TAU, [0, TAU]),
-  range('edge', 0.94, 1.02, [0.8, 1.15]),
-  range('wander', 0.03, 0.12, [0, 0.4]),
-  range('zoom', 1.0, 1.8, [0.4, 4]),
+  range('theta', 1.093, 5.391, [0, TAU]),
+  range('edge', 0.994, 1.15, [0.8, 1.15]),
+  range('wander', 0, 0.126, [0, 0.4]),
+  range('zoom', 1.311, 1.8, [0.4, 4]),
   range('spin', -0.05, 0.05, [-0.2, 0.2]),
   range('bands', 1.5, 5.101, [0.3, 10]),
   // how hard each beat voice flashes this run: the only thing that follows the beat
@@ -29,7 +29,7 @@ export const JULIA_KNOBS: readonly Knob[] = [
   // fixed in code: the flash gain, the glow's strength and how fast c drifts
   fixed('flashGain', 0.5, GAIN_RANGE, 'follows the beat'),
   fixed('glow', 0.263, [0, 1], 'look'),
-  fixed('wanderSpeed', 0.105, [0, 1], 'moves with time'),
+  fixed('wanderSpeed', 0.221, [0, 1], 'moves with time'),
 ];
 
 export function juliaParams(v: Values): ShaderParams {
