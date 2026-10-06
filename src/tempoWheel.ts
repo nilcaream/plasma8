@@ -65,7 +65,12 @@ export class TempoWheel {
       this.startY = e.clientY;
       this.startValue = Math.round(this.position);
       this.lastSet = this.startValue;
-      this.root.setPointerCapture(e.pointerId);
+      try {
+        // the finger can leave the wheel and still drag it; a pointer that has gone already throws, and the drag goes on without
+        this.root.setPointerCapture(e.pointerId);
+      } catch {
+        // nothing to do
+      }
       this.root.classList.add('dragging');
       e.preventDefault();
     });
