@@ -125,7 +125,7 @@ export class ShaderAlgorithm {
     gl.uniform1f(c.get('u_barPulse') ?? null, inputs.barPulse);
     gl.uniform1f(c.get('u_barSteps') ?? null, this.steps.update(Math.floor(inputs.beats / BEATS_PER_BAR), inputs.barPhase, inputs.intensity));
     gl.uniform1f(c.get('u_intensity') ?? null, inputs.intensity);
-    gl.uniform1f(c.get('u_flash') ?? null, this.amounts ? flash(inputs.beats, inputs.strobe, this.amounts, DEFAULT_SHAPE).total : 0);
+    gl.uniform1f(c.get('u_flash') ?? null, this.amounts ? flash(inputs.flashBeats ?? inputs.beats, inputs.strobe, this.amounts, DEFAULT_SHAPE).total : 0);
     for (const { location, value } of this.params) setUniform(gl, location, value);
     if (this.perFrame) {
       for (const [uniform, value] of Object.entries(this.perFrame(inputs))) {

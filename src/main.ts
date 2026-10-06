@@ -189,6 +189,7 @@ function main(): void {
       ...beat,
       time: motionTimeFor(def, shared, steadyTime),
       strobe,
+      flashBeats: flashLimiter.flashBeats,
       bpm: r.bpm,
       width,
       height,

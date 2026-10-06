@@ -14,7 +14,8 @@ function frames(bpm: number, taps: readonly number[], to: number, limited = true
   for (let t = 0; t <= to; t++) {
     if (taps.includes(t)) clock.tap(t);
     const r = clock.read(t);
-    out.push(flash(r.beats, !limited || limiter.allow(r.beats, r.bpm, t) ? 1 : 0, amounts, DEFAULT_SHAPE).total);
+    const strobe = !limited || limiter.allow(r.beats, r.bpm, t) ? 1 : 0;
+    out.push(flash(limited ? limiter.flashBeats : r.beats, strobe, amounts, DEFAULT_SHAPE).total);
   }
   return out;
 }
@@ -41,10 +42,16 @@ describe('the flash cap against the clock', () => {
       const beatMs = 60000 / bpm;
       for (let phase = 0; phase < 4 * beatMs; phase += 7) {
         const tap = 4000 + Math.round(phase);
-        // 8 ms: a tap that lands just before a rising flash's peak cuts it short, so at 180 BPM (grid gap exactly a third of a second)
-        // the cut flash can sit a few ms closer to the last peak than the limiter, which looks at windows, can hold
-        expect(mostPeaksInASecond(frames(bpm, [tap], tap + 2500), 8), `${bpm} BPM, tap at ${tap} ms`).toBeLessThanOrEqual(MAX_FLASHES_PER_S);
+        expect(mostPeaksInASecond(frames(bpm, [tap], tap + 2500)), `${bpm} BPM, tap at ${tap} ms`).toBeLessThanOrEqual(MAX_FLASHES_PER_S);
       }
+    }
+  });
+
+  it('holds 3 flashes a second at 180 BPM when a tap cuts a rising flash short', () => {
+    // free running at 180 BPM the flashes peak at 3333, 3667, 4000 and 4333 ms; the tap at 4329 ms lands in the rise of the fourth,
+    // which would peak at the tap, 995 ms after the first
+    for (let tap = 4300; tap <= 4332; tap++) {
+      expect(mostPeaksInASecond(frames(180, [tap], tap + 1500)), `tap at ${tap} ms`).toBeLessThanOrEqual(MAX_FLASHES_PER_S);
     }
   });
 

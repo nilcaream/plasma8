@@ -20,6 +20,8 @@ export interface FrameInputs {
   intensity: number;
   /** The strobe slider, 0 off … 1: the size and the shape of the beat voices' flash (src/beatVoices.ts); never the intensity. 0 while the flash limiter holds a window dark (src/flashLimit.ts). */
   strobe: number;
+  /** The position in beats the flash is drawn at, when it is not `beats`: the flash limiter lets a rising flash finish on the grid it began on (src/flashLimit.ts). */
+  flashBeats?: number;
   /** The tempo in beats per minute: the flash keeps to at most 3 flashes a second by it. */
   bpm: number;
   /** Size of the drawing surface in pixels. */
