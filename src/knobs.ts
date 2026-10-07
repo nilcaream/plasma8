@@ -202,17 +202,11 @@ export function algorithmOptions(names: readonly string[]): AlgorithmOption[] {
 
 const num = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(3));
 
-/** The ranges as plain text to paste back, one knob a line: min and max of the drawn ones (the sub-range, marked, of a moving one), then the value of each fixed one. */
-export function formatRanges(
-  title: string,
-  knobs: readonly Knob[],
-  ranges: Readonly<Record<string, UserRange>>,
-  moving: ReadonlySet<string> = new Set(),
-): string {
+/** The ranges as plain text to paste back, one knob a line: min and max of the drawn ones, then the value of each fixed one. */
+export function formatRanges(title: string, knobs: readonly Knob[], ranges: Readonly<Record<string, UserRange>>): string {
   const width = Math.max(...knobs.map((k) => k.key.length));
   const col = (n: number): string => num(n).padStart(7);
-  const note = (k: Knob): string => (moving.has(k.key) ? '  (moving: this run\'s sub-range)' : '');
-  const drawn = knobs.filter((k) => !isFixed(k)).map((k) => `${k.key.padEnd(width)}  min ${col(ranges[k.key]!.min)}  max ${col(ranges[k.key]!.max)}${note(k)}`);
+  const drawn = knobs.filter((k) => !isFixed(k)).map((k) => `${k.key.padEnd(width)}  min ${col(ranges[k.key]!.min)}  max ${col(ranges[k.key]!.max)}`);
   const kept = knobs.filter(isFixed).map((k) => `${k.key.padEnd(width)}  ${num(ranges[k.key]!.value)}`);
   return [title, ...drawn, ...kept].join('\n');
 }

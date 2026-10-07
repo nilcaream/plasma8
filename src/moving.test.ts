@@ -4,7 +4,7 @@ import { VOICE_NAMES } from './beatVoices';
 import { REACH_POWER, hitTime } from './crossfader';
 import { drawBounds } from './knobs';
 import {
-  MOVING_COUNT, drawMoving, getReachPower, getStepAt1, movingAt, movingRange, movingValues, setReachPower, setStepAt1, type MovingValue,
+  MOVING_COUNT, drawMoving, getReachPower, getStepAt1, movingAt, movingValues, setReachPower, setStepAt1, type MovingValue,
 } from './moving';
 import { STEP_AT_1, STEP_EXTRA } from './randomWalk';
 import { createRng } from './rng';
@@ -39,23 +39,17 @@ describe('drawMoving', () => {
     expect(drawMoving([['a']], bounds, createRng(3)).map((m) => m.key)).toEqual(['a']);
   });
 
-  it('moves a value in a sub-range of 25 to 60 percent of its bounds, placed inside them', () => {
+  it('walks the whole of the min and max it is given for its knob, not a slice of it', () => {
     const rng = createRng(4);
     for (let i = 0; i < 300; i++) {
-      for (const m of drawMoving(GROUPS, bounds, rng)) {
-        const { min, max } = movingRange(m);
-        expect(min).toBeGreaterThanOrEqual(m.lo - 1e-9);
-        expect(max).toBeLessThanOrEqual(m.hi + 1e-9);
-        expect((max - min) / (m.hi - m.lo)).toBeGreaterThanOrEqual(0.25 - 1e-9);
-        expect((max - min) / (m.hi - m.lo)).toBeLessThan(0.6);
-      }
+      for (const m of drawMoving(GROUPS, bounds, rng)) expect([m.min, m.max]).toEqual(bounds(m.key));
     }
   });
 
-  it('keeps every value inside its sub-range at any intensity and any moment', () => {
+  it('keeps every value inside its min and max at any intensity and any moment', () => {
     const rng = createRng(5);
     for (const m of drawMoving(GROUPS, bounds, rng)) {
-      const { min, max } = movingRange(m);
+      const { min, max } = m;
       for (const intensity of [0, 0.4, 1]) {
         for (let beats = 0; beats < 40; beats += 0.37) {
           const v = movingAt(m, intensity, beats);
@@ -115,6 +109,9 @@ describe('drawMoving', () => {
       }
     }
     expect(places.size).toBeGreaterThan(100);
+    // the start is anywhere in the whole range, both ends included
+    expect(Math.min(...places)).toBeLessThan(5e4);
+    expect(Math.max(...places)).toBeGreaterThan(95e4);
     expect([...places].filter((u) => Math.abs(u - 5e5) < 1e4).length).toBeLessThan(places.size / 10);
   });
 
@@ -182,7 +179,7 @@ describe('plasma\'s moving groups', () => {
     for (let i = 0; i < 200; i++) {
       for (const m of drawPlasmaMoving(rng)) {
         const [lo, hi] = drawBounds(PLASMA_KNOBS.find((k) => k.key === m.key)!.draw);
-        expect([m.lo, m.hi]).toEqual([lo, hi]);
+        expect([m.min, m.max]).toEqual([lo, hi]);
       }
     }
   });

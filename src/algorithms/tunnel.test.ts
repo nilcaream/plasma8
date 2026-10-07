@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { FrameInputs } from '../algorithm';
 import { drawKnobs } from '../knobs';
 import { MotionClock, steadyRate } from '../motion';
-import { drawMoving, movingAt, movingRange } from '../moving';
+import { drawMoving, movingAt } from '../moving';
 import { createRng } from '../rng';
 import { TUNNEL_KNOBS, TUNNEL_MOVING_GROUPS, divePhases, drawTunnelMoving, tunnelParams } from './tunnel';
 import tunnelSource from './tunnel.frag?raw';
@@ -97,7 +97,7 @@ describe('the tunnel shader', () => {
 });
 
 describe('the twist', () => {
-  it('is drawn from -0.5 to 0.5 and moves through zero when its sub-range does', () => {
+  it('is drawn from -0.5 to 0.5 and moves through zero, as it walks the whole range', () => {
     const rng = createRng(11);
     const draws = Array.from({ length: 2000 }, () => drawKnobs(TUNNEL_KNOBS, rng).twist!);
     expect(Math.min(...draws)).toBeLessThan(-0.48);
@@ -105,14 +105,12 @@ describe('the twist', () => {
     let crossed = 0;
     for (let i = 0; i < 100; i++) {
       const m = drawMoving([['twist']], (key) => (key === 'twist' ? [-0.5, 0.5] : [0, 1]), rng, [1, 1])[0]!;
-      const { min, max } = movingRange(m);
-      if (!(min < -0.15 && max > 0.15)) continue;
       const seen = Array.from({ length: 1600 }, (_, j) => movingAt(m, 0.8, j * 0.25));
       expect(Math.min(...seen)).toBeLessThan(0);
       expect(Math.max(...seen)).toBeGreaterThan(0);
       crossed++;
     }
-    expect(crossed).toBeGreaterThan(10);
+    expect(crossed).toBe(100);
   });
 });
 
@@ -163,10 +161,10 @@ describe('the tunnel\'s moving values', () => {
     expect([...keysSeen].sort()).toEqual(TUNNEL_MOVING_GROUPS.flat(2).sort());
   });
 
-  it('gives the two far-end values a sub-range and a voice each', () => {
+  it('gives the two far-end values a walk of their own, from another start, and a voice each', () => {
     const rng = createRng(10);
     let pairs = 0;
-    let otherRange = 0;
+    let otherStart = 0;
     let otherVoice = 0;
     for (let i = 0; i < 400; i++) {
       const moving = drawTunnelMoving(rng);
@@ -174,11 +172,11 @@ describe('the tunnel\'s moving values', () => {
       const y = moving.find((m) => m.key === 'farEnd.y');
       if (!x || !y) continue;
       pairs++;
-      if (x.min !== y.min) otherRange++;
+      if (movingAt(x, 0, 0) !== movingAt(y, 0, 0)) otherStart++;
       if (x.voice !== y.voice) otherVoice++;
     }
     expect(pairs).toBeGreaterThan(20);
-    expect(otherRange).toBe(pairs);
+    expect(otherStart).toBe(pairs);
     expect(otherVoice).toBeGreaterThan(0);
     expect(otherVoice).toBeLessThan(pairs);
   });

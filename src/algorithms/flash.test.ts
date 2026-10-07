@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import type { AlgorithmDef, FrameInputs } from '../algorithm';
 import { drawKnobs } from '../knobs';
 import { createRng } from '../rng';
-import { movingRange } from '../moving';
 import { RandomWalk } from '../randomWalk';
 import { shaderAlgorithm } from '../shaderAlgorithm';
 import { julia } from './julia';
@@ -51,8 +50,8 @@ function flashWith(def: AlgorithmDef, amounts: { kick: number; snare: number; cr
 }
 
 describe('plasma\'s moving values', () => {
-  // width 0.5 of 0.9..1.8 placed half way: 1.125..1.575, stepped by the kick
-  const scale = { key: 'scale', lo: 0.9, hi: 1.8, min: 1.125, max: 1.575, voice: 'kick' as const, walk: new RandomWalk(createRng(3)) };
+  // walks 1.125..1.575, stepped by the kick
+  const scale = { key: 'scale', min: 1.125, max: 1.575, voice: 'kick' as const, walk: new RandomWalk(createRng(3)) };
   const uniformsAt = (beats: number): Map<string, number> => {
     const { gl, floats } = mockGl();
     const values = drawKnobs(plasma.knobs, createRng(1));
@@ -91,21 +90,16 @@ describe('plasma\'s moving values', () => {
     }
   });
 
-  it('moves every value inside the bounds it is given, as the panel\'s min and max, and in the code\'s when it is given none', () => {
+  it('walks every value over the whole of the min and max it is given, as the panel\'s, and over the code\'s when it is given none', () => {
     for (const def of [plasma, tunnel, warpNoise, julia]) {
       for (let seed = 1; seed <= 20; seed++) {
         const { gl } = mockGl();
         const values = drawKnobs(def.knobs, createRng(seed));
         const given = def.create(gl, values, createRng(seed), { moves: true, bounds: () => [0.2, 0.3] }).moving!;
         expect(given.length).toBeGreaterThanOrEqual(2);
-        for (const m of given) {
-          expect([m.lo, m.hi]).toEqual([0.2, 0.3]);
-          const { min, max } = movingRange(m);
-          expect(min).toBeGreaterThanOrEqual(0.2 - 1e-12);
-          expect(max).toBeLessThanOrEqual(0.3 + 1e-12);
-        }
+        for (const m of given) expect([m.min, m.max]).toEqual([0.2, 0.3]);
         const code = def.create(gl, values, createRng(seed), { moves: true }).moving!;
-        expect(code.some((m) => m.lo !== 0.2 || m.hi !== 0.3)).toBe(true);
+        expect(code.some((m) => m.min !== 0.2 || m.max !== 0.3)).toBe(true);
       }
     }
   });

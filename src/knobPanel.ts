@@ -16,7 +16,7 @@ import {
 } from './knobs';
 import { REACH_POWER, REACH_POWER_RANGE } from './crossfader';
 import { STEP_AT_1, STEP_AT_1_RANGE } from './randomWalk';
-import { getReachPower, getStepAt1, movingAt, movingRange, setReachPower, setStepAt1, type MovingValue } from './moving';
+import { getReachPower, getStepAt1, movingAt, setReachPower, setStepAt1, type MovingValue } from './moving';
 import type { Rng } from './rng';
 
 export interface Shown {
@@ -42,7 +42,7 @@ interface Row {
 const STEP_GROUP = 'how intensity sets the moves';
 /** A value every algorithm shares, listed after its own fixed values: the power of the intensity in the moving values' step (src/randomWalk.ts stepOf). 1 is a straight line. */
 const REACH_KNOB: Knob = fixed('reach power', REACH_POWER, REACH_POWER_RANGE, STEP_GROUP);
-/** The other one: a moving value's step at intensity 1, as a share of its sub-range. */
+/** The other one: a moving value's step at intensity 1, as a share of its range. */
 const STEP_KNOB: Knob = fixed('step at intensity 1', STEP_AT_1, STEP_AT_1_RANGE, STEP_GROUP);
 /** The shared values: they belong to no algorithm, so they are not saved with one and not handed to its tune. */
 const SHARED_KNOBS: readonly Knob[] = [REACH_KNOB, STEP_KNOB];
@@ -67,8 +67,8 @@ export function knobSections(knobs: readonly Knob[], movable: Readonly<Record<st
 }
 
 /**
- * Moves the min or max of the sub-range a value moves in: the knob's own rules (min stays below max, both inside the
- * knob's span), then the value's sub-range follows. The walk keeps its unit position, so the value maps into the new range without a jump.
+ * Moves the min or max of a moving knob: the knob's own rules (min stays below max, both inside the knob's span),
+ * then the walk's bounds follow. The walk keeps its unit position, so the value maps into the new range without a jump.
  */
 export function resizeMoving(knob: Knob, r: UserRange, m: MovingValue, part: 'min' | 'max', to: number): UserRange {
   const next = (part === 'min' ? setMin : setMax)(knob, r, to);
@@ -161,7 +161,7 @@ export class KnobPanel {
     };
   }
 
-  /** Switches the moves off (every moving value stays where it is now) or on again (they move from their sub-ranges). */
+  /** Switches the moves off (every moving value stays where it is now) or on again (they walk between their min and max again). */
   private setMovesOff(off: boolean): void {
     this.movesOff = off;
     const s = this.shown;
@@ -192,14 +192,13 @@ export class KnobPanel {
     this.ranges[REACH_KNOB.key] = setFixed(REACH_KNOB, getReachPower());
     this.ranges[STEP_KNOB.key] = setFixed(STEP_KNOB, getStepAt1());
     for (const knob of s.def.knobs) {
+      const r = this.rangeOf(s.def.name, knob, s.values[knob.key]!);
+      // a moving value walks the knob's own min..max, as set here (a min or max moved while the moves were off counts); its value is read live (tick)
       const m = this.moving.get(knob.key);
       if (m) {
-        // a moving value shows its sub-range; its value is read live (tick)
-        const { min, max } = movingRange(m);
-        this.ranges[knob.key] = { min, max, value: (min + max) / 2 };
-        continue;
+        m.min = r.min;
+        m.max = r.max;
       }
-      const r = this.rangeOf(s.def.name, knob, s.values[knob.key]!);
       // made a bar ahead: a min or max moved since pulls its value inside
       this.ranges[knob.key] = setValue(knob, r, r.value);
     }
@@ -213,7 +212,7 @@ export class KnobPanel {
       r.el.classList.toggle('moving', moves);
       r.el.classList.toggle('movable', !moves && group !== undefined);
       r.name.textContent = rowTitle(r.knob.key, group, moving?.voice);
-      // a moving value's min and max change its sub-range; its value is the walk's, read live
+      // a moving value's min and max change the walk's bounds; its value is the walk's, read live
       for (const [part, input] of Object.entries(r.inputs)) input.disabled = moves && part === 'value';
       this.paint(r);
     }
@@ -305,7 +304,7 @@ export class KnobPanel {
       setReachPower(next.value);
     } else if (r.knob === STEP_KNOB) {
       setStepAt1(next.value);
-    } else if (!m) {
+    } else {
       let saved = this.saved.get(s.def.name);
       if (!saved) this.saved.set(s.def.name, (saved = new Map()));
       saved.set(key, { min: next.min, max: next.max });
@@ -323,7 +322,7 @@ export class KnobPanel {
   private async copy(): Promise<void> {
     const s = this.shown;
     if (!s) return;
-    const text = formatRanges(s.def.name, [...s.def.knobs, ...SHARED_KNOBS], this.ranges, new Set(this.moving.keys()));
+    const text = formatRanges(s.def.name, [...s.def.knobs, ...SHARED_KNOBS], this.ranges);
     this.copied.value = text;
     try {
       await navigator.clipboard.writeText(text);

@@ -67,7 +67,7 @@ describe('the noise\'s moving values', () => {
       for (const m of drawWarpNoiseMoving(rng)) {
         const draw = WARP_NOISE_KNOBS.find((k) => k.key === m.key)!.draw;
         if (draw.kind !== 'range') throw new Error('not a range');
-        expect([m.lo, m.hi]).toEqual([draw.min, draw.max]);
+        expect([m.min, m.max]).toEqual([draw.min, draw.max]);
         expect(['kick', 'snare', 'crash']).toContain(m.voice);
       }
     }

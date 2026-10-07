@@ -6,7 +6,7 @@
  * beside it is the same idea with a band between two edges instead.
  */
 import { VOICES, VOICE_NAMES, type VoiceName } from './beatVoices';
-import { REACH_POWER, TRAVEL_AT_0, TRAVEL_AT_1, drawRange, hitTime, travelFor } from './crossfader';
+import { REACH_POWER, TRAVEL_AT_0, TRAVEL_AT_1, hitTime, travelFor } from './crossfader';
 import {
   button, colors, controlGroup, dot, el, frame, plot, playhead, samples, setup, slider, tempoControls,
   type Tick,
@@ -19,17 +19,13 @@ import { createRng, formatSeed, freshSeed } from './rng';
 const WINDOW = 16; // beats on screen: 4 bars
 const STRIP = 256; // beats on the long graph: 64 bars
 const BAR = 4;
-const GAP = 0.1; // the least room between min and max
-
-/** The sliders show 2 decimals, so a draw is rounded to them and the graphs show what the sliders say. */
-const round2 = (v: number): number => Math.round(v * 100) / 100;
 
 let seed = freshSeed();
 let rng = createRng(seed);
-const drawn = drawRange(rng, RANDOM_WALK.bounds.lo, RANDOM_WALK.bounds.hi);
 let walk = new RandomWalk(rng);
+// the walk goes over the whole of a knob's min..max, whatever they are: here the unit range
 const P: WalkParams = {
-  min: round2(drawn.min), max: round2(drawn.max), intensity: 0.5, power: REACH_POWER, voice: 'kick',
+  min: 0, max: 1, intensity: 0.5, power: REACH_POWER, voice: 'kick',
   travel0: TRAVEL_AT_0, travel1: TRAVEL_AT_1, stepAt1: STEP_AT_1,
 };
 
@@ -43,31 +39,15 @@ const live = controlGroup(controls, 'Live',
 slider(live, { label: 'I', ...LIVE.intensity, step: 0.01, value: P.intensity, digits: 2 }, (v) => { P.intensity = v; });
 const showTempo = tempoControls(live, el<HTMLButtonElement>('tap'), tempo);
 
-const random = controlGroup(controls, 'Random per instance',
-  `Drawn when an instance starts, inside the algorithm's outer bounds (an example here: ${RANDOM_WALK.bounds.lo} to ${RANDOM_WALK.bounds.hi}): `
-  + `a width of 25 to 60 percent of the bounds, put anywhere inside them, and the point the walk starts from, anywhere in it. The sliders span what that can give; min stays ${GAP} below max.`);
-const setMin = slider(random, { label: 'min', ...RANDOM_WALK.min, step: 0.01, value: P.min, digits: 2 }, (v) => {
-  P.min = v;
-  if (P.max < v + GAP) { P.max = round2(v + GAP); setMax(P.max); }
-});
-const setMax = slider(random, { label: 'max', ...RANDOM_WALK.max, step: 0.01, value: P.max, digits: 2 }, (v) => {
-  P.max = v;
-  if (P.min > v - GAP) { P.min = round2(v - GAP); setMin(P.min); }
-});
 const seedLine = document.createElement('p');
 seedLine.className = 'note';
-random.appendChild(seedLine);
-const showSeed = (): void => { seedLine.textContent = `seed ${formatSeed(seed)}`; };
+live.appendChild(seedLine);
+const showSeed = (): void => { seedLine.textContent = `seed ${formatSeed(seed)}: the point the walk starts from, drawn at random over the whole range`; };
 showSeed();
-button(random, 'Draw again', 'redraw').addEventListener('click', () => {
+button(live, 'Draw again', 'redraw').addEventListener('click', () => {
   seed = freshSeed();
   rng = createRng(seed);
-  const d = drawRange(rng, RANDOM_WALK.bounds.lo, RANDOM_WALK.bounds.hi);
   walk = new RandomWalk(rng);
-  P.min = round2(d.min);
-  P.max = round2(d.max);
-  setMin(P.min);
-  setMax(P.max);
   showSeed();
 });
 
@@ -158,8 +138,8 @@ function writeFormulas(pos: number): void {
   const sign = (d: number): string => (d === 1 ? '+' : '−');
   const flipped = next.dir !== walk.direction;
   const lines = [
-    'range [min, max] drawn per instance;  the walk keeps a place u in [0, 1] (0 = min, 1 = max):  value = min + u·(max − min)',
-    `start: u drawn at random in [0, 1) per instance;  here min = ${f2(P.min)}, max = ${f2(P.max)}, width = ${f3(P.max - P.min)}`,
+    'the walk goes over the whole of a knob\'s min..max (here min = 0, max = 1) and keeps a place u in [0, 1] (0 = min, 1 = max):  value = min + u·(max − min)',
+    'start: u drawn at random in [0, 1) per instance, so it starts anywhere in the range; at I = 0 it stays there',
     '',
     `step by intensity:  s0 = stepAt1 · I^p = ${f3(P.stepAt1)} · ${f2(P.intensity)}^${P.power} = ${f3(base)} of the range   (I = 0: no step, nothing moves)`,
     `every step is a little longer, up to a tenth, drawn for each hit:  s = s0 · (1 + e),  e in [0, 0.1)   (the next one: e = ${f3((step / (base || 1)) - 1)}, s = ${f3(step)} of the range = ${f3(step * (P.max - P.min))} in value)`,

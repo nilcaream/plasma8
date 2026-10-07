@@ -48,9 +48,9 @@ export const CROSSFADER = {
   travel: range(TRAVEL_RANGE),
 };
 
-/** The random walk's sliders: the crossfader's range and stroke lengths, and the step at intensity 1 as a share of the range. */
+/** The random walk's sliders: the crossfader's stroke lengths, the step at intensity 1 as a share of the range, and the power of the intensity. */
 export const RANDOM_WALK = {
-  ...CROSSFADER,
+  travel: CROSSFADER.travel,
   step: range(STEP_AT_1_RANGE),
   power: range(REACH_POWER_RANGE),
 };

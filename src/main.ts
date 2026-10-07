@@ -15,7 +15,7 @@ import { createRng, formatSeed, freshSeed } from './rng';
 import { Sequencer, type Change } from './sequence';
 import { loadSettings, saveSettings, type Settings } from './settings';
 import { MotionClock, motionRate, motionTimeFor, steadyRate } from './motion';
-import { movingAt, movingRange } from './moving';
+import { movingAt } from './moving';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
 import { TapWidget, widgetView } from './tapWidget';
 import { TempoWheel } from './tempoWheel';
@@ -81,10 +81,7 @@ function main(): void {
     const values = knobPanel.start(def, rng);
     const algorithm = def.create(gl, values, rng, knobPanel.options(def));
     if (params.debug && algorithm.moving?.length) {
-      const list = algorithm.moving.map((m) => {
-        const { min, max } = movingRange(m);
-        return `${m.key} ${min.toFixed(3)}..${max.toFixed(3)} (of ${m.lo.toFixed(3)}..${m.hi.toFixed(3)}) by the ${m.voice}`;
-      });
+      const list = algorithm.moving.map((m) => `${m.key} ${m.min.toFixed(3)}..${m.max.toFixed(3)} by the ${m.voice}`);
       console.info(`[plasma8] ${def.name}: ${algorithm.moving.length} values move: ${list.join('; ')}`);
     }
     return { def, values, algorithm };

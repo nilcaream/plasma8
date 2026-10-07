@@ -53,7 +53,7 @@ export interface Algorithm {
 export interface CreateOptions {
   /** false: no value moves; every value stays as drawn. */
   moves: boolean;
-  /** The bounds a moving value moves inside: the panel's min and max for the knob; the code's range when left out. */
+  /** The min and max a moving value walks between: the panel's min and max for the knob; the code's range when left out. */
   bounds?: (key: string) => readonly [number, number];
 }
 
