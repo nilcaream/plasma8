@@ -169,6 +169,7 @@ export function shaderAlgorithm(
   return {
     name,
     moving,
+    amounts: () => shader.amounts,
     draw: (target, inputs) => shader.draw(target, inputs),
     dispose: () => shader.dispose(),
     hold: (on) => {

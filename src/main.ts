@@ -1,8 +1,10 @@
 import { ALGORITHMS, chooseAlgorithm } from './algorithms';
 import type { Algorithm, AlgorithmDef, FrameInputs } from './algorithm';
 import { Band } from './band';
-import { TapClock } from './clock';
+import { DEFAULT_SHAPE, flash } from './beatVoices';
+import { TapClock, type ClockReading } from './clock';
 import { beatInputs } from './drive';
+import { FlashPeaks, amountsText, formatDump, movingText } from './dump';
 import { FlashLimiter } from './flashLimit';
 import { createContext } from './gl';
 import { isTapKey, isTapPointer } from './input';
@@ -13,7 +15,7 @@ import { createRng, formatSeed, freshSeed } from './rng';
 import { Sequencer, type Change } from './sequence';
 import { loadSettings, saveSettings, type Settings } from './settings';
 import { MotionClock, motionRate, motionTimeFor, steadyRate } from './motion';
-import { movingRange } from './moving';
+import { movingAt, movingRange } from './moving';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
 import { TapWidget, widgetView } from './tapWidget';
 import { TempoWheel } from './tempoWheel';
@@ -86,7 +88,10 @@ function main(): void {
     return create(def);
   };
   const announce = (r: Running, bars: number, how: string): void => {
-    console.info(`[plasma8] ${r.def.name} (home ${r.def.home.toFixed(2)}) ${how}; next change in ${bars} bars; seed ${seedText}`);
+    const voices = amountsText(r.algorithm.amounts?.());
+    console.info(
+      `[plasma8] ${r.def.name} (home ${r.def.home.toFixed(2)}) ${how}; next change in ${bars} bars; seed ${seedText}; voices ${voices}; moves ${movingText(r.algorithm.moving)}`,
+    );
   };
 
   const stage = new Stage(gl);
@@ -107,7 +112,34 @@ function main(): void {
   // dragging the wheel sets the tempo to the whole number it shows, and the beat stays where it is
   const wheel = new TempoWheel((bpm) => clock.setBpm(bpm, performance.now()));
   // the band across the top: every control lives there, and a tap there is never a tempo tap (src/band.ts)
-  const band = new Band(params.debug);
+  // a press in it prints what is on the screen as one console block (src/dump.ts)
+  const peaks = new FlashPeaks();
+  let seen: { r: ClockReading; intensity: number; strobe: number; flash: number; fade: number; now: number } | undefined;
+  const band = new Band(params.debug, () => {
+    if (!seen) return;
+    const { r, intensity, strobe, flash: flashNow, fade, now } = seen;
+    const style = (look ? TRANSITION_STYLES[look.style] : undefined) ?? '';
+    console.info(
+      formatDump({
+        name: current.def.name,
+        home: current.def.home,
+        seed: seedText,
+        transition: incoming ? { state: fade > 0 ? 'fade' : 'ready', to: incoming.def.name, style, progress: fade } : { state: 'none' },
+        bpm: r.bpm,
+        beats: r.beats,
+        bar: r.bar + 1,
+        beatInBar: r.beatInBar + 1,
+        intensity,
+        strobe,
+        moving: (current.algorithm.moving ?? []).map((m) => ({ key: m.key, voice: m.voice, value: movingAt(m, intensity, r.beats) })),
+        flash: flashNow,
+        amounts: current.algorithm.amounts?.(),
+        limiter: flashLimiter.state,
+        peaks: peaks.recent(now),
+        now,
+      }),
+    );
+  });
   const metronome = new Metronome();
   const debug = new DebugOverlay(params.debug, seedText);
   new Sliders(live, (key, value) => {
@@ -175,6 +207,10 @@ function main(): void {
     const steadyTime = steady.update(dt, steadyRate(intensity));
     // a flash window the clock put too close to the last one stays dark (src/flashLimit.ts)
     const strobe = flashLimiter.allow(r.beats, r.bpm, now) ? live.strobe : 0;
+    const amounts = current.algorithm.amounts?.();
+    const flashNow = amounts ? flash(flashLimiter.flashBeats, strobe, amounts, DEFAULT_SHAPE).total : 0;
+    peaks.record(now, flashNow);
+    seen = { r, intensity, strobe, flash: flashNow, fade, now };
     const inputsFor = (def: AlgorithmDef): FrameInputs => ({
       ...beat,
       time: motionTimeFor(def, shared, steadyTime),

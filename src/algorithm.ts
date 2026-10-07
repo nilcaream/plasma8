@@ -1,3 +1,4 @@
+import type { Amounts } from './beatVoices';
 import type { Knob, Values } from './knobs';
 import type { MovingValue } from './moving';
 import type { Rng } from './rng';
@@ -38,6 +39,8 @@ export interface Algorithm {
   readonly name: string;
   /** The values that move this instance, when it has any: they follow a beat voice through the crossfader every frame instead of holding a drawn number. */
   readonly moving?: readonly MovingValue[];
+  /** The strengths of its beat voices, when it has any: what the flash is made of. */
+  amounts?(): Amounts | undefined;
   draw(target: WebGLFramebuffer | null, inputs: FrameInputs): void;
   /** Takes new values for its knobs while it runs (the debug panel's overrides). */
   tune(values: Values): void;

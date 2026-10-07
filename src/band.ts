@@ -32,13 +32,18 @@ export class Band {
   private shown = false;
   private outline: HTMLElement | undefined;
 
-  constructor(private readonly debug: boolean) {
+  /** `onPress` is called on every press in the band. */
+  constructor(
+    private readonly debug: boolean,
+    onPress?: () => void,
+  ) {
     const touch = (): void => {
       this.lastTouchAt = performance.now();
     };
     this.root.addEventListener('pointerdown', () => {
       this.held = true;
       touch();
+      onPress?.();
     });
     const release = (): void => {
       if (!this.held) return;

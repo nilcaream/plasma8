@@ -13,6 +13,7 @@ Fullscreen generative visuals in the browser, driven by a tap-tempo clock. Four 
   - *Metronome* (upper-left): a dot on every beat, bigger on beat 1. It also shows with the tapping widget when taps come in.
 - **Tapping widget** (top centre; it shows as part of the panel, and 3.5 s after the last tap outside the band it fades): four dots fill on the first taps of a run; then a strip shows each tap left (early) or right (late) of the beat mark, the taps the tempo is fitted to bright and older ones fading, with the tempo and its standard error under it (`132.31 +/- 0.41`, green below ±0.5).
 - **Tempo wheel** (upper-right, left of Intensity and Strobe): the tempo as a whole number. Drag it up or down (24 px per BPM), turn the mouse wheel over it (one notch is one BPM, up is faster) or use the arrow keys to set the tempo exactly, 60 to 180; the beat stays where it is.
+- A press in the band also prints one block to the browser console: what is on the screen (algorithm, seed, transition, tempo and place in the bar, intensity, strobe, the moving values, the flash and its voices) and the flash peaks of the last 5 s with their times. When something looks wrong, press the band and copy that block.
 - Intensity and Strobe are remembered in this browser. The tempo is not.
 - The algorithm changes every 4, 8 or 16 bars, on beat 1.
 

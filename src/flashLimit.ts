@@ -38,6 +38,11 @@ export class FlashLimiter {
    */
   flashBeats = 0;
 
+  /** What the limiter is doing now: a window may flash, it is held dark, or a rising flash runs on the old grid. */
+  get state(): 'open' | 'muted' | 'finishing' {
+    return this.finishing ? 'finishing' : this.muted ? 'muted' : 'open';
+  }
+
   /**
    * Call once a frame with the clock's beats and tempo and the time in
    * milliseconds; false while the window under way is muted.
