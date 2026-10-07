@@ -6,7 +6,7 @@ import { tunnel, TUNNEL_MOVING } from './algorithms/tunnel';
 import { warpNoise, WARP_NOISE_MOVING } from './algorithms/warpNoise';
 import { formatRanges, isFixed, range, startRange } from './knobs';
 import { knobSections, resizeMoving, rowTitle } from './knobPanel';
-import { drawMoving, entryKeys, groupNames, movingAt } from './moving';
+import { drawLists, entryKeys, movingAt } from './moving';
 import { hitTime } from './crossfader';
 import { STEP_AT_1 } from './randomWalk';
 import { createRng } from './rng';
@@ -47,7 +47,7 @@ describe('knobSections', () => {
 
 describe('resizeMoving', () => {
   const knob = range('a', 10, 20, [0, 30]);
-  const mover = (): ReturnType<typeof drawMoving>[number] => drawMoving([['a']], () => [10, 20], createRng(4))[0]!;
+  const mover = (): ReturnType<typeof drawLists>[number] => drawLists([{ pick: 1, entries: ['a'] }], ['a'], () => [10, 20], createRng(4))[0]!;
   const live = (m: { min: number; max: number }): { min: number; max: number; value: number } => ({ min: m.min, max: m.max, value: (m.min + m.max) / 2 });
 
   it('moves the sub-range of a moving value and keeps the walk at the same place in it, so the value does not jump', () => {
@@ -97,14 +97,6 @@ describe('rowTitle', () => {
     expect(rowTitle('scale', 'zoom and twist', 'kick')).toBe('scale  (moves) kick  · zoom and twist');
     expect(rowTitle('scale', 'zoom and twist', undefined)).toBe('scale  (can move)  · zoom and twist');
     expect(rowTitle('modeSwitch', undefined, undefined)).toBe('modeSwitch');
-  });
-});
-
-describe('groupNames', () => {
-  it('names every key of a group, a pair that moves together included, and wants one name a group', () => {
-    const groups = [['a', 'b'], [['c', 'd']], ['e']] as const;
-    expect(groupNames(groups, ['one', 'two', 'three'])).toEqual({ a: 'one', b: 'one', c: 'two', d: 'two', e: 'three' });
-    expect(() => groupNames(groups, ['one'])).toThrow();
   });
 });
 

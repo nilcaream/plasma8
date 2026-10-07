@@ -66,7 +66,7 @@ export interface AlgorithmDef {
   readonly steadySpeed?: boolean;
   /** Everything it draws at random when it starts. */
   readonly knobs: readonly Knob[];
-  /** The knobs that may move, by key, with the name of the moving group each belongs to (src/moving.ts groupNames). */
+  /** The knobs that may move, by key, with the "can move" list each belongs to (src/moving.ts listLabels). */
   readonly movable?: Readonly<Record<string, string>>;
   create(gl: WebGL2RenderingContext, values: Values, rng: Rng, options?: CreateOptions): Algorithm;
 }

@@ -2,52 +2,28 @@ import { describe, expect, it } from 'vitest';
 import { VOICE_NAMES } from './beatVoices';
 import { REACH_POWER, hitTime } from './crossfader';
 import {
-  MOVING_COUNT, drawLists, drawMoving, getReachPower, getStepAt1, listLabels, movingAt, movingValues, setReachPower, setStepAt1,
+  drawLists, getReachPower, getStepAt1, listLabels, movingAt, movingValues, setReachPower, setStepAt1,
   type MovingList, type MovingValue,
 } from './moving';
 import { STEP_AT_1, STEP_EXTRA } from './randomWalk';
-import { createRng } from './rng';
+import { createRng, type Rng } from './rng';
 
-const GROUPS = [['a', 'b'], ['c'], ['d', 'e', 'f'], ['g'], ['h', 'i']];
 const bounds = (key: string): [number, number] => [key.charCodeAt(0), key.charCodeAt(0) + 10];
+const ALL_KEYS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'];
+/** An instance that moves 3 of 9 values. */
+const drawSome = (rng: Rng): MovingValue[] => drawLists([{ pick: 3, entries: ALL_KEYS }], ALL_KEYS, bounds, rng);
 
-describe('drawMoving', () => {
-  it('moves 2 to 5 values, one from each of as many different groups, reaching both ends of the count', () => {
-    const rng = createRng(1);
-    const counts = new Set<number>();
-    for (let i = 0; i < 400; i++) {
-      const moving = drawMoving(GROUPS, bounds, rng);
-      counts.add(moving.length);
-      expect(moving.length).toBeGreaterThanOrEqual(MOVING_COUNT[0]);
-      expect(moving.length).toBeLessThanOrEqual(MOVING_COUNT[1]);
-      const groupOf = moving.map((m) => GROUPS.findIndex((g) => g.includes(m.key)));
-      expect(new Set(groupOf).size).toBe(moving.length);
-      expect(groupOf.every((g) => g >= 0)).toBe(true);
-    }
-    expect([...counts].sort()).toEqual([2, 3, 4, 5]);
-  });
-
-  it('picks every group and every value in a group, as often as chance gives', () => {
-    const rng = createRng(2);
-    const seen = new Set<string>();
-    for (let i = 0; i < 400; i++) for (const m of drawMoving(GROUPS, bounds, rng)) seen.add(m.key);
-    expect([...seen].sort()).toEqual(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i']);
-  });
-
-  it('moves one value per group when there are fewer groups than the count', () => {
-    expect(drawMoving([['a']], bounds, createRng(3)).map((m) => m.key)).toEqual(['a']);
-  });
-
+describe('a moving value', () => {
   it('walks the whole of the min and max it is given for its knob, not a slice of it', () => {
     const rng = createRng(4);
     for (let i = 0; i < 300; i++) {
-      for (const m of drawMoving(GROUPS, bounds, rng)) expect([m.min, m.max]).toEqual(bounds(m.key));
+      for (const m of drawSome(rng)) expect([m.min, m.max]).toEqual(bounds(m.key));
     }
   });
 
   it('keeps every value inside its min and max at any intensity and any moment', () => {
     const rng = createRng(5);
-    for (const m of drawMoving(GROUPS, bounds, rng)) {
+    for (const m of drawSome(rng)) {
       const { min, max } = m;
       for (const intensity of [0, 0.4, 1]) {
         for (let beats = 0; beats < 40; beats += 0.37) {
@@ -62,10 +38,10 @@ describe('drawMoving', () => {
   it('gives each moving value a voice at random, kick, snare and crash alike, drawn once', () => {
     const rng = createRng(8);
     const count: Record<string, number> = { kick: 0, snare: 0, crash: 0 };
-    for (let i = 0; i < 600; i++) for (const m of drawMoving(GROUPS, bounds, rng)) count[m.voice]!++;
+    for (let i = 0; i < 600; i++) for (const m of drawSome(rng)) count[m.voice]!++;
     const total = count.kick! + count.snare! + count.crash!;
     for (const name of VOICE_NAMES) expect(count[name]! / total).toBeGreaterThan(0.28);
-    expect(VOICE_NAMES).toContain(drawMoving(GROUPS, bounds, createRng(9))[0]!.voice);
+    expect(VOICE_NAMES).toContain(drawSome(createRng(9))[0]!.voice);
   });
 
   /** Each step the value takes on 40 hits of its voice at an intensity, as a share of its sub-range. */
@@ -85,7 +61,7 @@ describe('drawMoving', () => {
     expect(getStepAt1()).toBe(STEP_AT_1);
     const rng = createRng(10);
     for (let i = 0; i < 20; i++) {
-      for (const m of drawMoving(GROUPS, bounds, rng)) {
+      for (const m of drawSome(rng)) {
         const base = STEP_AT_1 * 0.5 ** REACH_POWER;
         for (const step of stepsOf(m, 0.5)) {
           expect(step).toBeGreaterThanOrEqual(base - 1e-9);
@@ -99,7 +75,7 @@ describe('drawMoving', () => {
     const rng = createRng(11);
     const places = new Set<number>();
     for (let i = 0; i < 40; i++) {
-      for (const m of drawMoving(GROUPS, bounds, rng)) {
+      for (const m of drawSome(rng)) {
         expect(new Set(stepsOf(m, 0))).toEqual(new Set([0]));
         const u = (movingAt(m, 0, 99) - m.min) / (m.max - m.min);
         expect(u).toBeGreaterThanOrEqual(0);
@@ -116,7 +92,7 @@ describe('drawMoving', () => {
 
   it('steps by the one global reach power and step, which setReachPower and setStepAt1 change for every value at once', () => {
     expect(getReachPower()).toBe(REACH_POWER);
-    const m = drawMoving(GROUPS, bounds, createRng(12))[0]!;
+    const m = drawSome(createRng(12))[0]!;
     const mean = (xs: number[]): number => xs.reduce((a, b) => a + b, 0) / xs.length;
     try {
       setReachPower(1);
@@ -135,10 +111,10 @@ describe('drawMoving', () => {
   });
 
   it('gives every moving value a walk of its own, drawn from the instance generator: the same seed the same path, another seed another', () => {
-    const a = drawMoving(GROUPS, bounds, createRng(13));
+    const a = drawSome(createRng(13));
     expect(new Set(a.map((m) => m.walk)).size).toBe(a.length);
     const path = (seed: number): number[] => {
-      const m = drawMoving(GROUPS, bounds, createRng(seed))[0]!;
+      const m = drawSome(createRng(seed))[0]!;
       return Array.from({ length: 30 }, (_, n) => movingAt(m, 1, hitTime(m.voice, n)));
     };
     expect(path(14)).toEqual(path(14));
@@ -147,15 +123,15 @@ describe('drawMoving', () => {
 
   it('draws nothing from the instance generator while it runs', () => {
     const rng = createRng(16);
-    const moving = drawMoving(GROUPS, bounds, rng);
+    const moving = drawSome(rng);
     const after = createRng(16);
-    drawMoving(GROUPS, bounds, after);
+    drawSome(after);
     for (const m of moving) for (let n = 0; n < 50; n++) movingAt(m, 1, hitTime(m.voice, n));
     expect(rng.next()).toBe(after.next());
   });
 
   it('reads every moving value by its key', () => {
-    const moving = drawMoving(GROUPS, bounds, createRng(6));
+    const moving = drawSome(createRng(6));
     expect(Object.keys(movingValues(moving, 0.5, 3)).sort()).toEqual(moving.map((m) => m.key).sort());
   });
 });

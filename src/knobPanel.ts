@@ -48,9 +48,9 @@ const STEP_KNOB: Knob = fixed('step at intensity 1', STEP_AT_1, STEP_AT_1_RANGE,
 const SHARED_KNOBS: readonly Knob[] = [REACH_KNOB, STEP_KNOB];
 
 /**
- * The drawn knobs as the panel lists them, in the order of the list: a section is a run of knobs of one moving
- * group, then the run of values that never move, then the beat voices (A.*); the panel puts a rule between sections.
- * A group that comes back later in the list is a section of its own: the algorithms list each group together.
+ * The drawn knobs as the panel lists them, in the order of the list: a section is a run of knobs of one "can move"
+ * list, then the run of values that never move, then the beat voices (A.*); the panel puts a rule between sections.
+ * A list that comes back later is a section of its own: the algorithms list each "can move" list together.
  */
 export function knobSections(knobs: readonly Knob[], movable: Readonly<Record<string, string>> = {}): Knob[][] {
   const labelOf = (k: Knob): string => movable[k.key] ?? (/^A\./.test(k.key) ? '\0voices' : '\0still');
@@ -80,7 +80,7 @@ export function resizeMoving(knob: Knob, r: UserRange, m: MovingValue, part: 'mi
 /**
  * A knob's name line: a value that moves in this instance says which voice
  * pushes it, one that only may move says "can move" (the quieter mark); both
- * give the moving group they belong to.
+ * give the "can move" list they belong to.
  */
 export function rowTitle(key: string, group: string | undefined, voice: string | undefined): string {
   const where = group === undefined ? '' : `  · ${group}`;
