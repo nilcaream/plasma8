@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { FrameInputs } from '../algorithm';
-import { drawKnobs } from '../knobs';
+import { drawBounds, drawKnobs } from '../knobs';
 import { MotionClock, steadyRate } from '../motion';
-import { drawMoving, movingAt } from '../moving';
+import { drawLists, movingAt } from '../moving';
 import { createRng } from '../rng';
-import { TUNNEL_KNOBS, TUNNEL_MOVING_GROUPS, divePhases, drawTunnelMoving, tunnelParams } from './tunnel';
+import { TUNNEL_KNOBS, TUNNEL_MOVING, divePhases, drawTunnelMoving, tunnel, tunnelParams } from './tunnel';
 import tunnelSource from './tunnel.frag?raw';
 
 const at = (time: number): FrameInputs => ({
@@ -104,7 +104,7 @@ describe('the twist', () => {
     expect(Math.max(...draws)).toBeGreaterThan(0.48);
     let crossed = 0;
     for (let i = 0; i < 100; i++) {
-      const m = drawMoving([['twist']], (key) => (key === 'twist' ? [-0.5, 0.5] : [0, 1]), rng, [1, 1])[0]!;
+      const m = drawLists([{ pick: 1, entries: ['twist'] }], ['twist'], () => [-0.5, 0.5], rng)[0]!;
       const seen = Array.from({ length: 1600 }, (_, j) => movingAt(m, 0.8, j * 0.25));
       expect(Math.min(...seen)).toBeLessThan(0);
       expect(Math.max(...seen)).toBeGreaterThan(0);
@@ -129,55 +129,72 @@ describe('the far end', () => {
 });
 
 describe('the tunnel\'s moving values', () => {
-  const NEVER = ['ringGap', 'speed', 'sides', 'ribs', 'flashGain', 'A.kick', 'A.snare', 'A.crash'];
-
-  it('name four groups, all values of the tunnel\'s own knobs, and never the ones that read as speed or count', () => {
-    expect(TUNNEL_MOVING_GROUPS).toHaveLength(4);
-    const keys = TUNNEL_KNOBS.map((k) => k.key);
-    for (const key of TUNNEL_MOVING_GROUPS.flat(2)) {
-      expect(keys).toContain(key);
-      expect(NEVER).not.toContain(key);
-    }
+  it('are two lists: palD or the hue drift, and the twist, one each', () => {
+    expect(TUNNEL_MOVING).toEqual([{ pick: 1, entries: ['palD', 'hueDrift'] }, { pick: 1, entries: ['twist'] }]);
   });
 
-  it('move one entry from each of 2 to 4 different groups, the far end as a pair', () => {
+  it('move the twist every time, and either palD (all three values) or the hue drift, as often as one another; the far end never moves', () => {
     const rng = createRng(9);
-    const counts = new Set<number>();
-    const keysSeen = new Set<string>();
+    let palD = 0;
+    let hue = 0;
     for (let i = 0; i < 600; i++) {
-      const moving = drawTunnelMoving(rng);
-      const keys = moving.map((m) => m.key);
-      keys.forEach((k) => keysSeen.add(k));
-      const far = keys.filter((k) => k.startsWith('farEnd'));
-      expect(far.length === 0 || (far.length === 2 && far.includes('farEnd.x') && far.includes('farEnd.y'))).toBe(true);
-      const groups = TUNNEL_MOVING_GROUPS.filter((g) => g.flat().some((k) => keys.includes(k)));
-      counts.add(groups.length);
-      expect(groups.length).toBeGreaterThanOrEqual(2);
-      expect(groups.length).toBeLessThanOrEqual(4);
-      for (const g of groups) expect(g.flat().filter((k) => keys.includes(k)).length).toBe(g.length === 1 && Array.isArray(g[0]) ? 2 : 1);
-      expect(new Set(keys).size).toBe(keys.length);
+      const keys = drawTunnelMoving(rng).map((m) => m.key);
+      expect(keys).toContain('twist');
+      expect(keys.some((k) => k.startsWith('farEnd'))).toBe(false);
+      if (keys.includes('hueDrift')) {
+        hue++;
+        expect(keys.sort()).toEqual(['hueDrift', 'twist']);
+      } else {
+        palD++;
+        expect(keys.sort()).toEqual(['palD.0', 'palD.1', 'palD.2', 'twist']);
+      }
     }
-    expect([...counts].sort()).toEqual([2, 3, 4]);
-    expect([...keysSeen].sort()).toEqual(TUNNEL_MOVING_GROUPS.flat(2).sort());
+    expect(palD + hue).toBe(600);
+    expect(palD / 600).toBeGreaterThan(0.4);
+    expect(palD / 600).toBeLessThan(0.6);
   });
 
-  it('gives the two far-end values a walk of their own, from another start, and a voice each', () => {
+  it('give the three palD values a walk of their own, from another start, and a voice each', () => {
     const rng = createRng(10);
-    let pairs = 0;
+    let triples = 0;
     let otherStart = 0;
     let otherVoice = 0;
     for (let i = 0; i < 400; i++) {
-      const moving = drawTunnelMoving(rng);
-      const x = moving.find((m) => m.key === 'farEnd.x');
-      const y = moving.find((m) => m.key === 'farEnd.y');
-      if (!x || !y) continue;
-      pairs++;
-      if (movingAt(x, 0, 0) !== movingAt(y, 0, 0)) otherStart++;
-      if (x.voice !== y.voice) otherVoice++;
+      const palD = drawTunnelMoving(rng).filter((m) => m.key.startsWith('palD'));
+      if (palD.length === 0) continue;
+      triples++;
+      if (new Set(palD.map((m) => movingAt(m, 0, 0))).size === 3) otherStart++;
+      if (new Set(palD.map((m) => m.voice)).size > 1) otherVoice++;
     }
-    expect(pairs).toBeGreaterThan(20);
-    expect(otherStart).toBe(pairs);
-    expect(otherVoice).toBeGreaterThan(0);
-    expect(otherVoice).toBeLessThan(pairs);
+    expect(triples).toBeGreaterThan(100);
+    expect(otherStart).toBe(triples);
+    expect(otherVoice).toBeGreaterThan(triples * 0.6);
+    expect(otherVoice).toBeLessThan(triples);
+  });
+
+  it('walk the whole range each is drawn from, and the panel marks them by list', () => {
+    const rng = createRng(11);
+    for (const m of drawTunnelMoving(rng)) expect([m.min, m.max]).toEqual(drawBounds(TUNNEL_KNOBS.find((k) => k.key === m.key)!.draw));
+    expect(Object.keys(tunnel.movable!).sort()).toEqual(['hueDrift', 'palD.0', 'palD.1', 'palD.2', 'twist']);
+    expect(tunnel.movable!.hueDrift).toBe('list 1: pick 1 of 2');
+    expect(tunnel.movable!.twist).toBe('list 2: pick 1 of 1');
+  });
+});
+
+describe('the tunnel\'s knobs', () => {
+  /** The min and max of every random knob, and the value of the fixed one, as the debug panel's Copy gives them. */
+  const FILE: Record<string, [number, number] | number> = {
+    'farEnd.x': [-0.271, 0.271], 'farEnd.y': [-0.271, 0.271], twist: [-0.5, 0.5],
+    'palA.0': [0.45, 0.6], 'palA.1': [0.45, 0.6], 'palA.2': [0.45, 0.6],
+    'palB.0': [0.35, 0.5], 'palB.1': [0.35, 0.5], 'palB.2': [0.35, 0.5],
+    'palC.0': [0.6, 1.2], 'palC.1': [0.6, 1.2], 'palC.2': [0.6, 1.2],
+    'palD.0': [0, 1], 'palD.1': [0, 1], 'palD.2': [0, 1], hueDrift: [0.024, 0.079],
+    sides: [2, 9], speed: [1.136, 1.896], ringGap: [0.481, 2.058], ribs: [1, 14],
+    'A.kick': [0, 1], 'A.snare': [0, 1], 'A.crash': [0, 1], flashGain: 1,
+  };
+
+  it('are exactly the ones set on the debug panel, with their min and max', () => {
+    expect(TUNNEL_KNOBS.map((k) => k.key).sort()).toEqual(Object.keys(FILE).sort());
+    for (const k of TUNNEL_KNOBS) expect(drawBounds(k.draw), k.key).toEqual(Array.isArray(FILE[k.key]) ? FILE[k.key] : [FILE[k.key], FILE[k.key]]);
   });
 });

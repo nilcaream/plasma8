@@ -122,11 +122,8 @@ describe('the tunnel\'s dive phases', () => {
     const { gl, floats } = mockGl();
     const values = drawKnobs(tunnel.knobs, createRng(3));
     Object.assign(values, { twist: 0.2, hueDrift: 0.04, speed: 2, 'farEnd.x': 0.2, 'farEnd.y': -0.1 });
-    // the moving pick is random: draw instances until neither twist nor hueDrift moves, so their values are the ones set above
-    let algorithm = tunnel.create(gl, values, createRng(0));
-    for (let seed = 1; (algorithm.moving ?? []).some((m) => m.key === 'twist' || m.key === 'hueDrift'); seed++) {
-      algorithm = tunnel.create(gl, values, createRng(seed));
-    }
+    // the twist always moves: with the moves off, their values are the ones set above
+    const algorithm = tunnel.create(gl, values, createRng(0), { moves: false });
     const frameAt = (time: number): FrameInputs => ({ ...frame(0, 0, 0.5, 120), time });
     algorithm.draw(null, frameAt(10));
     algorithm.draw(null, frameAt(11));

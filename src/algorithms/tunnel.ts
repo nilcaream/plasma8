@@ -1,7 +1,7 @@
 import type { AlgorithmDef, FrameInputs } from '../algorithm';
 import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
 import { drawBounds, drawKnobs, fixed, int, range, triple, vec, type Knob, type Values } from '../knobs';
-import { drawMoving, groupNames, type MovingGroup, type MovingValue } from '../moving';
+import { drawLists, listLabels, type MovingList, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './tunnel.frag?raw';
@@ -13,23 +13,23 @@ export const TUNNEL_NAME = 'tunnel';
  * spacing. The speed range is narrow, so the intensity, not the draw, says how
  * fast the dive goes. The ranges are the ones chosen on the debug panel. The
  * beat only flashes the picture, by the beat voices.
- * Listed the way the debug panel shows them: the moving groups in the order of
- * TUNNEL_MOVING_GROUPS, each together; then the values that never move; then the beat voices.
+ * Listed the way the debug panel shows them: the values that may move, list by
+ * list in the order of TUNNEL_MOVING; then the values that never move; then the beat voices.
  */
 export const TUNNEL_KNOBS: readonly Knob[] = [
+  // may move: list 1
+  ...triple('palD', 0, 1, [0, 1]),
+  range('hueDrift', 0.024, 0.079, [0, 0.2]),
+  // may move: list 2 (the spiral)
+  range('twist', -0.5, 0.5, [-0.5, 0.5]),
+  // never move
   // far end: where it sits on screen (uv); the tube bends to it
   range('farEnd.x', -0.271, 0.271, [-0.6, 0.6]),
   range('farEnd.y', -0.271, 0.271, [-0.6, 0.6]),
-  // spiral
-  range('twist', -0.5, 0.5, [-0.5, 0.5]),
-  // colour tone
   ...triple('palA', 0.45, 0.6, [0, 1]),
   ...triple('palB', 0.35, 0.5, [0, 1]),
-  // colour pattern
   ...triple('palC', 0.6, 1.2, [0, 3]),
-  ...triple('palD', 0, 1, [0, 1]),
-  range('hueDrift', 0.024, 0.079, [0, 0.2]),
-  // never move; 2 sides is the round tube, 3..9 a polygon of that many sides
+  // 2 sides is the round tube, 3..9 a polygon of that many sides
   int('sides', 2, 9, [0, 12]),
   range('speed', 1.136, 1.896, [0, 8]),
   range('ringGap', 0.481, 2.058, [0.2, 4]),
@@ -79,33 +79,27 @@ export function divePhases(): (v: Values, inputs: FrameInputs) => ShaderParams {
 }
 
 /**
- * The values that may move, in four groups of what they change on screen; an
- * instance moves one entry from each of 2 to 4 groups. The far end's two
- * coordinates move together. ringGap (moving it reads as speed), the dive speed,
- * the number of sides and ribs and the twist's sign never move.
+ * The values that may move: two lists, each drawn on its own. An instance moves
+ * 1 of palD (all three of its values) and the hue drift, and the twist.
+ * Nothing outside the lists moves.
  */
-export const TUNNEL_MOVING_GROUPS: readonly MovingGroup[] = [
-  [['farEnd.x', 'farEnd.y']], // far end
-  ['twist'], // spiral
-  ['palA.0', 'palA.1', 'palA.2', 'palB.0', 'palB.1', 'palB.2'], // colour tone
-  ['palC.0', 'palC.1', 'palC.2', 'palD.0', 'palD.1', 'palD.2', 'hueDrift'], // colour pattern
+export const TUNNEL_MOVING: readonly MovingList[] = [
+  { pick: 1, entries: ['palD', 'hueDrift'] },
+  { pick: 1, entries: ['twist'] },
 ];
-export const TUNNEL_MOVING_COUNT = [2, 4] as const;
 
+const KEYS = TUNNEL_KNOBS.map((k) => k.key);
 const boundsOf = (key: string): [number, number] => drawBounds(TUNNEL_KNOBS.find((k) => k.key === key)!.draw);
 
 export const drawTunnelMoving = (rng: Rng, bounds: (key: string) => readonly [number, number] = boundsOf): MovingValue[] =>
-  drawMoving(TUNNEL_MOVING_GROUPS, bounds, rng, TUNNEL_MOVING_COUNT);
-
-/** What each of the groups changes on screen, in the order of TUNNEL_MOVING_GROUPS. */
-export const TUNNEL_MOVING_NAMES = ['far end', 'spiral', 'colour tone', 'colour pattern'] as const;
+  drawLists(TUNNEL_MOVING, KEYS, bounds, rng);
 
 export const tunnel: AlgorithmDef = {
   name: TUNNEL_NAME,
   home: 0.9,
   steadySpeed: true,
   knobs: TUNNEL_KNOBS,
-  movable: groupNames(TUNNEL_MOVING_GROUPS, TUNNEL_MOVING_NAMES),
+  movable: listLabels(TUNNEL_MOVING, KEYS),
   create: (gl, values, rng, options) =>
     shaderAlgorithm(gl, TUNNEL_NAME, source, tunnelParams, values, relativeAmountsOf, options?.moves === false ? [] : drawTunnelMoving(rng, options?.bounds), divePhases()),
 };
