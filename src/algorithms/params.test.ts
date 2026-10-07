@@ -213,12 +213,12 @@ describe('julia\'s random ranges', () => {
 });
 
 describe('warp noise\'s random ranges', () => {
-  // the ones set on the debug panel (8 Oct 19:29) that differ from the earlier code's
+  // the ones set on the debug panel (9 Oct) that differ from the earlier code's
   const RANGES: Record<string, [number, number]> = {
     'palB.0': [0.14, 0.432], 'palB.1': [0.14, 0.447], 'palB.2': [0.14, 0.447],
-    palCBase: [0.696, 1.215],
+    palCBase: [1.233, 1.878],
     'palCStep.0': [-0.158, 0.151], 'palCStep.1': [-0.151, 0.151], 'palCStep.2': [-0.17, 0.145],
-    scale: [1.402, 3.138], 'speed.0': [0.033, 0.115],
+    scale: [3.553, 5.294], 'speed.0': [0.03, 0.114], warp: [2.5, 3.664], 'offset2.1': [0, 0.5],
   };
 
   it('are the ones set on the debug panel: every draw inside, both ends reached', () => {
@@ -248,7 +248,6 @@ describe('signed values', () => {
 
   it.each([
     ['plasma', PLASMA_KNOBS, 'swirl', 1.2, 3],
-    ['domain-warped-noise', WARP_NOISE_KNOBS, 'rotate', 0.03, 0.1],
     ['julia', JULIA_KNOBS, 'spin', 0.05, 0.2],
     ['tunnel', TUNNEL_KNOBS, 'twist', 0.5, 0.5],
   ] as const)('%s: %s is drawn from -M to M and tried from -X to X', (_name, knobs, key, m, x) => {

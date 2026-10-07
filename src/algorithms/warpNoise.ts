@@ -1,7 +1,7 @@
 import type { AlgorithmDef } from '../algorithm';
 import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
 import { drawBounds, drawKnobs, fixed, range, triple, vec, type Knob, type Values } from '../knobs';
-import { drawMoving, groupNames, type MovingValue } from '../moving';
+import { drawLists, listLabels, type MovingList, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './warpNoise.frag?raw';
@@ -10,32 +10,30 @@ export const WARP_NOISE_NAME = 'domain-warped-noise';
 
 /**
  * This run's own look: palette, scale, speeds, offsets and warp strength. palC is one base plus a small step per channel.
- * Listed the way the debug panel shows them: the moving groups in the order of
- * WARP_NOISE_MOVING_GROUPS, each together; then the values that never move; then the beat voices.
+ * Listed the way the debug panel shows them: the values that may move, in the
+ * order of WARP_NOISE_MOVING; then the values that never move; then the beat voices.
  */
 export const WARP_NOISE_KNOBS: readonly Knob[] = [
-  // shape
-  range('scale', 1.402, 3.138, [0.4, 6]),
-  range('warp', 2.5, 4.5, [0, 8]),
-  // colour tone
+  // may move
+  range('warp', 2.5, 3.664, [0, 8]),
+  range('offset2.1', 0, 0.5, [0, 60]),
+  // never move
+  range('scale', 3.553, 5.294, [0.4, 6]),
   ...triple('palA', 0.5, 0.64, [0, 1]),
   range('palB.0', 0.14, 0.432, [0, 1]),
   range('palB.1', 0.14, 0.447, [0, 1]),
   range('palB.2', 0.14, 0.447, [0, 1]),
-  // colour pattern
-  range('palCBase', 0.696, 1.215, [0, 3]),
+  range('palCBase', 1.233, 1.878, [0, 3]),
   range('palCStep.0', -0.158, 0.151, [-0.6, 0.6]),
   range('palCStep.1', -0.151, 0.151, [-0.6, 0.6]),
   range('palCStep.2', -0.17, 0.145, [-0.6, 0.6]),
   ...triple('palD', 0, 1, [0, 1]),
-  // never move
-  range('speed.0', 0.033, 0.115, [0, 0.3]),
+  range('speed.0', 0.03, 0.114, [0, 0.3]),
   range('speed.1', 0.04, 0.12, [0, 0.36]),
   range('offset.0', 0, 60, [0, 60]),
   range('offset.1', 0, 60, [0, 60]),
   range('offset2.0', 0, 60, [0, 60]),
-  range('offset2.1', 0, 60, [0, 60]),
-  range('rotate', -0.03, 0.03, [-0.1, 0.1]),
+  range('rotate', 0, 0, [-0.1, 0.1]),
   // how hard each beat voice flashes this run (the moving values follow the voices too)
   ...amountKnobs(),
   // fixed in code: the flash gain
@@ -61,33 +59,23 @@ export function warpNoiseParams(v: Values): ShaderParams {
 export const drawWarpNoiseParams = (rng: Rng): ShaderParams => warpNoiseParams(drawKnobs(WARP_NOISE_KNOBS, rng));
 
 /**
- * The values that may move, in three groups of what they change on screen; an
- * instance moves one value from each of 2 to 3 groups. The flow and warp speeds
- * and the turn multiply the running time, so a change would jump the picture,
- * and the offsets are the picture's own place in the noise, so a change would
- * swap it for another: none of them move.
+ * The values that may move: one list, and an instance moves 2 of its 2 entries,
+ * so both always move. Nothing outside the list moves.
  */
-export const WARP_NOISE_MOVING_GROUPS: readonly (readonly string[])[] = [
-  ['scale', 'warp'], // shape
-  ['palA.0', 'palA.1', 'palA.2', 'palB.0', 'palB.1', 'palB.2'], // colour tone
-  ['palCBase', 'palCStep.0', 'palCStep.1', 'palCStep.2', 'palD.0', 'palD.1', 'palD.2'], // colour pattern
-];
-export const WARP_NOISE_MOVING_COUNT = [2, 3] as const;
+export const WARP_NOISE_MOVING: readonly MovingList[] = [{ pick: 2, entries: ['warp', 'offset2.1'] }];
 
+const KEYS = WARP_NOISE_KNOBS.map((k) => k.key);
 const boundsOf = (key: string): [number, number] => drawBounds(WARP_NOISE_KNOBS.find((k) => k.key === key)!.draw);
 
 export const drawWarpNoiseMoving = (rng: Rng, bounds: (key: string) => readonly [number, number] = boundsOf): MovingValue[] =>
-  drawMoving(WARP_NOISE_MOVING_GROUPS, bounds, rng, WARP_NOISE_MOVING_COUNT);
-
-/** What each of the groups changes on screen, in the order of WARP_NOISE_MOVING_GROUPS. */
-export const WARP_NOISE_MOVING_NAMES = ['shape', 'colour tone', 'colour pattern'] as const;
+  drawLists(WARP_NOISE_MOVING, KEYS, bounds, rng);
 
 export const warpNoise: AlgorithmDef = {
   name: WARP_NOISE_NAME,
   home: 0.15,
   steadySpeed: true,
   knobs: WARP_NOISE_KNOBS,
-  movable: groupNames(WARP_NOISE_MOVING_GROUPS, WARP_NOISE_MOVING_NAMES),
+  movable: listLabels(WARP_NOISE_MOVING, KEYS),
   create: (gl, values, rng, options) =>
     shaderAlgorithm(gl, WARP_NOISE_NAME, source, warpNoiseParams, values, relativeAmountsOf, options?.moves === false ? [] : drawWarpNoiseMoving(rng, options?.bounds)),
 };
