@@ -29,6 +29,12 @@ describe('panelShown', () => {
     expect(panelShown(-Infinity, 0, false)).toBe(false);
   });
 
+  it('is up from the load and never fades when pinned (?debug), and fades as before when not', () => {
+    expect(panelShown(-Infinity, 0, false, true)).toBe(true);
+    expect(panelShown(1000, 1000 + 100 * PANEL_MS, false, true)).toBe(true);
+    expect(panelShown(1000, 1000 + PANEL_MS, false, false)).toBe(false);
+  });
+
   it('lasts 5 seconds', () => {
     expect(PANEL_MS).toBe(5000);
   });

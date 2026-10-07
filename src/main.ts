@@ -259,7 +259,7 @@ function main(): void {
     const panel = band.update(now);
     const widget = widgetView(r, clock.tapMarks(), now);
     tapWidget.update({ ...widget, visible: widget.visible || panel });
-    metronome.show(widget.visible);
+    metronome.show(widget.visible || band.pinned);
     wheel.show(r.bpm);
     metronome.update(r);
     debug.update(r, {

@@ -3,7 +3,8 @@
  * src/tapWidget.ts, src/tempoWheel.ts) and the only place where a tap is never a
  * tempo tap. A press anywhere in the band shows the whole panel (the metronome, the
  * tapping widget, the tempo wheel, the sliders) and each touch on it starts the
- * PANEL_MS again; then it fades. With ?debug the band is outlined.
+ * PANEL_MS again; then it fades. With ?debug the band is outlined and the panel,
+ * the metronome included, is up from the load and never fades.
  */
 
 /** The panel stays this long after the last touch in the band, then fades. */
@@ -14,9 +15,9 @@ export function inBand(y: number, bottom: number): boolean {
   return y < bottom;
 }
 
-/** Whether the panel is up: a finger or a mouse button is down in the band, or the last touch was less than PANEL_MS ago. */
-export function panelShown(lastTouchAt: number, now: number, held: boolean): boolean {
-  return held || now - lastTouchAt < PANEL_MS;
+/** Whether the panel is up: a finger or a mouse button is down in the band, or the last touch was less than PANEL_MS ago; with ?debug (`pinned`) always. */
+export function panelShown(lastTouchAt: number, now: number, held: boolean, pinned = false): boolean {
+  return pinned || held || now - lastTouchAt < PANEL_MS;
 }
 
 function byId<T extends HTMLElement>(id: string): T {
@@ -75,9 +76,14 @@ export class Band {
     this.lastTouchAt = -Infinity;
   }
 
+  /** Whether the panel never fades: with ?debug. */
+  get pinned(): boolean {
+    return this.debug;
+  }
+
   /** Call once a frame; whether the panel is up. */
   update(now: number): boolean {
-    const shown = panelShown(this.lastTouchAt, now, this.held);
+    const shown = panelShown(this.lastTouchAt, now, this.held, this.debug);
     if (shown !== this.shown) {
       this.shown = shown;
       this.root.classList.toggle('shown', shown);
