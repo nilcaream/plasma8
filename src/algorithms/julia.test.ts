@@ -19,20 +19,23 @@ describe('the julia\'s moving values', () => {
     expect(new Set(JULIA_MOVING_GROUPS.flat()).size).toBe(7);
   });
 
-  it('move one value from each of 2 to 3 different groups, and reach every value', () => {
-    expect(JULIA_MOVING_COUNT).toEqual([2, 3]);
+  it('move one value from each of the 3 groups every time, the centre offset always, and reach every value', () => {
+    expect(JULIA_MOVING_COUNT).toEqual([3, 3]);
     const rng = createRng(12);
     const counts = new Set<number>();
     const seen = new Set<string>();
+    let always = true;
     for (let i = 0; i < 600; i++) {
       const keys = drawJuliaMoving(rng).map((m) => m.key);
       keys.forEach((k) => seen.add(k));
+      always &&= keys.includes('centreOff');
       const groups = JULIA_MOVING_GROUPS.filter((g) => g.some((k) => keys.includes(k)));
       counts.add(groups.length);
       for (const g of groups) expect(g.filter((k) => keys.includes(k)).length).toBe(1);
       expect(keys.length).toBe(groups.length);
     }
-    expect([...counts].sort()).toEqual([2, 3]);
+    expect([...counts]).toEqual([3]);
+    expect(always).toBe(true);
     expect([...seen].sort()).toEqual([...JULIA_MOVING_GROUPS.flat()].sort());
   });
 
