@@ -174,10 +174,11 @@ describe('warp noise\'s beat flash', () => {
 
 describe('plasma\'s random ranges', () => {
   const RANGES: Record<string, [number, number]> = {
-    'palA.0': [0.089, 0.868], 'palA.1': [0.211, 0.853], 'palA.2': [0.226, 0.868],
+    'palA.0': [0.089, 0.868], 'palA.1': [0.211, 0.8], 'palA.2': [0.226, 0.758],
     'palB.0': [0.395, 1], 'palB.1': [0.405, 1], 'palB.2': [0.411, 1],
-    'freq.0': [1.891, 5.226], 'freq.1': [1.466, 6.25], 'freq.2': [2.872, 8.172],
-    'speed.0': [0.3, 0.843], 'speed.1': [0.3, 0.882], 'orbit.0': [0, 1.5], 'orbit.1': [0, 0.7],
+    'freq.0': [1.891, 5.226], 'freq.1': [1.466, 6.25], 'freq.2': [4.979, 6.777],
+    'speed.0': [0.3, 0.843], 'speed.1': [0.3, 0.882], 'orbit.0': [0.467, 0.883], 'orbit.1': [0.892, 1.287],
+    scale: [1.099, 2.209], swirl: [-0.792, 0.726],
   };
 
   it('are the ones set on the debug panel: every draw inside, both ends reached', () => {
@@ -247,7 +248,6 @@ describe('signed values', () => {
   });
 
   it.each([
-    ['plasma', PLASMA_KNOBS, 'swirl', 1.2, 3],
     ['julia', JULIA_KNOBS, 'spin', 0.05, 0.2],
     ['tunnel', TUNNEL_KNOBS, 'twist', 0.5, 0.5],
   ] as const)('%s: %s is drawn from -M to M and tried from -X to X', (_name, knobs, key, m, x) => {

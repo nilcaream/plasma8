@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ALGORITHMS } from './algorithms';
+import { plasma, PLASMA_MOVING } from './algorithms/plasma';
 import { warpNoise, WARP_NOISE_MOVING } from './algorithms/warpNoise';
 import { formatRanges, isFixed, range, startRange } from './knobs';
 import { knobSections, resizeMoving, rowTitle } from './knobPanel';
@@ -10,6 +11,7 @@ import { createRng } from './rng';
 
 describe('knobSections', () => {
   const ALL = [
+    { def: plasma, lists: PLASMA_MOVING },
     { def: warpNoise, lists: WARP_NOISE_MOVING },
   ];
 
@@ -114,9 +116,8 @@ describe('every algorithm\'s movable knobs', () => {
       }
     }
     const plasma = ALGORITHMS.find((a) => a.name === 'plasma')!.movable!;
-    expect(plasma.scale).toBe('zoom and twist');
-    expect(plasma['freq.2']).toBe('ripples');
-    expect(plasma['palD.1']).toBe('colour pattern');
-    expect(plasma.speed).toBeUndefined();
+    expect(plasma['freq.2']).toBe('list 1: pick 3 of 6');
+    expect(plasma.scale).toBeUndefined();
+    expect(plasma['palD.1']).toBeUndefined();
   });
 });

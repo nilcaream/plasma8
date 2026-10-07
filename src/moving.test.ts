@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { PLASMA_KNOBS, PLASMA_MOVING_GROUPS, drawPlasmaMoving } from './algorithms/plasma';
 import { VOICE_NAMES } from './beatVoices';
 import { REACH_POWER, hitTime } from './crossfader';
-import { drawBounds } from './knobs';
 import {
   MOVING_COUNT, drawLists, drawMoving, getReachPower, getStepAt1, listLabels, movingAt, movingValues, setReachPower, setStepAt1,
   type MovingList, type MovingValue,
@@ -231,29 +229,5 @@ describe('listLabels', () => {
     expect(labels).toEqual({
       a: 'list 1: pick 2 of 2', 'e.0': 'list 1: pick 2 of 2', 'e.1': 'list 1: pick 2 of 2', 'e.2': 'list 1: pick 2 of 2', f: 'list 2: pick 1 of 1',
     });
-  });
-});
-
-describe('plasma\'s moving groups', () => {
-  const keys = PLASMA_KNOBS.map((k) => k.key);
-
-  it('name five groups of 22 values between them, all continuous knobs of plasma, and never the wave speeds', () => {
-    expect(PLASMA_MOVING_GROUPS.map((g) => g.length)).toEqual([2, 3, 4, 6, 7]);
-    for (const key of PLASMA_MOVING_GROUPS.flat()) {
-      expect(keys).toContain(key);
-      expect(key).not.toMatch(/^speed/);
-      expect(PLASMA_KNOBS.find((k) => k.key === key)!.draw.kind).toBe('range');
-    }
-    expect(new Set(PLASMA_MOVING_GROUPS.flat()).size).toBe(22);
-  });
-
-  it('moves a value inside the bounds plasma draws it from today', () => {
-    const rng = createRng(7);
-    for (let i = 0; i < 200; i++) {
-      for (const m of drawPlasmaMoving(rng)) {
-        const [lo, hi] = drawBounds(PLASMA_KNOBS.find((k) => k.key === m.key)!.draw);
-        expect([m.min, m.max]).toEqual([lo, hi]);
-      }
-    }
   });
 });

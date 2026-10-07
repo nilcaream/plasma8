@@ -1,7 +1,7 @@
 import type { AlgorithmDef } from '../algorithm';
 import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
 import { drawBounds, drawKnobs, fixed, range, int, triple, unit, vec, type Knob, type Values } from '../knobs';
-import { drawMoving, groupNames, type MovingValue } from '../moving';
+import { drawLists, listLabels, type MovingList, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './plasma.frag?raw';
@@ -12,34 +12,30 @@ const TAU = 2 * Math.PI;
 
 /**
  * This run's own look: palette, wave directions and frequencies, speeds, swirl, mode.
- * Listed the way the debug panel shows them: the moving groups in the order of
- * PLASMA_MOVING_GROUPS, each together; then the values that never move; then the beat voices.
+ * Listed the way the debug panel shows them: the values that may move, in the
+ * order of PLASMA_MOVING; then the values that never move; then the beat voices.
  */
 export const PLASMA_KNOBS: readonly Knob[] = [
-  // zoom and twist
-  range('scale', 0.9, 1.8, [0.3, 4]),
-  range('swirl', -1.2, 1.2, [-3, 3]),
-  // ripples
-  range('freq.2', 2.872, 8.172, [0.5, 16]),
-  range('orbit.0', 0, 1.5, [0, 1.5]),
-  range('orbit.1', 0, 0.7, [0, 1.5]),
-  // stripes
-  range('dir1', 0, TAU, [0, TAU]),
-  range('dir2', 0, TAU, [0, TAU]),
+  // may move
+  range('freq.2', 4.979, 6.777, [0.5, 16]),
+  range('orbit.0', 0.467, 0.883, [0, 1.5]),
+  range('orbit.1', 0.892, 1.287, [0, 1.5]),
   range('freq.0', 1.891, 5.226, [0.5, 12]),
   range('freq.1', 1.466, 6.25, [0.5, 12]),
-  // colour tone
+  range('cycles', 0.6, 1.3, [0.1, 3]),
+  // never move
+  range('scale', 1.099, 2.209, [0.3, 4]),
+  range('swirl', -0.792, 0.726, [-3, 3]),
+  range('dir1', 0, 6.277, [0, TAU]),
+  range('dir2', 0, 6.283, [0, TAU]),
   range('palA.0', 0.089, 0.868, [0, 1]),
-  range('palA.1', 0.211, 0.853, [0, 1]),
-  range('palA.2', 0.226, 0.868, [0, 1]),
+  range('palA.1', 0.211, 0.8, [0, 1]),
+  range('palA.2', 0.226, 0.758, [0, 1]),
   range('palB.0', 0.395, 1, [0, 1]),
   range('palB.1', 0.405, 1, [0, 1]),
   range('palB.2', 0.411, 1, [0, 1]),
-  // colour pattern
   ...triple('palC', 0.6, 1.4, [0, 3]),
   ...triple('palD', 0, 1, [0, 1]),
-  range('cycles', 0.6, 1.3, [0.1, 3]),
-  // never move
   range('speed.0', 0.3, 0.843, [0, 2.5]),
   range('speed.1', 0.3, 0.882, [0, 2.5]),
   range('speed.2', 0.4, 1.1, [0, 3]),
@@ -79,33 +75,25 @@ export function plasmaParams(v: Values): ShaderParams {
 export const drawPlasmaParams = (rng: Rng): ShaderParams => plasmaParams(drawKnobs(PLASMA_KNOBS, rng));
 
 /**
- * The values that may move, in five groups of what they change on screen; an
- * instance moves one value from each of 2 to 5 groups. The wave speeds never
- * move: they multiply the running time, so a change would jump the picture.
+ * The values that may move: one list, and an instance moves 3 of its 6 entries.
+ * Nothing outside the list moves.
  */
-export const PLASMA_MOVING_GROUPS: readonly (readonly string[])[] = [
-  ['scale', 'swirl'], // zoom and twist
-  ['orbit.0', 'orbit.1', 'freq.2'], // ripples
-  ['dir1', 'dir2', 'freq.0', 'freq.1'], // stripes
-  ['palA.0', 'palA.1', 'palA.2', 'palB.0', 'palB.1', 'palB.2'], // colour tone
-  ['palC.0', 'palC.1', 'palC.2', 'palD.0', 'palD.1', 'palD.2', 'cycles'], // colour pattern
-];
+export const PLASMA_MOVING: readonly MovingList[] = [{ pick: 3, entries: ['freq.2', 'orbit.0', 'orbit.1', 'freq.0', 'freq.1', 'cycles'] }];
+
+const KEYS = PLASMA_KNOBS.map((k) => k.key);
 
 /** A moving value's outer bounds: the range it is drawn from in code. */
 const boundsOf = (key: string): [number, number] => drawBounds(PLASMA_KNOBS.find((k) => k.key === key)!.draw);
 
 export const drawPlasmaMoving = (rng: Rng, bounds: (key: string) => readonly [number, number] = boundsOf): MovingValue[] =>
-  drawMoving(PLASMA_MOVING_GROUPS, bounds, rng);
-
-/** What each of the groups changes on screen, in the order of PLASMA_MOVING_GROUPS. */
-export const PLASMA_MOVING_NAMES = ['zoom and twist', 'ripples', 'stripes', 'colour tone', 'colour pattern'] as const;
+  drawLists(PLASMA_MOVING, KEYS, bounds, rng);
 
 export const plasma: AlgorithmDef = {
   name: PLASMA_NAME,
   home: 0.35,
   steadySpeed: true,
   knobs: PLASMA_KNOBS,
-  movable: groupNames(PLASMA_MOVING_GROUPS, PLASMA_MOVING_NAMES),
+  movable: listLabels(PLASMA_MOVING, KEYS),
   create: (gl, values, rng, options) =>
     shaderAlgorithm(gl, PLASMA_NAME, source, plasmaParams, values, relativeAmountsOf, options?.moves === false ? [] : drawPlasmaMoving(rng, options?.bounds)),
 };
