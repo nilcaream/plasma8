@@ -48,6 +48,17 @@ const STEP_KNOB: Knob = fixed('step at intensity 1', STEP_AT_1, STEP_AT_1_RANGE,
 const SHARED_KNOBS: readonly Knob[] = [REACH_KNOB, STEP_KNOB];
 
 /**
+ * Moves the min or max of the sub-range a value moves in: the knob's own rules (min stays below max, both inside the
+ * knob's span), then the value's sub-range follows. The walk keeps its unit position, so the value maps into the new range without a jump.
+ */
+export function resizeMoving(knob: Knob, r: UserRange, m: MovingValue, part: 'min' | 'max', to: number): UserRange {
+  const next = (part === 'min' ? setMin : setMax)(knob, r, to);
+  m.min = next.min;
+  m.max = next.max;
+  return next;
+}
+
+/**
  * A knob's name line: a value that moves in this instance says which voice
  * pushes it, one that only may move says "can move" (the quieter mark); both
  * give the moving group they belong to.
@@ -183,7 +194,8 @@ export class KnobPanel {
       r.el.classList.toggle('moving', moves);
       r.el.classList.toggle('movable', !moves && group !== undefined);
       r.name.textContent = rowTitle(r.knob.key, group, moving?.voice);
-      for (const input of Object.values(r.inputs)) input.disabled = moves;
+      // a moving value's min and max change its sub-range; its value is the walk's, read live
+      for (const [part, input] of Object.entries(r.inputs)) input.disabled = moves && part === 'value';
       this.paint(r);
     }
   }
@@ -261,14 +273,16 @@ export class KnobPanel {
   private move(r: Row, part: Part, to: number): void {
     const s = this.shown!;
     const key = r.knob.key;
+    const m = this.moving.get(key);
     const next = isFixed(r.knob) ? setFixed(r.knob, to)
+      : m && part !== 'value' ? resizeMoving(r.knob, this.ranges[key]!, m, part, to)
       : (part === 'min' ? setMin : part === 'max' ? setMax : setValue)(r.knob, this.ranges[key]!, to);
     this.ranges[key] = next;
     if (r.knob === REACH_KNOB) {
       setReachPower(next.value);
     } else if (r.knob === STEP_KNOB) {
       setStepAt1(next.value);
-    } else {
+    } else if (!m) {
       let saved = this.saved.get(s.def.name);
       if (!saved) this.saved.set(s.def.name, (saved = new Map()));
       saved.set(key, { min: next.min, max: next.max });
