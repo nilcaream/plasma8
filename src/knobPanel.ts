@@ -15,7 +15,8 @@ import {
   type Knob, type UserRange, type Values,
 } from './knobs';
 import { REACH_POWER, REACH_POWER_RANGE } from './crossfader';
-import { getReachPower, movingAt, movingRange, setReachPower, type MovingValue } from './moving';
+import { STEP_AT_1, STEP_AT_1_RANGE } from './randomWalk';
+import { getReachPower, getStepAt1, movingAt, movingRange, setReachPower, setStepAt1, type MovingValue } from './moving';
 import type { Rng } from './rng';
 
 export interface Shown {
@@ -38,8 +39,13 @@ interface Row {
   band: HTMLElement | null;
 }
 
-/** The one value every algorithm shares, listed after its own fixed values: how far the moving values reach at an intensity (src/crossfader.ts bandOf). 1 is a straight line. */
-const REACH_KNOB: Knob = fixed('reach power', REACH_POWER, REACH_POWER_RANGE, 'how intensity widens the moves');
+const STEP_GROUP = 'how intensity sets the moves';
+/** A value every algorithm shares, listed after its own fixed values: the power of the intensity in the moving values' step (src/randomWalk.ts stepOf). 1 is a straight line. */
+const REACH_KNOB: Knob = fixed('reach power', REACH_POWER, REACH_POWER_RANGE, STEP_GROUP);
+/** The other one: a moving value's step at intensity 1, as a share of its sub-range. */
+const STEP_KNOB: Knob = fixed('step at intensity 1', STEP_AT_1, STEP_AT_1_RANGE, STEP_GROUP);
+/** The shared values: they belong to no algorithm, so they are not saved with one and not handed to its tune. */
+const SHARED_KNOBS: readonly Knob[] = [REACH_KNOB, STEP_KNOB];
 
 /**
  * A knob's name line: a value that moves in this instance says which voice
@@ -154,6 +160,7 @@ export class KnobPanel {
     this.moving = new Map((this.movesOff ? [] : s.algorithm.moving ?? []).map((m) => [m.key, m]));
     s.algorithm.hold?.(this.movesOff);
     this.ranges[REACH_KNOB.key] = setFixed(REACH_KNOB, getReachPower());
+    this.ranges[STEP_KNOB.key] = setFixed(STEP_KNOB, getStepAt1());
     for (const knob of s.def.knobs) {
       const m = this.moving.get(knob.key);
       if (m) {
@@ -168,7 +175,7 @@ export class KnobPanel {
     }
     this.tune();
     this.head.textContent = `${s.def.name}  seed ${this.seed}`;
-    if (!same) this.build([...s.def.knobs, REACH_KNOB]);
+    if (!same) this.build([...s.def.knobs, ...SHARED_KNOBS]);
     for (const r of this.rows) {
       const moving = this.moving.get(r.knob.key);
       const moves = moving !== undefined;
@@ -259,6 +266,8 @@ export class KnobPanel {
     this.ranges[key] = next;
     if (r.knob === REACH_KNOB) {
       setReachPower(next.value);
+    } else if (r.knob === STEP_KNOB) {
+      setStepAt1(next.value);
     } else {
       let saved = this.saved.get(s.def.name);
       if (!saved) this.saved.set(s.def.name, (saved = new Map()));
@@ -270,14 +279,14 @@ export class KnobPanel {
 
   private tune(): void {
     const s = this.shown!;
-    for (const [key, r] of Object.entries(this.ranges)) if (key !== REACH_KNOB.key) s.values[key] = r.value;
+    for (const [key, r] of Object.entries(this.ranges)) if (!SHARED_KNOBS.some((k) => k.key === key)) s.values[key] = r.value;
     s.algorithm.tune(s.values);
   }
 
   private async copy(): Promise<void> {
     const s = this.shown;
     if (!s) return;
-    const text = formatRanges(s.def.name, [...s.def.knobs, REACH_KNOB], this.ranges, new Set(this.moving.keys()));
+    const text = formatRanges(s.def.name, [...s.def.knobs, ...SHARED_KNOBS], this.ranges, new Set(this.moving.keys()));
     this.copied.value = text;
     try {
       await navigator.clipboard.writeText(text);

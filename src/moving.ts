@@ -2,18 +2,20 @@
  * Moving values: for an algorithm that lists its knobs in groups, an instance
  * picks a few groups at random and one value from each; those values stop
  * having a single drawn number and move inside a sub-range of their bounds,
- * pushed between the edges of a band by one beat voice (src/crossfader.ts),
- * every frame. Every other value stays as it was drawn.
+ * by a random walk (src/randomWalk.ts) with one step on every hit of one beat
+ * voice, every frame. The intensity sets only the length of the step. Every
+ * other value stays as it was drawn.
  */
 
 import { VOICE_NAMES, type VoiceName } from './beatVoices';
-import { REACH_POWER, TRAVEL_AT_0, TRAVEL_AT_1, crossfade, drawRange } from './crossfader';
-import type { Rng } from './rng';
+import { REACH_POWER, TRAVEL_AT_0, TRAVEL_AT_1, drawRange } from './crossfader';
+import { RandomWalk, STEP_AT_1 } from './randomWalk';
+import { createRng, type Rng } from './rng';
 
 /** How many groups an instance moves a value in: this many to this many, drawn once at start. */
 export const MOVING_COUNT = [2, 5] as const;
 
-/** One value that moves: its key, its outer bounds, the sub-range it moves in and the voice that pushes it. */
+/** One value that moves: its key, its outer bounds, the sub-range it moves in, the voice whose hits step it and the walk that remembers where it has been. */
 export interface MovingValue {
   key: string;
   lo: number;
@@ -21,6 +23,7 @@ export interface MovingValue {
   min: number;
   max: number;
   voice: VoiceName;
+  walk: RandomWalk;
 }
 
 /**
@@ -60,7 +63,9 @@ export function drawMoving(
     for (const key of typeof entry === 'string' ? [entry] : entry) {
       const [lo, hi] = bounds(key);
       const { min, max } = drawRange(rng, lo, hi);
-      out.push({ key, lo, hi, min, max, voice: rng.pick(VOICE_NAMES) });
+      const voice = rng.pick(VOICE_NAMES);
+      // the walk draws from a generator of its own, seeded here, so its steps while the page runs never touch `rng`
+      out.push({ key, lo, hi, min, max, voice, walk: new RandomWalk(createRng(Math.floor(rng.next() * 4294967296))) });
     }
   }
   return out;
@@ -69,14 +74,19 @@ export function drawMoving(
 /** The sub-range a moving value moves in. */
 export const movingRange = (m: MovingValue): { min: number; max: number } => ({ min: m.min, max: m.max });
 
-/** The power of the intensity that sets how far every moving value reaches; one value for all of them, set from the debug panel. */
+/** The power of the intensity that sets how long every moving value's step is; one value for all of them, set from the debug panel. */
 let reachPower = REACH_POWER;
 export const getReachPower = (): number => reachPower;
 export const setReachPower = (power: number): void => { reachPower = power; };
 
-/** A moving value now. */
+/** The step at intensity 1 as a share of a moving value's sub-range; one value for all of them, set from the debug panel. */
+let stepAt1 = STEP_AT_1;
+export const getStepAt1 = (): number => stepAt1;
+export const setStepAt1 = (share: number): void => { stepAt1 = share; };
+
+/** A moving value now. Call it with the beats going forward, once or more a frame: the walk takes the hits that passed since the last call. */
 export const movingAt = (m: MovingValue, intensity: number, beats: number): number =>
-  crossfade(beats, { min: m.min, max: m.max, intensity, power: reachPower, voice: m.voice, travel0: TRAVEL_AT_0, travel1: TRAVEL_AT_1 });
+  m.walk.at(beats, { min: m.min, max: m.max, intensity, power: reachPower, voice: m.voice, travel0: TRAVEL_AT_0, travel1: TRAVEL_AT_1, stepAt1 });
 
 /** Every moving value now, by key. */
 export function movingValues(moving: readonly MovingValue[], intensity: number, beats: number): Record<string, number> {

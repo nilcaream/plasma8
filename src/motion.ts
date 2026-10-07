@@ -1,7 +1,7 @@
 /**
  * How the intensity reaches the motion. It sets how fast things happen and how
  * far each bar step moves (and, in src/envelope.ts, how hard the beat hits); the
- * colours feel it only through the width of the moving values' band (src/crossfader.ts).
+ * colours feel it only through the length of the moving values' step (src/randomWalk.ts).
  *
  * Speed: each algorithm runs at its own designed speed at its home intensity,
  * twice as fast for every SPEED_OCTAVE above it and half as fast for every one

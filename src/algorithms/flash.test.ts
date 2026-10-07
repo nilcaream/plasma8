@@ -3,6 +3,7 @@ import type { AlgorithmDef, FrameInputs } from '../algorithm';
 import { drawKnobs } from '../knobs';
 import { createRng } from '../rng';
 import { movingRange } from '../moving';
+import { RandomWalk } from '../randomWalk';
 import { shaderAlgorithm } from '../shaderAlgorithm';
 import { julia } from './julia';
 import { plasma, plasmaParams } from './plasma';
@@ -50,8 +51,8 @@ function flashWith(def: AlgorithmDef, amounts: { kick: number; snare: number; cr
 }
 
 describe('plasma\'s moving values', () => {
-  // width 0.5 of 0.9..1.8 placed half way: 1.125..1.575, pushed by the kick
-  const scale = { key: 'scale', lo: 0.9, hi: 1.8, min: 1.125, max: 1.575, voice: 'kick' as const };
+  // width 0.5 of 0.9..1.8 placed half way: 1.125..1.575, stepped by the kick
+  const scale = { key: 'scale', lo: 0.9, hi: 1.8, min: 1.125, max: 1.575, voice: 'kick' as const, walk: new RandomWalk(createRng(3)) };
   const uniformsAt = (beats: number): Map<string, number> => {
     const { gl, floats } = mockGl();
     const values = drawKnobs(plasma.knobs, createRng(1));
