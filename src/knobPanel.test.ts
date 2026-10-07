@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ALGORITHMS } from './algorithms';
+import { julia, JULIA_MOVING } from './algorithms/julia';
 import { plasma, PLASMA_MOVING } from './algorithms/plasma';
 import { warpNoise, WARP_NOISE_MOVING } from './algorithms/warpNoise';
 import { formatRanges, isFixed, range, startRange } from './knobs';
@@ -11,6 +12,7 @@ import { createRng } from './rng';
 
 describe('knobSections', () => {
   const ALL = [
+    { def: julia, lists: JULIA_MOVING },
     { def: plasma, lists: PLASMA_MOVING },
     { def: warpNoise, lists: WARP_NOISE_MOVING },
   ];
