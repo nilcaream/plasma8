@@ -7,7 +7,7 @@
  */
 
 import { VOICE_NAMES, type VoiceName } from './beatVoices';
-import { TRAVEL_AT_0, TRAVEL_AT_1, crossfade, drawRange } from './crossfader';
+import { REACH_POWER, TRAVEL_AT_0, TRAVEL_AT_1, crossfade, drawRange } from './crossfader';
 import type { Rng } from './rng';
 
 /** How many groups an instance moves a value in: this many to this many, drawn once at start. */
@@ -55,9 +55,14 @@ export function drawMoving(
 /** The sub-range a moving value moves in. */
 export const movingRange = (m: MovingValue): { min: number; max: number } => ({ min: m.min, max: m.max });
 
+/** The power of the intensity that sets how far every moving value reaches; one value for all of them, set from the debug panel. */
+let reachPower = REACH_POWER;
+export const getReachPower = (): number => reachPower;
+export const setReachPower = (power: number): void => { reachPower = power; };
+
 /** A moving value now. */
 export const movingAt = (m: MovingValue, intensity: number, beats: number): number =>
-  crossfade(beats, { min: m.min, max: m.max, intensity, voice: m.voice, travel0: TRAVEL_AT_0, travel1: TRAVEL_AT_1 });
+  crossfade(beats, { min: m.min, max: m.max, intensity, power: reachPower, voice: m.voice, travel0: TRAVEL_AT_0, travel1: TRAVEL_AT_1 });
 
 /** Every moving value now, by key. */
 export function movingValues(moving: readonly MovingValue[], intensity: number, beats: number): Record<string, number> {

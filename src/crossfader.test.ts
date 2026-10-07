@@ -1,19 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import type { VoiceName } from './beatVoices';
-import { MAX_TRAVEL, TRAVEL_AT_0, TRAVEL_AT_1, bandOf, crossfade, crossfaderState, drawRange, edgeOf, hitTime, stroke, travelFor, type Crossfader } from './crossfader';
+import { MAX_TRAVEL, REACH_POWER, TRAVEL_AT_0, TRAVEL_AT_1, bandOf, crossfade, crossfaderState, drawRange, edgeOf, hitTime, stroke, travelFor, type Crossfader } from './crossfader';
 import { createRng } from './rng';
 
 /** One stroke length at every intensity, unless the test gives the two ends. */
 const base = (voice: VoiceName, intensity = 1, travel = TRAVEL_AT_1, travel1 = travel): Crossfader =>
-  ({ min: 2, max: 6, intensity, voice, travel0: travel, travel1 });
+  ({ min: 2, max: 6, intensity, power: REACH_POWER, voice, travel0: travel, travel1 });
 
 describe('bandOf', () => {
-  it('is the middle at intensity 0 and the whole range at 1, mid ± I · half in between', () => {
-    expect(bandOf(2, 6, 0)).toEqual({ low: 4, high: 4 });
-    expect(bandOf(2, 6, 1)).toEqual({ low: 2, high: 6 });
-    expect(bandOf(2, 6, 0.25)).toEqual({ low: 3.5, high: 4.5 });
-    expect(bandOf(2, 6, 7)).toEqual({ low: 2, high: 6 });
-    expect(bandOf(2, 6, -1)).toEqual({ low: 4, high: 4 });
+  it('is the middle at intensity 0 and the whole range at 1, mid ± I^power · half in between', () => {
+    for (const power of [1, 2, 3.5]) {
+      expect(bandOf(2, 6, 0, power)).toEqual({ low: 4, high: 4 });
+      expect(bandOf(2, 6, 1, power)).toEqual({ low: 2, high: 6 });
+      expect(bandOf(2, 6, 7, power)).toEqual({ low: 2, high: 6 });
+      expect(bandOf(2, 6, -1, power)).toEqual({ low: 4, high: 4 });
+    }
+    expect(bandOf(2, 6, 0.25, 1)).toEqual({ low: 3.5, high: 4.5 });
+    expect(bandOf(2, 6, 0.25, 2)).toEqual({ low: 3.875, high: 4.125 });
+    expect(bandOf(2, 6, 0.5, 2)).toEqual({ low: 3.5, high: 4.5 });
+  });
+
+  it('grows more slowly at low intensity the higher the power, and the code starts at 2', () => {
+    expect(REACH_POWER).toBe(2);
+    const reach = (power: number): number => bandOf(2, 6, 0.2, power).high - 4;
+    expect(reach(2)).toBeCloseTo(0.08, 12); // 0.2 at power 1 is 0.4
+    expect(reach(1)).toBeCloseTo(0.4, 12);
+    expect(reach(4)).toBeLessThan(reach(2));
   });
 });
 
@@ -64,7 +76,7 @@ describe('the value', () => {
       for (const intensity of [0, 0.3, 1]) {
         for (const travel of [0.01, TRAVEL_AT_1, 0.5, MAX_TRAVEL]) {
           const p = base(voice, intensity, travel);
-          const { low, high } = bandOf(p.min, p.max, p.intensity);
+          const { low, high } = bandOf(p.min, p.max, p.intensity, p.power);
           for (let n = -2; n < 6; n++) {
             const edge = crossfaderState(hitTime(voice, n), p).last.edge;
             expect(crossfade(hitTime(voice, n), p)).toBeCloseTo(edge === 'low' ? low : high, 12);
@@ -96,7 +108,7 @@ describe('the value', () => {
     for (const voice of VOICE_LIST) {
       for (const travel of [0.05, TRAVEL_AT_1, 0.5]) {
         const p = base(voice, 0.6, travel);
-        const { low, high } = bandOf(p.min, p.max, p.intensity);
+        const { low, high } = bandOf(p.min, p.max, p.intensity, p.power);
         let previous = crossfade(-3, p);
         let lowest = Infinity;
         let highest = -Infinity;

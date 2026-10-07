@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { PLASMA_KNOBS, PLASMA_MOVING_GROUPS, drawPlasmaMoving } from './algorithms/plasma';
 import { VOICE_NAMES } from './beatVoices';
-import { TRAVEL_AT_0, TRAVEL_AT_1, crossfade, hitTime } from './crossfader';
+import { REACH_POWER, TRAVEL_AT_0, TRAVEL_AT_1, crossfade, hitTime } from './crossfader';
 import { drawBounds } from './knobs';
-import { MOVING_COUNT, drawMoving, movingAt, movingRange, movingValues } from './moving';
+import { MOVING_COUNT, drawMoving, getReachPower, movingAt, movingRange, movingValues, setReachPower } from './moving';
 import { createRng } from './rng';
 
 const GROUPS = [['a', 'b'], ['c'], ['d', 'e', 'f'], ['g'], ['h', 'i']];
@@ -78,11 +78,28 @@ describe('drawMoving', () => {
       for (const m of drawMoving(GROUPS, bounds, rng)) {
         for (const intensity of [0, 0.5, 1]) {
           for (let beats = -2; beats < 17; beats += 0.0625) {
-            const p = { min: m.min, max: m.max, intensity, voice: m.voice, travel0: TRAVEL_AT_0, travel1: TRAVEL_AT_1 };
+            const p = { min: m.min, max: m.max, intensity, power: REACH_POWER, voice: m.voice, travel0: TRAVEL_AT_0, travel1: TRAVEL_AT_1 };
             expect(movingAt(m, intensity, beats)).toBe(crossfade(beats, p));
           }
         }
       }
+    }
+  });
+
+  it('reaches by the one global reach power, which setReachPower changes for every value at once', () => {
+    expect(getReachPower()).toBe(REACH_POWER);
+    const m = drawMoving(GROUPS, bounds, createRng(12))[0]!;
+    const t = hitTime(m.voice, 3);
+    const reach = (): number => Math.abs(movingAt(m, 0.2, t) - (m.min + m.max) / 2);
+    try {
+      setReachPower(1);
+      const linear = reach();
+      expect(linear).toBeCloseTo(0.2 * ((m.max - m.min) / 2), 12);
+      setReachPower(2);
+      expect(reach()).toBeCloseTo(0.04 * ((m.max - m.min) / 2), 12);
+      expect(reach()).toBeLessThan(linear);
+    } finally {
+      setReachPower(REACH_POWER);
     }
   });
 

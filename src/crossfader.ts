@@ -1,7 +1,8 @@
 /**
  * The crossfader: one free parameter that sits on one edge of a band and is
  * pushed to the other edge by a beat voice, like a DJ's slider. The band is
- * the instance's range narrowed round its middle by the intensity. The voice's
+ * the instance's range narrowed round its middle by the intensity (its reach
+ * grows as a power of the intensity, slowly at first). The voice's
  * hits alternate between the edges by their place in the pattern, and the
  * value is almost a square wave: it holds an edge, then travels in a short
  * smooth stroke that arrives exactly on the next hit.
@@ -27,12 +28,22 @@ export const MIN_TRAVEL = 0.01;
 export const MAX_TRAVEL = Math.min(...Object.values(VOICES).map((v) => v.period));
 export const TRAVEL_RANGE = [MIN_TRAVEL, MAX_TRAVEL] as const;
 
+/**
+ * The power the intensity is raised to for the band's reach, and the span the
+ * page tries: 1 widens the band in a straight line, 2 keeps it narrow at low
+ * intensity and opens it up near 1.
+ */
+export const REACH_POWER = 2;
+export const REACH_POWER_RANGE = [1, 4] as const;
+
 export interface Crossfader {
   /** The instance's range. */
   min: number;
   max: number;
   /** 0 holds the middle, 1 uses the whole range. */
   intensity: number;
+  /** The power of the intensity that sets the band's reach (see bandOf). */
+  power: number;
   voice: VoiceName;
   /** Beats a stroke takes at intensity 0 and at 1, ending on the hit. */
   travel0: number;
@@ -45,10 +56,10 @@ export function travelFor(p: Crossfader): number {
   return Math.min(Math.max(p.travel0 + (p.travel1 - p.travel0) * i, 0), VOICES[p.voice].period);
 }
 
-/** The band's two edges: mid ± intensity · half. */
-export function bandOf(min: number, max: number, intensity: number): { low: number; high: number } {
+/** The band's two edges: mid ± half · intensity^power, with half = (max − min)/2. */
+export function bandOf(min: number, max: number, intensity: number, power: number): { low: number; high: number } {
   const mid = (min + max) / 2;
-  const reach = ((max - min) / 2) * Math.min(1, Math.max(0, intensity));
+  const reach = ((max - min) / 2) * Math.min(1, Math.max(0, intensity)) ** power;
   return { low: mid - reach, high: mid + reach };
 }
 
@@ -86,7 +97,7 @@ export interface CrossfaderState {
 
 export function crossfaderState(beats: number, p: Crossfader): CrossfaderState {
   const v = VOICES[p.voice];
-  const { low, high } = bandOf(p.min, p.max, p.intensity);
+  const { low, high } = bandOf(p.min, p.max, p.intensity, p.power);
   const n = Math.floor((beats - v.onset) / v.period);
   const last = { n, time: hitTime(p.voice, n), edge: edgeOf(p.voice, n) };
   const next = { n: n + 1, time: hitTime(p.voice, n + 1), edge: edgeOf(p.voice, n + 1) };

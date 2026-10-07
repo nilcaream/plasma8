@@ -5,7 +5,7 @@
  */
 import { VOICES, VOICE_NAMES, type VoiceName } from './beatVoices';
 import {
-  TRAVEL_AT_0, TRAVEL_AT_1, crossfade, crossfaderState, drawRange, edgeOf, hitTime, travelFor, type Crossfader,
+  REACH_POWER, TRAVEL_AT_0, TRAVEL_AT_1, crossfade, crossfaderState, drawRange, edgeOf, hitTime, travelFor, type Crossfader,
 } from './crossfader';
 import {
   button, colors, controlGroup, dot, el, frame, plot, playhead, samples, setup, slider, tempoControls,
@@ -32,7 +32,7 @@ const PATTERN: Record<VoiceName, string> = {
 let seed = freshSeed();
 const drawn = drawRange(createRng(seed), CROSSFADER.bounds.lo, CROSSFADER.bounds.hi);
 const P: Crossfader = {
-  min: round2(drawn.min), max: round2(drawn.max), intensity: 0.5, voice: 'kick', travel0: TRAVEL_AT_0, travel1: TRAVEL_AT_1,
+  min: round2(drawn.min), max: round2(drawn.max), intensity: 0.5, power: REACH_POWER, voice: 'kick', travel0: TRAVEL_AT_0, travel1: TRAVEL_AT_1,
 };
 
 // --- controls -------------------------------------------------------------
@@ -144,7 +144,7 @@ function writeFormulas(pos: number): void {
     'range [min, max] drawn per instance;  mid = (min + max)/2,  half = (max − min)/2',
     `mid = (${f2(P.min)} + ${f2(P.max)})/2 = ${f3(mid)},  half = ${f3(half)}`,
     '',
-    `band:  low = mid − I·half = ${f3(mid)} − ${f2(P.intensity)}·${f3(half)} = ${f3(st.low)};  high = mid + I·half = ${f3(st.high)}   (I = 0: the middle, no movement;  I = 1: the whole range)`,
+    `band:  low = mid − I^${P.power}·half = ${f3(mid)} − ${f2(P.intensity)}^${P.power}·${f3(half)} = ${f3(st.low)};  high = mid + I^${P.power}·half = ${f3(st.high)}   (I = 0: the middle, no movement;  I = 1: the whole range)`,
     '',
     `hits of the ${P.voice}: hit n at t_n = ${v.onset} + n·${v.period} beats (t in beats from beat 1 of bar 1);  ${PATTERN[P.voice]}`,
     `edge e_n = ${edgeOf(P.voice, 0)} for even n, ${edgeOf(P.voice, 1)} for odd n  (hits counted on in both directions, so a value before the first hit is where the pattern puts it)`,
