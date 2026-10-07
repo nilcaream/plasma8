@@ -7,8 +7,9 @@
  */
 import { AMOUNT_RANGE, GAIN_RANGE, MAX_RISE, POWER_RANGE } from './beatVoices';
 import { MAX_BPM, MIN_BPM } from './clock';
-import { TRAVEL_RANGE } from './crossfader';
+import { REACH_POWER_RANGE, TRAVEL_RANGE } from './crossfader';
 import { DAMPING_RANGE, FACTOR_RANGES, OFFSET_RANGE, WIDTH_SHARE_RANGE } from './harmonics';
+import { STEP_AT_1_RANGE } from './randomWalk';
 import { clamp01 } from './settings';
 
 export interface Range { min: number; max: number }
@@ -45,6 +46,13 @@ export const CROSSFADER = {
   min: { min: CROSSFADER_BOUNDS.lo, max: CROSSFADER_BOUNDS.hi - narrowest },
   max: { min: CROSSFADER_BOUNDS.lo + narrowest, max: CROSSFADER_BOUNDS.hi },
   travel: range(TRAVEL_RANGE),
+};
+
+/** The random walk's sliders: the crossfader's range and stroke lengths, and the step at intensity 1 as a share of the range. */
+export const RANDOM_WALK = {
+  ...CROSSFADER,
+  step: range(STEP_AT_1_RANGE),
+  power: range(REACH_POWER_RANGE),
 };
 
 export const HARMONICS = {

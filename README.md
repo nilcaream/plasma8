@@ -31,7 +31,7 @@ There is no parameter for the random seed; the overlay shows the one in use.
 
 ## Other pages
 
-`/beats/`, `/harmonics/` and `/crossfader/` graph the functions the visuals use (the beat flash voices, the beat-locked layers and the crossfader that moves values). They are not linked from the main page.
+`/beats/`, `/harmonics/`, `/crossfader/` and `/random-walk/` graph the functions the visuals use or may use (the beat flash voices, the beat-locked layers, the crossfader that moves values between two edges, and a random walk that steps up or down at each hit). They are not linked from the main page.
 
 ## Develop
 
