@@ -21,6 +21,13 @@ export interface MovingValue {
   walk: RandomWalk;
 }
 
+/** A moving value with a walk of its own, started at a random point of min..max from `seed`. */
+const mover = (key: string, min: number, max: number, voice: VoiceName, seed: number): MovingValue =>
+  ({ key, min, max, voice, walk: new RandomWalk(createRng(seed)) });
+
+/** A value that moves by the kick, the way a drawn one would over min..max: what the debug panel's box next to a knob starts while the moves are off. */
+export const followKick = (key: string, min: number, max: number, seed: number): MovingValue => mover(key, min, max, 'kick', seed);
+
 /**
  * One "can move" list of an algorithm: when an instance starts, `pick` of its
  * entries are drawn, without repeats and all equally likely. An entry is a
@@ -72,7 +79,7 @@ export function drawLists(
         const [min, max] = bounds(key);
         const voice = rng.pick(VOICE_NAMES);
         // the walk draws from a generator of its own, seeded here (its start is its first draw), so its steps while the page runs never touch `rng`
-        out.push({ key, min, max, voice, walk: new RandomWalk(createRng(Math.floor(rng.next() * 4294967296))) });
+        out.push(mover(key, min, max, voice, Math.floor(rng.next() * 4294967296)));
       }
     }
   }

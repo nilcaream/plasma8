@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { AlgorithmDef, FrameInputs } from '../algorithm';
 import { drawKnobs } from '../knobs';
+import { followKick } from '../moving';
 import { createRng } from '../rng';
 import { RandomWalk } from '../randomWalk';
 import { shaderAlgorithm } from '../shaderAlgorithm';
@@ -76,6 +77,33 @@ describe('plasma\'s moving values', () => {
     algorithm.hold!(false);
     expect(scaleAt(0.3)).not.toBe(scaleAt(5.7));
     expect(scaleAt(0.3)).not.toBe(1.3);
+  });
+
+  it('moves only the values given to moveWhileHeld while held, by the kick over their min..max, and stands still where it was left once they are taken off', () => {
+    const { gl, floats } = mockGl();
+    const values = drawKnobs(plasma.knobs, createRng(1));
+    const algorithm = plasma.create(gl, values, createRng(2), { moves: false });
+    const at = (key: string, beats: number): number | undefined => {
+      algorithm.draw(null, frame(beats, 0, 1, 120));
+      return floats.get(key);
+    };
+    algorithm.hold!(true);
+    algorithm.tune({ ...values, scale: 1.3, swirl: 0.2 });
+    expect([at('u_scale', 0.3), at('u_scale', 5.7), at('u_swirl', 5.7)]).toEqual([1.3, 1.3, 0.2]);
+    const kicked = followKick('scale', 1, 2, 5);
+    expect(kicked.voice).toBe('kick');
+    algorithm.moveWhileHeld!([kicked]);
+    const seen = [0.3, 2.7, 5.7, 9.1, 11.1].map((b) => at('u_scale', b)!);
+    expect(new Set(seen).size).toBeGreaterThan(2);
+    for (const v of seen) {
+      expect(v).toBeGreaterThanOrEqual(1);
+      expect(v).toBeLessThanOrEqual(2);
+    }
+    // only the ticked value moves
+    expect(at('u_swirl', 11.1)).toBe(0.2);
+    algorithm.moveWhileHeld!([]);
+    algorithm.tune({ ...values, scale: 1.4, swirl: 0.2 });
+    expect([at('u_scale', 0.3), at('u_scale', 5.7)]).toEqual([1.4, 1.4]);
   });
 
   it('has no moving values when made with the moves off, and some when made with them on or by default', () => {

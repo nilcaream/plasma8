@@ -156,13 +156,14 @@ export function shaderAlgorithm(
   // is called once a frame with them and adds the uniforms of its own (an algorithm's running sums)
   let latest = values;
   let held = false;
-  const perFrame = moving.length > 0 || phases
-    ? (inputs: FrameInputs): ShaderParams => {
-        const moves = moving.length > 0 && !held;
-        const now = moves ? { ...latest, ...movingValues(moving, inputs.intensity, inputs.beats) } : latest;
-        return { ...(moves ? params(now) : {}), ...phases?.(now, inputs) };
-      }
-    : undefined;
+  // while held, these move in place of the instance's own (the debug panel's boxes)
+  let whileHeld: readonly MovingValue[] = [];
+  const perFrame = (inputs: FrameInputs): ShaderParams => {
+    const active = held ? whileHeld : moving;
+    const moves = active.length > 0;
+    const now = moves ? { ...latest, ...movingValues(active, inputs.intensity, inputs.beats) } : latest;
+    return { ...(moves ? params(now) : {}), ...phases?.(now, inputs) };
+  };
   const shader = new ShaderAlgorithm(gl, name, shaderBody, params(values), perFrame);
   shader.steps.shape = stepShape(values);
   shader.amounts = amounts?.(values);
@@ -174,6 +175,9 @@ export function shaderAlgorithm(
     dispose: () => shader.dispose(),
     hold: (on) => {
       held = on;
+    },
+    moveWhileHeld: (list) => {
+      whileHeld = list;
     },
     tune: (v) => {
       latest = v;

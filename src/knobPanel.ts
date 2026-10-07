@@ -16,8 +16,8 @@ import {
 } from './knobs';
 import { REACH_POWER, REACH_POWER_RANGE } from './crossfader';
 import { STEP_AT_1, STEP_AT_1_RANGE } from './randomWalk';
-import { getReachPower, getStepAt1, movingAt, setReachPower, setStepAt1, type MovingValue } from './moving';
-import type { Rng } from './rng';
+import { followKick, getReachPower, getStepAt1, movingAt, setReachPower, setStepAt1, type MovingValue } from './moving';
+import { freshSeed, type Rng } from './rng';
 
 export interface Shown {
   def: AlgorithmDef;
@@ -30,7 +30,10 @@ const PARTS: readonly Part[] = ['min', 'max', 'value'];
 
 interface Row {
   el: HTMLElement;
-  name: HTMLElement;
+  /** The name line's text: the key and its mark. */
+  title: HTMLElement;
+  /** The box that starts a value moving by the kick while the moves are off; only on a value that can move. */
+  box: HTMLInputElement | null;
   knob: Knob;
   /** min, max and value for a drawn knob; value alone for a fixed one. */
   parts: readonly Part[];
@@ -103,6 +106,8 @@ export class KnobPanel {
   private ranges: Record<string, UserRange> = {};
   /** The shown algorithm's moving values by knob key; empty while the moves are off. */
   private moving = new Map<string, MovingValue>();
+  /** While the moves are off: the values whose box is ticked, each moving by the kick; empty otherwise. */
+  private kicked = new Map<string, MovingValue>();
   /** The "Moves off" switch; this load only. */
   private movesOff = false;
 
@@ -188,7 +193,9 @@ export class KnobPanel {
     this.shown = s;
     this.ranges = {};
     this.moving = new Map((this.movesOff ? [] : s.algorithm.moving ?? []).map((m) => [m.key, m]));
+    this.kicked = new Map();
     s.algorithm.hold?.(this.movesOff);
+    s.algorithm.moveWhileHeld?.([]);
     this.ranges[REACH_KNOB.key] = setFixed(REACH_KNOB, getReachPower());
     this.ranges[STEP_KNOB.key] = setFixed(STEP_KNOB, getStepAt1());
     for (const knob of s.def.knobs) {
@@ -206,22 +213,52 @@ export class KnobPanel {
     this.head.textContent = `${s.def.name}  seed ${this.seed}`;
     if (!same) this.build([...s.def.knobs, ...SHARED_KNOBS], s.def.movable);
     for (const r of this.rows) {
-      const moving = this.moving.get(r.knob.key);
-      const moves = moving !== undefined;
-      const group = s.def.movable?.[r.knob.key];
-      r.el.classList.toggle('moving', moves);
-      r.el.classList.toggle('movable', !moves && group !== undefined);
-      r.name.textContent = rowTitle(r.knob.key, group, moving?.voice);
-      // a moving value's min and max change the walk's bounds; its value is the walk's, read live
-      for (const [part, input] of Object.entries(r.inputs)) input.disabled = moves && part === 'value';
+      this.mark(r);
       this.paint(r);
     }
+  }
+
+  /** What moves now: the instance's own values, or, while the moves are off, the ticked ones. */
+  private active(): Map<string, MovingValue> {
+    return this.movesOff ? this.kicked : this.moving;
+  }
+
+  /** A row as its value is now: the mark of a mover or a value that can move, the box (only while the moves are off) and a disabled value slider on a mover. */
+  private mark(r: Row): void {
+    const moving = this.active().get(r.knob.key);
+    const moves = moving !== undefined;
+    const group = this.shown!.def.movable?.[r.knob.key];
+    r.el.classList.toggle('moving', moves);
+    r.el.classList.toggle('movable', !moves && group !== undefined);
+    r.title.textContent = rowTitle(r.knob.key, group, moving?.voice);
+    if (r.box) {
+      r.box.hidden = !this.movesOff;
+      r.box.checked = moves;
+    }
+    // a moving value's min and max change the walk's bounds; its value is the walk's, read live
+    for (const [part, input] of Object.entries(r.inputs)) input.disabled = moves && part === 'value';
+  }
+
+  /** The box of a value that can move: ticked, it moves by the kick over its min..max from a random start; unticked, it stands where it was. */
+  private kick(r: Row, on: boolean): void {
+    const s = this.shown!;
+    const key = r.knob.key;
+    if (on) {
+      const range = this.ranges[key]!;
+      this.kicked.set(key, followKick(key, range.min, range.max, freshSeed()));
+    } else {
+      this.kicked.delete(key);
+    }
+    s.algorithm.moveWhileHeld?.([...this.kicked.values()]);
+    // the value now (the last one tick painted) is the one it stays at
+    this.tune();
+    this.mark(r);
   }
 
   /** Once a frame: the live value of every moving value. */
   tick(intensity: number, beats: number): void {
     for (const r of this.rows) {
-      const m = this.moving.get(r.knob.key);
+      const m = this.active().get(r.knob.key);
       if (!m) continue;
       const v = movingAt(m, intensity, beats);
       this.ranges[r.knob.key]!.value = v;
@@ -247,17 +284,17 @@ export class KnobPanel {
     const drawn: Row[] = [];
     knobSections(knobs.filter((k) => !isFixed(k)), movable).forEach((section, i) => {
       if (i > 0) this.list.appendChild(document.createElement('hr'));
-      drawn.push(...section.map((k) => this.row(k)));
+      drawn.push(...section.map((k) => this.row(k, movable?.[k.key] !== undefined)));
     });
     const kept: Row[] = [];
     for (const { group, knobs: inGroup } of fixedGroups(knobs)) {
       heading('Fixed in code', `${group}; the code's value to start`);
-      kept.push(...inGroup.map((k) => this.row(k)));
+      kept.push(...inGroup.map((k) => this.row(k, false)));
     }
     this.rows = [...drawn, ...kept];
   }
 
-  private row(knob: Knob): Row {
+  private row(knob: Knob, canMove: boolean): Row {
     const row = document.createElement('div');
     row.className = 'knob';
     const [lo, hi] = knob.wide;
@@ -265,11 +302,16 @@ export class KnobPanel {
     const codeTicks = [...new Set([a, b])].map((v) => `<i class="tick" style="left:${pct(share(knob, v))}"></i>`).join('');
     const parts = isFixed(knob) ? (['value'] as const) : PARTS;
     const id = `knob-${knob.key.replace(/\W/g, '-')}`;
-    row.innerHTML = `<div class="name">${knob.key}</div>` + parts.map((part) => `
+    const box = canMove ? '<input type="checkbox" class="kick" hidden title="Move this value by the kick, over its min..max">' : '';
+    row.innerHTML = `<div class="name">${box}<span>${knob.key}</span></div>` + parts.map((part) => `
       <label for="${id}-${part}">${part}</label>
       <span class="track">${part === 'value' && !isFixed(knob) ? '<i class="band"></i>' : codeTicks}<input id="${id}-${part}" data-part="${part}" type="range" min="${lo}" max="${hi}" step="${step(knob)}"></span>
       <output for="${id}-${part}"></output>`).join('');
-    const r: Row = { el: row, name: row.querySelector<HTMLElement>('.name')!, knob, parts, inputs: {}, outs: {}, band: row.querySelector('.band') };
+    const r: Row = {
+      el: row, title: row.querySelector<HTMLElement>('.name span')!, box: row.querySelector<HTMLInputElement>('input.kick'),
+      knob, parts, inputs: {}, outs: {}, band: row.querySelector('.band'),
+    };
+    r.box?.addEventListener('change', () => this.kick(r, r.box!.checked));
     for (const part of parts) {
       const input = row.querySelector<HTMLInputElement>(`input[data-part=${part}]`)!;
       r.inputs[part] = input;
@@ -295,7 +337,7 @@ export class KnobPanel {
   private move(r: Row, part: Part, to: number): void {
     const s = this.shown!;
     const key = r.knob.key;
-    const m = this.moving.get(key);
+    const m = this.active().get(key);
     const next = isFixed(r.knob) ? setFixed(r.knob, to)
       : m && part !== 'value' ? resizeMoving(r.knob, this.ranges[key]!, m, part, to)
       : (part === 'min' ? setMin : part === 'max' ? setMax : setValue)(r.knob, this.ranges[key]!, to);
