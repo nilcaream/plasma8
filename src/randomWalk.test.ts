@@ -29,7 +29,7 @@ describe('stepFrom', () => {
 
 describe('stepOf', () => {
   it('is the share stepAt1 · I^power: none at 0, the whole stepAt1 at 1, less at low intensity the higher the power', () => {
-    expect(STEP_AT_1).toBe(0.25);
+    expect(STEP_AT_1).toBe(0.2);
     expect(stepOf(params({ intensity: 0, power: 2, stepAt1: 0.25 }))).toBe(0);
     expect(stepOf(params({ intensity: 1, power: 2, stepAt1: 0.25 }))).toBe(0.25);
     expect(stepOf(params({ intensity: 0.5, power: 2, stepAt1: 0.25 }))).toBeCloseTo(0.0625, 12);

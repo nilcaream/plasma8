@@ -20,7 +20,7 @@ import { hitTime, stroke, travelFor, type Crossfader } from './crossfader';
 import type { Rng } from './rng';
 
 /** The step at intensity 1 as a share of the range: what the code starts with, and the span the page tries. */
-export const STEP_AT_1 = 0.25;
+export const STEP_AT_1 = 0.2;
 /** The most a hit adds to its step, as a share of it: drawn fresh for every hit. */
 export const STEP_EXTRA = 0.1;
 /** The top is where a step with its extra, 0.45 · 1.1, is still under half the range, so one direction always fits. */

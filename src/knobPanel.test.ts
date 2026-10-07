@@ -8,6 +8,7 @@ import { formatRanges, isFixed, range, startRange } from './knobs';
 import { knobSections, resizeMoving, rowTitle } from './knobPanel';
 import { drawMoving, groupNames, movingAt } from './moving';
 import { hitTime } from './crossfader';
+import { STEP_AT_1 } from './randomWalk';
 import { createRng } from './rng';
 
 describe('knobSections', () => {
@@ -84,7 +85,7 @@ describe('resizeMoving', () => {
     let before = at(1);
     for (let n = 2; n < 20; n++) {
       const now = at(n);
-      expect(Math.abs(now - before) / 30).toBeGreaterThanOrEqual(0.25 - 1e-9);
+      expect(Math.abs(now - before) / 30).toBeGreaterThanOrEqual(STEP_AT_1 - 1e-9);
       before = now;
     }
   });
