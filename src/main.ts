@@ -1,6 +1,6 @@
 import { ALGORITHMS, chooseAlgorithm } from './algorithms';
 import type { Algorithm, AlgorithmDef, FrameInputs } from './algorithm';
-import { Band } from './band';
+import { Band, metronomeShown } from './band';
 import { DEFAULT_SHAPE, flash } from './beatVoices';
 import { TapClock, type ClockReading } from './clock';
 import { beatInputs } from './drive';
@@ -255,11 +255,11 @@ function main(): void {
       fade,
     });
 
-    // the panel up (a press in the band) shows the widget as it was last seen, whatever the taps; taps alone show the widget and the metronome
+    // the panel up (a press in the band) shows the widget as it was last seen and the metronome, whatever the taps; taps alone show the widget and the metronome
     const panel = band.update(now);
     const widget = widgetView(r, clock.tapMarks(), now);
     tapWidget.update({ ...widget, visible: widget.visible || panel });
-    metronome.show(widget.visible || band.pinned);
+    metronome.show(metronomeShown(widget.visible, panel));
     wheel.show(r.bpm);
     metronome.update(r);
     debug.update(r, {

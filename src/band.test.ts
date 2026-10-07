@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { PANEL_MS, inBand, panelShown } from './band';
+import { PANEL_MS, inBand, metronomeShown, panelShown } from './band';
+
+describe('metronomeShown', () => {
+  it('is up while the user taps, and also while the panel is up, whatever the taps', () => {
+    expect(metronomeShown(true, false)).toBe(true);
+    expect(metronomeShown(false, true)).toBe(true);
+    expect(metronomeShown(true, true)).toBe(true);
+    expect(metronomeShown(false, false)).toBe(false);
+  });
+});
 
 describe('inBand', () => {
   it('holds every height down to the bottom edge of the band, and not the edge itself', () => {

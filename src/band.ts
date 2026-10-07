@@ -20,6 +20,11 @@ export function panelShown(lastTouchAt: number, now: number, held: boolean, pinn
   return pinned || held || now - lastTouchAt < PANEL_MS;
 }
 
+/** Whether the metronome is up: the user is tapping, or the panel is (it is a part of it). */
+export function metronomeShown(tapping: boolean, panel: boolean): boolean {
+  return tapping || panel;
+}
+
 function byId<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
   if (!el) throw new Error(`missing element #${id}`);
@@ -74,11 +79,6 @@ export class Band {
   hide(): void {
     this.held = false;
     this.lastTouchAt = -Infinity;
-  }
-
-  /** Whether the panel never fades: with ?debug. */
-  get pinned(): boolean {
-    return this.debug;
   }
 
   /** Call once a frame; whether the panel is up. */
