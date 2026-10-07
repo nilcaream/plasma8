@@ -147,21 +147,25 @@ const f3 = (v: number): string => v.toFixed(3);
 
 function writeFormulas(pos: number): void {
   const v = VOICES[P.voice];
-  const step = stepOf(P);
+  const base = stepOf(P);
+  const step = walk.step(P);
+  const next = walk.next(P);
   const last = walk.history[walk.history.length - 1];
   const length = travelFor(P);
   const blended = P.travel0 + (P.travel1 - P.travel0) * Math.min(1, Math.max(0, P.intensity));
   const bar = Math.floor(pos / BAR) + 1;
   const beat = Math.floor(pos % BAR) + 1;
-  const dir = walk.direction === 1 ? 'up' : 'down';
+  const sign = (d: number): string => (d === 1 ? '+' : '−');
+  const flipped = next.dir !== walk.direction;
   const lines = [
     'range [min, max] drawn per instance;  the walk keeps a place u in [0, 1] (0 = min, 1 = max):  value = min + u·(max − min)',
     `start: u drawn at random in [0, 1) per instance;  here min = ${f2(P.min)}, max = ${f2(P.max)}, width = ${f3(P.max - P.min)}`,
     '',
-    `step by intensity:  s = stepAt1 · I^p = ${f3(P.stepAt1)} · ${f2(P.intensity)}^${P.power} = ${f3(step)} of the range = ${f3(step * (P.max - P.min))} in value   (I = 0: no step, nothing moves)`,
+    `step by intensity:  s0 = stepAt1 · I^p = ${f3(P.stepAt1)} · ${f2(P.intensity)}^${P.power} = ${f3(base)} of the range   (I = 0: no step, nothing moves)`,
+    `every step is a little longer, up to a tenth, drawn for each hit:  s = s0 · (1 + e),  e in [0, 0.1)   (the next one: e = ${f3((step / (base || 1)) - 1)}, s = ${f3(step)} of the range = ${f3(step * (P.max - P.min))} in value)`,
     `hits of the ${P.voice}: hit n at t_n = ${v.onset} + n·${v.period} beats (t in beats from beat 1 of bar 1)`,
-    'on every hit n:  d_n = +1 or −1, drawn at random (half each);   u_n = reflect(u_(n−1) + d_n·s)',
-    'reflect folds a place that would leave 0..1 back inside, like a ball off two walls: 1.2 → 0.8, −0.3 → 0.3; it never sticks to an edge',
+    'on every hit n:  d_n = +1 or −1, drawn at random (half each);   u_n = u_(n−1) + d_n·s   if that stays inside 0..1,   else  u_(n−1) − d_n·s',
+    'so every step is a whole step: at an edge the direction flips instead of the step being cut short (s is at most 0.495, so one way always fits)',
     '',
     `stroke length by intensity:  L = L0 + (L1 − L0)·I = ${f3(P.travel0)} + (${f3(P.travel1)} − ${f3(P.travel0)})·${f2(P.intensity)} = ${f3(blended)} beats`
       + (blended > length ? `, cut to the ${v.period} beats between two hits of the ${P.voice} = ${f3(length)}` : ''),
@@ -170,7 +174,9 @@ function writeFormulas(pos: number): void {
     '                        u = u_n + (u_(n+1) − u_n)·s(x)     it holds u_n, then arrives on u_(n+1) exactly at t_(n+1)',
     '',
     last
-      ? `now:  t = ${f3(pos)} (bar ${bar}, beat ${beat});  last hit n = ${last.n} at ${f3(last.time)}, u = ${f3(last.u)};  the next hit goes ${dir}: u = reflect(${f3(last.u)} ${walk.direction === 1 ? '+' : '−'} ${f3(step)}) = ${f3(walk.target(P))}`
+      ? `now:  t = ${f3(pos)} (bar ${bar}, beat ${beat});  last hit n = ${last.n} at ${f3(last.time)}, u = ${f3(last.u)};  the next hit is drawn ${walk.direction === 1 ? 'up' : 'down'}`
+        + (flipped ? `, which would leave the range, so it goes ${next.dir === 1 ? 'up' : 'down'}` : '')
+        + `: u = ${f3(last.u)} ${sign(next.dir)} ${f3(step)} = ${f3(next.u)}`
       : `now:  t = ${f3(pos)}`,
   ];
   el('formulas').textContent = lines.join('\n');

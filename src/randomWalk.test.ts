@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { REACH_POWER, hitTime, stroke, type Crossfader } from './crossfader';
 import { createRng } from './rng';
-import { RandomWalk, STEP_AT_1, reflect, stepOf, type WalkParams } from './randomWalk';
+import { RandomWalk, STEP_AT_1, STEP_AT_1_RANGE, STEP_EXTRA, stepFrom, stepOf, type WalkParams } from './randomWalk';
 
 const params = (over: Partial<WalkParams> = {}): WalkParams => ({
   min: 2, max: 6, intensity: 1, power: 1, voice: 'kick', travel0: 0.25, travel1: 0.25, stepAt1: 0.1, ...over,
@@ -15,15 +15,15 @@ function walk(seed: number, p: WalkParams, hits: number): number[] {
   return w.history.map((h) => h.u);
 }
 
-describe('reflect', () => {
-  it('folds a position back inside 0..1 the way a ball bounces off two walls', () => {
-    expect(reflect(0.4)).toBeCloseTo(0.4, 12);
-    expect(reflect(1.2)).toBeCloseTo(0.8, 12);
-    expect(reflect(-0.3)).toBeCloseTo(0.3, 12);
-    expect(reflect(2.5)).toBeCloseTo(0.5, 12);
-    expect(reflect(-1.25)).toBeCloseTo(0.75, 12);
-    expect(reflect(0)).toBe(0);
-    expect(reflect(1)).toBe(1);
+describe('stepFrom', () => {
+  it('goes the whole step the way it was drawn, and the whole step the other way when that would leave 0..1', () => {
+    expect(stepFrom(0.4, 1, 0.3)).toEqual({ u: 0.4 + 0.3, dir: 1 });
+    expect(stepFrom(0.4, -1, 0.3)).toEqual({ u: 0.4 - 0.3, dir: -1 });
+    expect(stepFrom(0.9, 1, 0.3)).toEqual({ u: 0.9 - 0.3, dir: -1 });
+    expect(stepFrom(0.1, -1, 0.3)).toEqual({ u: 0.1 + 0.3, dir: 1 });
+    // landing exactly on an edge is inside
+    expect(stepFrom(0.5, 1, 0.5)).toEqual({ u: 1, dir: 1 });
+    expect(stepFrom(0.5, -1, 0.5)).toEqual({ u: 0, dir: -1 });
   });
 });
 
@@ -40,23 +40,39 @@ describe('stepOf', () => {
 });
 
 describe('the walk', () => {
-  it('goes one fixed step up or down on every hit, folded back inside at an edge', () => {
+  it('goes a whole step on every hit, even at an edge where it turns instead, each a little longer by a random extra', () => {
     const p = params({ stepAt1: 0.3 });
     const path = walk(7, p, 400);
     expect(path).toHaveLength(401);
-    let folded = 0;
+    const lengths = new Set<number>();
+    let nearEdge = 0;
     for (let i = 1; i < path.length; i++) {
       const a = path[i - 1]!;
       const b = path[i]!;
       expect(b).toBeGreaterThanOrEqual(0);
       expect(b).toBeLessThanOrEqual(1);
-      const options = [reflect(a + 0.3), reflect(a - 0.3)];
-      expect(Math.min(...options.map((o) => Math.abs(o - b)))).toBeLessThan(1e-12);
-      if (Math.abs(Math.abs(b - a) - 0.3) > 1e-9) folded++;
+      // never shorter than the base step, never longer than it plus a tenth
+      const length = Math.abs(b - a);
+      expect(length).toBeGreaterThanOrEqual(0.3 - 1e-12);
+      expect(length).toBeLessThan(0.3 * (1 + STEP_EXTRA) + 1e-12);
+      lengths.add(Math.round(length * 1e9));
+      // near an edge one of the two directions does not fit, so a hit drawn that way turned
+      if (a + 0.3 > 1 || a - 0.3 < 0) nearEdge++;
     }
-    // it did reach the edges and came back, and never sat on one
-    expect(folded).toBeGreaterThan(20);
-    expect(path.filter((u) => u === 0 || u === 1)).toHaveLength(0);
+    // it was often near the edges, and the steps were not all equal
+    expect(nearEdge).toBeGreaterThan(20);
+    expect(lengths.size).toBeGreaterThan(100);
+  });
+
+  it('never cuts a step at the top of the step range: 0.45 with its extra still fits one way', () => {
+    const top = STEP_AT_1_RANGE[1];
+    expect(top * (1 + STEP_EXTRA)).toBeLessThan(0.5);
+    const path = walk(11, params({ stepAt1: top }), 2000);
+    for (let i = 1; i < path.length; i++) {
+      const length = Math.abs(path[i]! - path[i - 1]!);
+      expect(length).toBeGreaterThanOrEqual(top - 1e-12);
+      expect(length).toBeLessThan(top * (1 + STEP_EXTRA) + 1e-12);
+    }
   });
 
   it('does not move at intensity 0', () => {

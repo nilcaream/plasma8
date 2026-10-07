@@ -5,9 +5,10 @@
  * next hit, and holds again; but instead of alternating between two edges of a
  * band, every hit picks up or down at random and goes one fixed step that way,
  * so the value drifts about like a fixed-step Brownian motion. The intensity
- * sets only the length of the step: range · stepAt1 · I^power, none at 0.
- * A step that would leave the range folds back inside (it reflects off the
- * edge, never sticks to it).
+ * sets only the length of the step: range · stepAt1 · I^power, none at 0, and
+ * every hit adds up to a tenth to it at random so the flow is less predictable.
+ * Every step is a whole step: one that would leave the range goes the other
+ * way instead, so none is cut short at an edge.
  *
  * The walk is kept as a unit position, 0 at min and 1 at max, so a range moved
  * while it runs carries the path with it. Positions are in beats from beat 1 of
@@ -20,7 +21,10 @@ import type { Rng } from './rng';
 
 /** The step at intensity 1 as a share of the range: what the code starts with, and the span the page tries. */
 export const STEP_AT_1 = 0.25;
-export const STEP_AT_1_RANGE = [0.01, 1] as const;
+/** The most a hit adds to its step, as a share of it: drawn fresh for every hit. */
+export const STEP_EXTRA = 0.1;
+/** The top is where a step with its extra, 0.45 · 1.1, is still under half the range, so one direction always fits. */
+export const STEP_AT_1_RANGE = [0.01, 0.45] as const;
 
 export interface WalkParams extends Crossfader {
   /** The step at intensity 1, as a share of the range. */
@@ -41,10 +45,11 @@ export function stepOf(p: Pick<WalkParams, 'intensity' | 'power' | 'stepAt1'>): 
   return p.stepAt1 * Math.min(1, Math.max(0, p.intensity)) ** p.power;
 }
 
-/** Folds a position back into 0..1 the way a ball bounces off two walls: 1.2 comes back as 0.8, -0.3 as 0.3. */
-export function reflect(u: number): number {
-  const r = ((u % 2) + 2) % 2;
-  return r <= 1 ? r : 2 - r;
+/** Where a whole step in a direction from `u` lands: the other way when that direction would leave 0..1. */
+export function stepFrom(u: number, dir: 1 | -1, step: number): { u: number; dir: 1 | -1 } {
+  const to = u + dir * step;
+  if (to >= 0 && to <= 1) return { u: to, dir };
+  return { u: u - dir * step, dir: dir === 1 ? -1 : 1 };
 }
 
 /** How long a past hit is kept: the long graph shows 64 bars (256 beats), and the one before it. */
@@ -55,26 +60,38 @@ export class RandomWalk {
   readonly history: Hit[] = [];
   private u: number;
   private dir: 1 | -1;
+  private extra: number;
   private voice: VoiceName | undefined;
 
-  /** Starts at a random point of the range, drawn from `rng`, which also draws every direction after it. */
+  /** Starts at a random point of the range, drawn from `rng`, which also draws the direction and the extra of every step after it. */
   constructor(private readonly rng: Rng) {
     this.u = rng.next();
     this.dir = this.draw();
+    this.extra = this.rng.next() * STEP_EXTRA;
   }
 
   private draw(): 1 | -1 {
     return this.rng.next() < 0.5 ? -1 : 1;
   }
 
-  /** The direction the next step takes: 1 up, -1 down; drawn when the last hit passed. */
+  /** The direction drawn for the next step: 1 up, -1 down, drawn when the last hit passed (the step may still go the other way at an edge). */
   get direction(): 1 | -1 {
     return this.dir;
   }
 
-  /** Where the next hit puts the walk, at the intensity now (it can still change before the hit). */
+  /** The next step as a share of the range, at the intensity now: its length by intensity and the extra drawn for it. */
+  step(p: WalkParams): number {
+    return stepOf(p) * (1 + this.extra);
+  }
+
+  /** Where the next hit puts the walk and which way it goes, at the intensity now (it can still change before the hit). */
+  next(p: WalkParams): { u: number; dir: 1 | -1 } {
+    return stepFrom(this.u, this.dir, this.step(p));
+  }
+
+  /** Where the next hit puts the walk. */
   target(p: WalkParams): number {
-    return reflect(this.u + this.dir * stepOf(p));
+    return this.next(p).u;
   }
 
   /** Takes every hit up to `beats`, one step each at the intensity now; a new voice or a count started again begins at the walk's place. */
@@ -91,6 +108,7 @@ export class RandomWalk {
     for (let hit = last.n + 1; hit <= n; hit++) {
       this.u = this.target(p);
       this.dir = this.draw();
+      this.extra = this.rng.next() * STEP_EXTRA;
       this.history.push({ n: hit, time: hitTime(p.voice, hit), u: this.u, length: travelFor(p) });
     }
     while (this.history.length > 1 && this.history[0]!.time < beats - KEEP_BEATS) this.history.shift();
