@@ -56,19 +56,19 @@ export function juliaParams(v: Values): ShaderParams {
 export const drawJuliaParams = (rng: Rng): ShaderParams => juliaParams(drawKnobs(JULIA_KNOBS, rng));
 
 /**
- * The values that may move, in four groups of what they change on screen; an
- * instance moves one value from each of 2 to 4 groups. The spin and the wander
+ * The values that may move, in three groups of what they change on screen; an
+ * instance moves one value from each of 2 to 3 groups. The spin and the wander
  * speed multiply the running time, the palette frequency multiplies a growing
  * number, the wedge count is whole and the centre's angle whips round a circle:
- * none of them move.
+ * none of them move. Nor do theta, the zoom and the colour tone (palA, palB):
+ * they stay as drawn.
  */
 export const JULIA_MOVING_GROUPS: readonly (readonly string[])[] = [
-  ['theta', 'edge', 'wander'], // shape of the set
-  ['centreOff', 'zoom'], // framing
-  ['palA.0', 'palA.1', 'palA.2', 'palB.0', 'palB.1', 'palB.2'], // colour tone
+  ['edge', 'wander'], // shape of the set
+  ['centreOff'], // framing
   ['palD.0', 'palD.1', 'palD.2', 'bands'], // colour pattern
 ];
-export const JULIA_MOVING_COUNT = [2, 4] as const;
+export const JULIA_MOVING_COUNT = [2, 3] as const;
 
 const boundsOf = (key: string): [number, number] => drawBounds(JULIA_KNOBS.find((k) => k.key === key)!.draw);
 
@@ -76,7 +76,7 @@ export const drawJuliaMoving = (rng: Rng, bounds: (key: string) => readonly [num
   drawMoving(JULIA_MOVING_GROUPS, bounds, rng, JULIA_MOVING_COUNT);
 
 /** What each of the groups changes on screen, in the order of JULIA_MOVING_GROUPS. */
-export const JULIA_MOVING_NAMES = ['shape of the set', 'framing', 'colour tone', 'colour pattern'] as const;
+export const JULIA_MOVING_NAMES = ['shape of the set', 'framing', 'colour pattern'] as const;
 
 export const julia: AlgorithmDef = {
   name: JULIA_NAME,
