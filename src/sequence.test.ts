@@ -161,4 +161,29 @@ describe('a held Sequencer (an algorithm forced by name)', () => {
     expect(changes).toBeGreaterThan(3);
     expect(held.barsLeft(10)).toBe(Infinity);
   });
+
+  it('holds from the moment it is engaged, dropping a change already prepared', () => {
+    const seq = new Sequencer(scripted(0), 0);
+    expect(seq.segment.bars).toBe(4);
+    expect(drive(seq, 0, 12.5).prepare).toEqual([12]);
+    expect(seq.change).toBeDefined();
+    seq.engage();
+    expect(seq.hold).toBe(true);
+    expect(seq.change).toBeUndefined();
+    const seen = drive(seq, 12.55, 200);
+    expect(seen.prepare).toEqual([]);
+    expect(seen.change).toEqual([]);
+  });
+
+  it('hands back to the sequencer with a whole new phrase from the bar it is released in', () => {
+    const seq = new Sequencer(scripted(0), 0, true);
+    drive(seq, 0, 53);
+    seq.release(53.5);
+    expect(seq.hold).toBe(false);
+    expect(seq.segment).toEqual({ startBar: 13, bars: 4 });
+    expect(seq.barsLeft(53.5)).toBe(4);
+    const seen = drive(seq, 53.5, 70);
+    expect(seen.prepare).toEqual([64]);
+    expect(seen.change).toEqual([68]);
+  });
 });

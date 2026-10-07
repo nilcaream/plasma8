@@ -92,7 +92,7 @@ export class DebugOverlay {
   update(r: ClockReading, info: DebugInfo): void {
     if (!this.enabled) return;
     const next = !Number.isFinite(info.barsLeft)
-      ? 'no changes (held by ?algo=)'
+      ? 'no changes (algorithm held)'
       : `next change in ${info.barsLeft} bar${info.barsLeft === 1 ? '' : 's'}${info.change ? ` (${info.change})` : ''}`;
     const text = [
       `${info.name}  home ${info.home.toFixed(2)}`,

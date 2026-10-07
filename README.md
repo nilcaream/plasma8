@@ -25,7 +25,7 @@ Fullscreen generative visuals in the browser, driven by a tap-tempo clock. Four 
 | `intensity=0..1` | Start at this intensity instead of the remembered one |
 | `strobe=0..1` | Start at this strobe instead of the remembered one |
 | `bpm=60..180` | Start the free-running clock at this tempo (above 180 it is halved: 200 starts at 100) |
-| `debug` | Show an overlay, a panel with a slider for every random value of the running algorithm, and the outline of the band where taps are ignored |
+| `debug` | Show an overlay, a panel with a slider for every random value of the running algorithm and an Algorithm dropdown to hold one, and the outline of the band where taps are ignored |
 
 There is no parameter for the random seed; the overlay shows the one in use.
 

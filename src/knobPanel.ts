@@ -11,7 +11,7 @@
 
 import type { Algorithm, AlgorithmDef, CreateOptions } from './algorithm';
 import {
-  drawBounds, drawFrom, fixedGroups, formatRanges, isFixed, setFixed, setMax, setMin, setValue, share, startRange, step,
+  algorithmOptions, drawBounds, drawFrom, fixedGroups, formatRanges, isFixed, setFixed, setMax, setMin, setValue, share, startRange, step,
   type Knob, type UserRange, type Values,
 } from './knobs';
 import { movingAt, movingRange, type MovingValue } from './moving';
@@ -59,12 +59,20 @@ export class KnobPanel {
     private readonly enabled: boolean,
     private readonly seed: string,
     onDrawAgain: () => void,
+    algorithmNames: readonly string[] = [],
+    /** The algorithm held when the page loads (a known ?algo=), else undefined: the picker starts on it. */
+    held: string | undefined = undefined,
+    /** The picker moved: an algorithm's name to hold it, undefined to hand back to the sequencer. */
+    onPick: (name: string | undefined) => void = () => {},
   ) {
     this.root.classList.toggle('on', enabled);
     this.root.innerHTML = `
       <button type="button" class="fold" aria-expanded="true">knobs</button>
       <div class="body">
         <div class="head"></div>
+        <label class="pick" title="Hold one algorithm, or let the changes pick. Not remembered across loads."><span>Algorithm</span> <select data-do="algo">${
+          algorithmOptions(algorithmNames).map((o) => `<option value="${o.value}">${o.label}</option>`).join('')
+        }</select></label>
         <div class="buttons">
           <button type="button" data-do="again" title="Start this algorithm again now, every value drawn from your min..max">Draw again</button>
           <button type="button" data-do="copy" title="Copy every random knob's min and max, and every fixed value, as text">Copy</button>
@@ -83,6 +91,9 @@ export class KnobPanel {
     });
     this.root.querySelector('[data-do=again]')!.addEventListener('click', onDrawAgain);
     this.root.querySelector('[data-do=copy]')!.addEventListener('click', () => void this.copy());
+    const picker = this.root.querySelector<HTMLSelectElement>('[data-do=algo]')!;
+    if (held !== undefined && algorithmNames.includes(held)) picker.value = held;
+    picker.addEventListener('change', () => onPick(picker.value === '' ? undefined : picker.value));
     this.root.querySelector<HTMLInputElement>('[data-do=moves]')!.addEventListener('change', (e) => {
       this.setMovesOff((e.target as HTMLInputElement).checked);
     });

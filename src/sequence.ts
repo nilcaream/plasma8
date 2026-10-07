@@ -74,9 +74,28 @@ export class Sequencer {
   constructor(
     private readonly rng: Rng,
     startBar = 0,
-    readonly hold = false,
+    private held = false,
   ) {
     this.seg = { startBar, bars: rng.pick(PHRASES) };
+  }
+
+  get hold(): boolean {
+    return this.held;
+  }
+
+  /** Stops changing at once: whatever was prepared is dropped, and the algorithm that runs keeps running. */
+  engage(): void {
+    this.held = true;
+    this.next = undefined;
+  }
+
+  /** Starts changing again: a fresh phrase from the bar `beats` falls in, so the first change is a whole phrase away. */
+  release(beats: number): void {
+    this.held = false;
+    this.next = undefined;
+    this.run = undefined;
+    this.lastBeats = beats;
+    this.seg = { startBar: Math.floor(beats / BEATS_PER_BAR), bars: this.rng.pick(PHRASES) };
   }
 
   get segment(): Segment {
@@ -90,7 +109,7 @@ export class Sequencer {
 
   /** Bars left before the change, counting the bar under way. */
   barsLeft(beats: number): number {
-    if (this.hold) return Infinity;
+    if (this.held) return Infinity;
     return this.changeBar - Math.floor(beats / BEATS_PER_BAR);
   }
 
@@ -100,7 +119,7 @@ export class Sequencer {
 
   /** Call once a frame with the clock's beat count, its run and the intensity. */
   update(beats: number, run: number, intensity: number): SequenceStep {
-    if (this.hold) return { prepare: false, change: false, fade: 0 };
+    if (this.held) return { prepare: false, change: false, fade: 0 };
     const bar = Math.floor(beats / BEATS_PER_BAR);
     const fresh = this.run !== undefined && run !== this.run;
     const before = this.lastBeats;
