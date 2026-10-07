@@ -1,10 +1,47 @@
 import { describe, expect, it } from 'vitest';
 import { ALGORITHMS } from './algorithms';
-import { range } from './knobs';
-import { resizeMoving, rowTitle } from './knobPanel';
+import { julia, JULIA_MOVING_GROUPS, JULIA_MOVING_NAMES } from './algorithms/julia';
+import { plasma, PLASMA_MOVING_GROUPS, PLASMA_MOVING_NAMES } from './algorithms/plasma';
+import { tunnel, TUNNEL_MOVING_GROUPS, TUNNEL_MOVING_NAMES } from './algorithms/tunnel';
+import { warpNoise, WARP_NOISE_MOVING_GROUPS, WARP_NOISE_MOVING_NAMES } from './algorithms/warpNoise';
+import { formatRanges, isFixed, range, startRange } from './knobs';
+import { knobSections, resizeMoving, rowTitle } from './knobPanel';
 import { drawMoving, groupNames, movingAt } from './moving';
 import { hitTime } from './crossfader';
 import { createRng } from './rng';
+
+describe('knobSections', () => {
+  const ALL = [
+    { def: plasma, groups: PLASMA_MOVING_GROUPS, names: PLASMA_MOVING_NAMES },
+    { def: tunnel, groups: TUNNEL_MOVING_GROUPS, names: TUNNEL_MOVING_NAMES },
+    { def: warpNoise, groups: WARP_NOISE_MOVING_GROUPS, names: WARP_NOISE_MOVING_NAMES },
+    { def: julia, groups: JULIA_MOVING_GROUPS, names: JULIA_MOVING_NAMES },
+  ];
+
+  it('lists each moving group together in the order of its group list, then the values that never move, then the beat voices, and splits no group', () => {
+    for (const { def, groups, names } of ALL) {
+      const sections = knobSections(def.knobs.filter((k) => !isFixed(k)), def.movable);
+      const labels = sections.map((s) => def.movable![s[0]!.key] ?? (/^A\./.test(s[0]!.key) ? 'voices' : 'still'));
+      // one section per group, none twice: a group split in two would show up as a repeated label
+      expect(labels, def.name).toEqual([...names, 'still', 'voices']);
+      groups.forEach((group, i) => {
+        expect(sections[i]!.map((k) => k.key).sort(), `${def.name} ${names[i]}`).toEqual([...group.flat()].sort());
+      });
+      expect(sections[sections.length - 1]!.map((k) => k.key)).toEqual(['A.kick', 'A.snare', 'A.crash']);
+      // nothing lost or added: every drawn knob is in exactly one section
+      expect(sections.flat().map((k) => k.key).sort()).toEqual(def.knobs.filter((k) => !isFixed(k)).map((k) => k.key).sort());
+    }
+  });
+
+  it('is the order Copy prints', () => {
+    for (const { def } of ALL) {
+      const ranges = Object.fromEntries(def.knobs.map((k) => [k.key, startRange(k, 0)]));
+      const lines = formatRanges(def.name, def.knobs, ranges).split('\n').slice(1);
+      const drawn = def.knobs.filter((k) => !isFixed(k)).map((k) => k.key);
+      expect(lines.slice(0, drawn.length).map((l) => l.split(/\s+/)[0])).toEqual(knobSections(def.knobs.filter((k) => !isFixed(k)), def.movable).flat().map((k) => k.key));
+    }
+  });
+});
 
 describe('resizeMoving', () => {
   const knob = range('a', 10, 20, [0, 30]);

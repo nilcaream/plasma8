@@ -8,25 +8,33 @@ import source from './warpNoise.frag?raw';
 
 export const WARP_NOISE_NAME = 'domain-warped-noise';
 
-/** This run's own look: palette, scale, speeds, offsets and warp strength. palC is one base plus a small step per channel. */
+/**
+ * This run's own look: palette, scale, speeds, offsets and warp strength. palC is one base plus a small step per channel.
+ * Listed the way the debug panel shows them: the moving groups in the order of
+ * WARP_NOISE_MOVING_GROUPS, each together; then the values that never move; then the beat voices.
+ */
 export const WARP_NOISE_KNOBS: readonly Knob[] = [
+  // shape
+  range('scale', 1.402, 3.138, [0.4, 6]),
+  range('warp', 2.5, 4.5, [0, 8]),
+  // colour tone
   ...triple('palA', 0.5, 0.64, [0, 1]),
   range('palB.0', 0.14, 0.432, [0, 1]),
   range('palB.1', 0.14, 0.447, [0, 1]),
   range('palB.2', 0.14, 0.447, [0, 1]),
+  // colour pattern
   range('palCBase', 0.696, 1.215, [0, 3]),
   range('palCStep.0', -0.158, 0.151, [-0.6, 0.6]),
   range('palCStep.1', -0.151, 0.151, [-0.6, 0.6]),
   range('palCStep.2', -0.17, 0.145, [-0.6, 0.6]),
   ...triple('palD', 0, 1, [0, 1]),
-  range('scale', 1.402, 3.138, [0.4, 6]),
+  // never move
   range('speed.0', 0.033, 0.115, [0, 0.3]),
   range('speed.1', 0.04, 0.12, [0, 0.36]),
   range('offset.0', 0, 60, [0, 60]),
   range('offset.1', 0, 60, [0, 60]),
   range('offset2.0', 0, 60, [0, 60]),
   range('offset2.1', 0, 60, [0, 60]),
-  range('warp', 2.5, 4.5, [0, 8]),
   range('rotate', -0.03, 0.03, [-0.1, 0.1]),
   // how hard each beat voice flashes this run (the moving values follow the voices too)
   ...amountKnobs(),

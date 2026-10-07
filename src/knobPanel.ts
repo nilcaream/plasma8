@@ -48,6 +48,25 @@ const STEP_KNOB: Knob = fixed('step at intensity 1', STEP_AT_1, STEP_AT_1_RANGE,
 const SHARED_KNOBS: readonly Knob[] = [REACH_KNOB, STEP_KNOB];
 
 /**
+ * The drawn knobs as the panel lists them, in the order of the list: a section is a run of knobs of one moving
+ * group, then the run of values that never move, then the beat voices (A.*); the panel puts a rule between sections.
+ * A group that comes back later in the list is a section of its own: the algorithms list each group together.
+ */
+export function knobSections(knobs: readonly Knob[], movable: Readonly<Record<string, string>> = {}): Knob[][] {
+  const labelOf = (k: Knob): string => movable[k.key] ?? (/^A\./.test(k.key) ? '\0voices' : '\0still');
+  const sections: Knob[][] = [];
+  let label: string | undefined;
+  for (const k of knobs) {
+    if (labelOf(k) !== label) {
+      label = labelOf(k);
+      sections.push([]);
+    }
+    sections[sections.length - 1]!.push(k);
+  }
+  return sections;
+}
+
+/**
  * Moves the min or max of the sub-range a value moves in: the knob's own rules (min stays below max, both inside the
  * knob's span), then the value's sub-range follows. The walk keeps its unit position, so the value maps into the new range without a jump.
  */
@@ -186,7 +205,7 @@ export class KnobPanel {
     }
     this.tune();
     this.head.textContent = `${s.def.name}  seed ${this.seed}`;
-    if (!same) this.build([...s.def.knobs, ...SHARED_KNOBS]);
+    if (!same) this.build([...s.def.knobs, ...SHARED_KNOBS], s.def.movable);
     for (const r of this.rows) {
       const moving = this.moving.get(r.knob.key);
       const moves = moving !== undefined;
@@ -217,7 +236,7 @@ export class KnobPanel {
     return saved ? { ...saved, value } : startRange(knob, value);
   }
 
-  private build(knobs: readonly Knob[]): void {
+  private build(knobs: readonly Knob[], movable: Readonly<Record<string, string>> | undefined): void {
     this.list.textContent = '';
     const heading = (text: string, note: string): void => {
       const h = document.createElement('div');
@@ -226,7 +245,11 @@ export class KnobPanel {
       this.list.appendChild(h);
     };
     heading('Random per instance', 'drawn from min..max at every start');
-    const drawn = knobs.filter((k) => !isFixed(k)).map((k) => this.row(k));
+    const drawn: Row[] = [];
+    knobSections(knobs.filter((k) => !isFixed(k)), movable).forEach((section, i) => {
+      if (i > 0) this.list.appendChild(document.createElement('hr'));
+      drawn.push(...section.map((k) => this.row(k)));
+    });
     const kept: Row[] = [];
     for (const { group, knobs: inGroup } of fixedGroups(knobs)) {
       heading('Fixed in code', `${group}; the code's value to start`);

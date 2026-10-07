@@ -13,22 +13,27 @@ export const TUNNEL_NAME = 'tunnel';
  * spacing. The speed range is narrow, so the intensity, not the draw, says how
  * fast the dive goes. The ranges are the ones chosen on the debug panel. The
  * beat only flashes the picture, by the beat voices.
+ * Listed the way the debug panel shows them: the moving groups in the order of
+ * TUNNEL_MOVING_GROUPS, each together; then the values that never move; then the beat voices.
  */
 export const TUNNEL_KNOBS: readonly Knob[] = [
+  // far end: where it sits on screen (uv); the tube bends to it
+  range('farEnd.x', -0.271, 0.271, [-0.6, 0.6]),
+  range('farEnd.y', -0.271, 0.271, [-0.6, 0.6]),
+  // spiral
+  range('twist', -0.5, 0.5, [-0.5, 0.5]),
+  // colour tone
   ...triple('palA', 0.45, 0.6, [0, 1]),
   ...triple('palB', 0.35, 0.5, [0, 1]),
+  // colour pattern
   ...triple('palC', 0.6, 1.2, [0, 3]),
   ...triple('palD', 0, 1, [0, 1]),
-  // 2 is the round tube, 3..9 a polygon of that many sides
+  range('hueDrift', 0.024, 0.079, [0, 0.2]),
+  // never move; 2 sides is the round tube, 3..9 a polygon of that many sides
   int('sides', 2, 9, [0, 12]),
   range('speed', 1.136, 1.896, [0, 8]),
   range('ringGap', 0.481, 2.058, [0.2, 4]),
   int('ribs', 1, 14, [1, 32]),
-  range('twist', -0.5, 0.5, [-0.5, 0.5]),
-  range('hueDrift', 0.024, 0.079, [0, 0.2]),
-  // where the far end sits on screen (uv); the tube bends to it
-  range('farEnd.x', -0.271, 0.271, [-0.6, 0.6]),
-  range('farEnd.y', -0.271, 0.271, [-0.6, 0.6]),
   // how hard each beat voice flashes this run (the moving values follow the voices too)
   ...amountKnobs(),
   // fixed in code: the flash gain

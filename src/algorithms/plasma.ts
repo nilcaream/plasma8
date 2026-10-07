@@ -10,31 +10,41 @@ export const PLASMA_NAME = 'plasma';
 
 const TAU = 2 * Math.PI;
 
-/** This run's own look: palette, wave directions and frequencies, speeds, swirl, mode. */
+/**
+ * This run's own look: palette, wave directions and frequencies, speeds, swirl, mode.
+ * Listed the way the debug panel shows them: the moving groups in the order of
+ * PLASMA_MOVING_GROUPS, each together; then the values that never move; then the beat voices.
+ */
 export const PLASMA_KNOBS: readonly Knob[] = [
+  // zoom and twist
+  range('scale', 0.9, 1.8, [0.3, 4]),
+  range('swirl', -1.2, 1.2, [-3, 3]),
+  // ripples
+  range('freq.2', 2.872, 8.172, [0.5, 16]),
+  range('orbit.0', 0, 1.5, [0, 1.5]),
+  range('orbit.1', 0, 0.7, [0, 1.5]),
+  // stripes
+  range('dir1', 0, TAU, [0, TAU]),
+  range('dir2', 0, TAU, [0, TAU]),
+  range('freq.0', 1.891, 5.226, [0.5, 12]),
+  range('freq.1', 1.466, 6.25, [0.5, 12]),
+  // colour tone
   range('palA.0', 0.089, 0.868, [0, 1]),
   range('palA.1', 0.211, 0.853, [0, 1]),
   range('palA.2', 0.226, 0.868, [0, 1]),
   range('palB.0', 0.395, 1, [0, 1]),
   range('palB.1', 0.405, 1, [0, 1]),
   range('palB.2', 0.411, 1, [0, 1]),
+  // colour pattern
   ...triple('palC', 0.6, 1.4, [0, 3]),
   ...triple('palD', 0, 1, [0, 1]),
-  range('dir1', 0, TAU, [0, TAU]),
-  range('dir2', 0, TAU, [0, TAU]),
-  range('freq.0', 1.891, 5.226, [0.5, 12]),
-  range('freq.1', 1.466, 6.25, [0.5, 12]),
-  range('freq.2', 2.872, 8.172, [0.5, 16]),
+  range('cycles', 0.6, 1.3, [0.1, 3]),
+  // never move
   range('speed.0', 0.3, 0.843, [0, 2.5]),
   range('speed.1', 0.3, 0.882, [0, 2.5]),
   range('speed.2', 0.4, 1.1, [0, 3]),
   range('speed.3', 0.2, 0.8, [0, 2.5]),
-  range('orbit.0', 0, 1.5, [0, 1.5]),
-  range('orbit.1', 0, 0.7, [0, 1.5]),
-  range('scale', 0.9, 1.8, [0.3, 4]),
-  range('swirl', -1.2, 1.2, [-3, 3]),
   int('mode', 0, 2, [0, 2]),
-  range('cycles', 0.6, 1.3, [0.1, 3]),
   // how hard each beat voice flashes this run (the moving values follow the voices too)
   ...amountKnobs(),
   // fixed in code: the flash gain, and how the field moves with time (set on the debug panel)

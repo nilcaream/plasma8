@@ -10,21 +10,29 @@ export const JULIA_NAME = 'julia-kaleidoscope';
 
 const TAU = 2 * Math.PI;
 
-/** This run's own look: palette, wedges, where c sits and how it drifts, zoom, centre, spin. */
+/**
+ * This run's own look: palette, wedges, where c sits and how it drifts, zoom, centre, spin.
+ * Listed the way the debug panel shows them: the moving groups in the order of
+ * JULIA_MOVING_GROUPS, each together; then the values that never move; then the beat voices.
+ */
 export const JULIA_KNOBS: readonly Knob[] = [
+  // shape of the set
+  range('edge', 0.994, 1.15, [0.8, 1.15]),
+  range('wander', 0, 0.126, [0, 0.4]),
+  // framing
+  range('centreOff', 0, 0.353, [0, 1]),
+  // colour pattern
+  ...triple('palD', 0, 1, [0, 1]),
+  range('bands', 1.5, 5.101, [0.3, 10]),
+  // never move
   ...triple('palA', 0.45, 0.6, [0, 1]),
   ...triple('palB', 0.35, 0.5, [0, 1]),
   ...triple('palC', 0.7, 1.3, [0, 3]),
-  ...triple('palD', 0, 1, [0, 1]),
   range('centreAngle', 0, TAU, [0, TAU]),
-  range('centreOff', 0, 0.353, [0, 1]),
   int('segments', 3, 9, [1, 16]),
   range('theta', 1.093, 5.391, [0, TAU]),
-  range('edge', 0.994, 1.15, [0.8, 1.15]),
-  range('wander', 0, 0.126, [0, 0.4]),
   range('zoom', 1.311, 1.8, [0.4, 4]),
   range('spin', -0.05, 0.05, [-0.2, 0.2]),
-  range('bands', 1.5, 5.101, [0.3, 10]),
   // how hard each beat voice flashes this run (the moving values follow the voices too)
   ...amountKnobs(),
   // fixed in code: the flash gain, the glow's strength and how fast c drifts
