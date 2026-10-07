@@ -1,7 +1,7 @@
 import type { AlgorithmDef } from '../algorithm';
 import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
 import { drawBounds, drawKnobs, fixed, int, range, triple, vec, type Knob, type Values } from '../knobs';
-import { drawMoving, type MovingValue } from '../moving';
+import { drawMoving, groupNames, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './julia.frag?raw';
@@ -75,11 +75,15 @@ const boundsOf = (key: string): [number, number] => drawBounds(JULIA_KNOBS.find(
 export const drawJuliaMoving = (rng: Rng, bounds: (key: string) => readonly [number, number] = boundsOf): MovingValue[] =>
   drawMoving(JULIA_MOVING_GROUPS, bounds, rng, JULIA_MOVING_COUNT);
 
+/** What each of the groups changes on screen, in the order of JULIA_MOVING_GROUPS. */
+export const JULIA_MOVING_NAMES = ['shape of the set', 'framing', 'colour tone', 'colour pattern'] as const;
+
 export const julia: AlgorithmDef = {
   name: JULIA_NAME,
   home: 0.65,
   steadySpeed: true,
   knobs: JULIA_KNOBS,
+  movable: groupNames(JULIA_MOVING_GROUPS, JULIA_MOVING_NAMES),
   create: (gl, values, rng, options) =>
     shaderAlgorithm(gl, JULIA_NAME, source, juliaParams, values, relativeAmountsOf, options?.moves === false ? [] : drawJuliaMoving(rng, options?.bounds)),
 };

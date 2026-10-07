@@ -1,7 +1,7 @@
 import type { AlgorithmDef } from '../algorithm';
 import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
 import { drawBounds, drawKnobs, fixed, range, int, triple, unit, vec, type Knob, type Values } from '../knobs';
-import { drawMoving, type MovingValue } from '../moving';
+import { drawMoving, groupNames, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './plasma.frag?raw';
@@ -87,11 +87,15 @@ const boundsOf = (key: string): [number, number] => drawBounds(PLASMA_KNOBS.find
 export const drawPlasmaMoving = (rng: Rng, bounds: (key: string) => readonly [number, number] = boundsOf): MovingValue[] =>
   drawMoving(PLASMA_MOVING_GROUPS, bounds, rng);
 
+/** What each of the groups changes on screen, in the order of PLASMA_MOVING_GROUPS. */
+export const PLASMA_MOVING_NAMES = ['zoom and twist', 'ripples', 'stripes', 'colour tone', 'colour pattern'] as const;
+
 export const plasma: AlgorithmDef = {
   name: PLASMA_NAME,
   home: 0.35,
   steadySpeed: true,
   knobs: PLASMA_KNOBS,
+  movable: groupNames(PLASMA_MOVING_GROUPS, PLASMA_MOVING_NAMES),
   create: (gl, values, rng, options) =>
     shaderAlgorithm(gl, PLASMA_NAME, source, plasmaParams, values, relativeAmountsOf, options?.moves === false ? [] : drawPlasmaMoving(rng, options?.bounds)),
 };

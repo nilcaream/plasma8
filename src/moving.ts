@@ -29,6 +29,20 @@ export interface MovingValue {
  */
 export type MovingGroup = readonly (string | readonly string[])[];
 
+/**
+ * Every value a group list may move, by key, with the name of the group it is in
+ * (`names` is in the order of `groups`): what the debug panel marks on a knob
+ * that can move whether or not this instance moves it.
+ */
+export function groupNames(groups: readonly MovingGroup[], names: readonly string[]): Record<string, string> {
+  if (names.length !== groups.length) throw new Error(`${groups.length} moving groups but ${names.length} names`);
+  const out: Record<string, string> = {};
+  groups.forEach((group, i) => {
+    for (const key of group.flat()) out[key] = names[i]!;
+  });
+  return out;
+}
+
 /** N in `count` (at most the number of groups) different groups, one entry from each; each of its values gets its own sub-range and its own voice. */
 export function drawMoving(
   groups: readonly MovingGroup[],

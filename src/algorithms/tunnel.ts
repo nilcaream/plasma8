@@ -1,7 +1,7 @@
 import type { AlgorithmDef, FrameInputs } from '../algorithm';
 import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
 import { drawBounds, drawKnobs, fixed, int, range, triple, vec, type Knob, type Values } from '../knobs';
-import { drawMoving, type MovingGroup, type MovingValue } from '../moving';
+import { drawMoving, groupNames, type MovingGroup, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './tunnel.frag?raw';
@@ -92,11 +92,15 @@ const boundsOf = (key: string): [number, number] => drawBounds(TUNNEL_KNOBS.find
 export const drawTunnelMoving = (rng: Rng, bounds: (key: string) => readonly [number, number] = boundsOf): MovingValue[] =>
   drawMoving(TUNNEL_MOVING_GROUPS, bounds, rng, TUNNEL_MOVING_COUNT);
 
+/** What each of the groups changes on screen, in the order of TUNNEL_MOVING_GROUPS. */
+export const TUNNEL_MOVING_NAMES = ['far end', 'spiral', 'colour tone', 'colour pattern'] as const;
+
 export const tunnel: AlgorithmDef = {
   name: TUNNEL_NAME,
   home: 0.9,
   steadySpeed: true,
   knobs: TUNNEL_KNOBS,
+  movable: groupNames(TUNNEL_MOVING_GROUPS, TUNNEL_MOVING_NAMES),
   create: (gl, values, rng, options) =>
     shaderAlgorithm(gl, TUNNEL_NAME, source, tunnelParams, values, relativeAmountsOf, options?.moves === false ? [] : drawTunnelMoving(rng, options?.bounds), divePhases()),
 };

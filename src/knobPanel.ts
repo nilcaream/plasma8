@@ -41,6 +41,17 @@ interface Row {
 /** The one value every algorithm shares, listed after its own fixed values: how far the moving values reach at an intensity (src/crossfader.ts bandOf). 1 is a straight line. */
 const REACH_KNOB: Knob = fixed('reach power', REACH_POWER, REACH_POWER_RANGE, 'how intensity widens the moves');
 
+/**
+ * A knob's name line: a value that moves in this instance says which voice
+ * pushes it, one that only may move says "can move" (the quieter mark); both
+ * give the moving group they belong to.
+ */
+export function rowTitle(key: string, group: string | undefined, voice: string | undefined): string {
+  const where = group === undefined ? '' : `  · ${group}`;
+  if (voice !== undefined) return `${key}  (moves) ${voice}${where}`;
+  return group === undefined ? key : `${key}  (can move)${where}`;
+}
+
 const pct = (x: number): string => `${(x * 100).toFixed(2)}%`;
 const show = (v: number): string => (Number.isInteger(v) ? String(v) : v.toFixed(3));
 
@@ -161,8 +172,10 @@ export class KnobPanel {
     for (const r of this.rows) {
       const moving = this.moving.get(r.knob.key);
       const moves = moving !== undefined;
+      const group = s.def.movable?.[r.knob.key];
       r.el.classList.toggle('moving', moves);
-      r.name.textContent = moving ? `${r.knob.key}  (moves) ${moving.voice}` : r.knob.key;
+      r.el.classList.toggle('movable', !moves && group !== undefined);
+      r.name.textContent = rowTitle(r.knob.key, group, moving?.voice);
       for (const input of Object.values(r.inputs)) input.disabled = moves;
       this.paint(r);
     }

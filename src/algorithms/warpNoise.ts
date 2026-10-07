@@ -1,7 +1,7 @@
 import type { AlgorithmDef } from '../algorithm';
 import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
 import { drawBounds, drawKnobs, fixed, range, triple, vec, type Knob, type Values } from '../knobs';
-import { drawMoving, type MovingValue } from '../moving';
+import { drawMoving, groupNames, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
 import source from './warpNoise.frag?raw';
@@ -71,11 +71,15 @@ const boundsOf = (key: string): [number, number] => drawBounds(WARP_NOISE_KNOBS.
 export const drawWarpNoiseMoving = (rng: Rng, bounds: (key: string) => readonly [number, number] = boundsOf): MovingValue[] =>
   drawMoving(WARP_NOISE_MOVING_GROUPS, bounds, rng, WARP_NOISE_MOVING_COUNT);
 
+/** What each of the groups changes on screen, in the order of WARP_NOISE_MOVING_GROUPS. */
+export const WARP_NOISE_MOVING_NAMES = ['shape', 'colour tone', 'colour pattern'] as const;
+
 export const warpNoise: AlgorithmDef = {
   name: WARP_NOISE_NAME,
   home: 0.15,
   steadySpeed: true,
   knobs: WARP_NOISE_KNOBS,
+  movable: groupNames(WARP_NOISE_MOVING_GROUPS, WARP_NOISE_MOVING_NAMES),
   create: (gl, values, rng, options) =>
     shaderAlgorithm(gl, WARP_NOISE_NAME, source, warpNoiseParams, values, relativeAmountsOf, options?.moves === false ? [] : drawWarpNoiseMoving(rng, options?.bounds)),
 };
