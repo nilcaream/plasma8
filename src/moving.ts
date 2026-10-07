@@ -68,6 +68,64 @@ export function drawMoving(
   return out;
 }
 
+/**
+ * One "can move" list of an algorithm: when an instance starts, `pick` of its
+ * entries are drawn, without repeats and all equally likely. An entry is a
+ * knob's key, or the name that its sub-values share (`palD` is `palD.0`,
+ * `palD.1` and `palD.2`): a picked entry moves all of its knobs.
+ */
+export interface MovingList {
+  pick: number;
+  entries: readonly string[];
+}
+
+/** The knobs an entry stands for, in the order of `knobKeys`: the key itself, or every `entry.n`. */
+export function entryKeys(entry: string, knobKeys: readonly string[]): string[] {
+  const keys = knobKeys.filter((k) => k === entry || k.startsWith(`${entry}.`));
+  if (keys.length === 0) throw new Error(`moving entry "${entry}" names no knob`);
+  return keys;
+}
+
+/**
+ * What the debug panel marks on every knob a list may move (the list's number
+ * and how many it picks); `knobKeys` are the algorithm's knobs, so a name with sub-values marks each of them.
+ */
+export function listLabels(lists: readonly MovingList[], knobKeys: readonly string[]): Record<string, string> {
+  const out: Record<string, string> = {};
+  lists.forEach((list, i) => {
+    for (const entry of list.entries) for (const key of entryKeys(entry, knobKeys)) out[key] = `list ${i + 1}: pick ${list.pick} of ${list.entries.length}`;
+  });
+  return out;
+}
+
+/**
+ * From every list, `pick` different entries at random; each knob of a picked
+ * entry walks its knob's min..max (`bounds`) from a random start, with a voice
+ * and a walk of its own. Nothing outside the lists moves.
+ */
+export function drawLists(
+  lists: readonly MovingList[],
+  knobKeys: readonly string[],
+  bounds: (key: string) => readonly [number, number],
+  rng: Rng,
+): MovingValue[] {
+  const out: MovingValue[] = [];
+  for (const list of lists) {
+    if (list.pick > list.entries.length) throw new Error(`pick ${list.pick} of ${list.entries.length} entries`);
+    const rest = [...list.entries];
+    for (let i = 0; i < list.pick; i++) {
+      const entry = rest.splice(Math.floor(rng.next() * rest.length), 1)[0]!;
+      for (const key of entryKeys(entry, knobKeys)) {
+        const [min, max] = bounds(key);
+        const voice = rng.pick(VOICE_NAMES);
+        // the walk draws from a generator of its own, seeded here (its start is its first draw), so its steps while the page runs never touch `rng`
+        out.push({ key, min, max, voice, walk: new RandomWalk(createRng(Math.floor(rng.next() * 4294967296))) });
+      }
+    }
+  }
+  return out;
+}
+
 /** The power of the intensity that sets how long every moving value's step is; one value for all of them, set from the debug panel. */
 let reachPower = REACH_POWER;
 export const getReachPower = (): number => reachPower;
