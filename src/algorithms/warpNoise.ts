@@ -18,7 +18,7 @@ export const WARP_NOISE_KNOBS: readonly Knob[] = [
   range('warp', 2.5, 4.632, [0, 8]),
   range('offset2.1', 0, 7.26, [0, 60]),
   // never move
-  range('scale', 3.553, 5.294, [0.4, 6]),
+  range('scale', 2.461, 2.965, [0.4, 6]),
   ...triple('palA', 0.5, 0.64, [0, 1]),
   range('palB.0', 0.14, 0.432, [0, 1]),
   range('palB.1', 0.14, 0.447, [0, 1]),

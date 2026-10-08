@@ -5,7 +5,7 @@ import { WARP_NOISE_KNOBS, WARP_NOISE_MOVING, drawWarpNoiseMoving, drawWarpNoise
 
 /** The min and max of every random knob, and the value of the fixed one, as the debug panel's Copy gives them. */
 const FILE: Record<string, [number, number] | number> = {
-  scale: [3.553, 5.294], warp: [2.5, 4.632],
+  scale: [2.461, 2.965], warp: [2.5, 4.632],
   'palA.0': [0.5, 0.64], 'palA.1': [0.5, 0.64], 'palA.2': [0.5, 0.64],
   'palB.0': [0.14, 0.432], 'palB.1': [0.14, 0.447], 'palB.2': [0.14, 0.447],
   palCBase: [1.233, 1.878], 'palCStep.0': [-0.158, 0.151], 'palCStep.1': [-0.151, 0.151], 'palCStep.2': [-0.17, 0.145],
@@ -34,8 +34,8 @@ describe('drawWarpNoiseParams', () => {
       const scale = p.u_scale as number;
       const warp = p.u_warp as number;
       const [flow, warpSpeed] = p.u_speed as number[];
-      expect(scale).toBeGreaterThanOrEqual(3.553);
-      expect(scale).toBeLessThan(5.294);
+      expect(scale).toBeGreaterThanOrEqual(2.461);
+      expect(scale).toBeLessThan(2.965);
       expect(warp).toBeGreaterThanOrEqual(2.5);
       expect(warp).toBeLessThan(4.632);
       expect(flow).toBeLessThan(0.114);
