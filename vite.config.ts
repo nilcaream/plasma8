@@ -4,7 +4,7 @@ export default defineConfig({
   server: { host: '127.0.0.1' },
   build: {
     target: 'es2022',
-    // the graph pages ship at /beats/, /harmonics/, /crossfader/ and /random-walk/, linked from nowhere
+    // the graph pages ship at /beats/, /harmonics/, /crossfader/, /random-walk/ and /tempo/, linked from nowhere
     rolldownOptions: {
       input: {
         main: 'index.html',
@@ -12,6 +12,7 @@ export default defineConfig({
         harmonics: 'harmonics/index.html',
         crossfader: 'crossfader/index.html',
         randomWalk: 'random-walk/index.html',
+        tempo: 'tempo/index.html',
       },
     },
   },

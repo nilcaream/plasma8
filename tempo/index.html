@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tempo from the microphone</title>
+<link rel="icon" href="data:,">
+<style>
+  :root {
+    --bg: #f6f6f4;
+    --panel: #ffffff;
+    --fg: #1d1d1f;
+    --muted: #6b6b70;
+    --grid: #e2e2e0;
+    --beat: #b9b9b6;
+    --kick: #d0452f;
+    --snare: #2f7ad0;
+    --crash: #c08a00;
+    --total: #1d1d1f;
+    --light: #7a3fc4;
+    --play: #1a9a5a;
+    --band: rgba(26, 154, 90, 0.10);
+    --border: #dcdcd8;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151517;
+      --panel: #1f1f22;
+      --fg: #ececee;
+      --muted: #9a9aa2;
+      --grid: #2e2e33;
+      --beat: #4a4a52;
+      --kick: #ff6f57;
+      --snare: #5aa2ff;
+      --crash: #f2c14e;
+      --total: #f4f4f6;
+      --light: #b98cff;
+      --play: #3fd68a;
+      --band: rgba(63, 214, 138, 0.12);
+      --border: #34343a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 20px 16px 40px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: 20px;
+  }
+  @media (max-width: 860px) {
+    main { grid-template-columns: minmax(0, 1fr); }
+    .side { order: -1; }
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; grid-column: 1 / -1; }
+  .sub { color: var(--muted); margin: 0; grid-column: 1 / -1; }
+  section {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    min-width: 0;
+  }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); margin: 0 0 8px; }
+  .graphs { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  canvas { display: block; width: 100%; }
+  #onsetCanvas { height: 220px; }
+  #combCanvas { height: 170px; }
+  #wideCanvas { height: 150px; }
+  #historyCanvas { height: 200px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 6px; color: var(--muted); font-size: 13px; }
+  .legend span::before {
+    content: ""; display: inline-block; width: 18px; height: 3px; margin-right: 6px; vertical-align: middle;
+    background: var(--c); border-radius: 2px;
+  }
+  .legend .thick::before { height: 5px; }
+  .legend .dot::before { width: 9px; height: 9px; border-radius: 50%; }
+  .side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  button { font: inherit; padding: 3px 10px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
+  .buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+  .buttons button { padding: 8px 14px; font-weight: 600; touch-action: manipulation; }
+  #arm[aria-pressed="true"] { background: var(--kick); border-color: var(--kick); color: var(--panel); }
+  #bpm { font-size: 52px; font-weight: 700; line-height: 1.05; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+  #bpm.held, #bpm.none { color: var(--muted); }
+  #plusminus { color: var(--muted); font-variant-numeric: tabular-nums; min-height: 1.45em; }
+  /* three lines held, so the buttons under it never move while the text changes */
+  #status { margin: 6px 0 10px; height: 4.35em; overflow: hidden; }
+  .meter { height: 8px; background: var(--grid); border-radius: 4px; overflow: hidden; }
+  .meter i { display: block; height: 100%; width: 0; background: var(--play); }
+  .meter-row { display: grid; grid-template-columns: 90px minmax(0, 1fr) 56px; gap: 8px; align-items: center; margin: 6px 0; font-variant-numeric: tabular-nums; }
+  .meter-row output { text-align: right; color: var(--muted); }
+  fieldset { border: 0; margin: 0; padding: 0; }
+  fieldset label { display: block; margin: 4px 0; }
+  fieldset .note { color: var(--muted); font-size: 12px; margin: 0 0 4px 22px; }
+  .facts { color: var(--muted); font-size: 12px; margin: 0; white-space: pre-wrap; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Tempo from the microphone</h1>
+  <p class="sub">Listens to the room and reads the tempo of electronic music between 110 and 150 BPM. A breakbeat whose snare only lands on 2 and 4 still reads the full tempo. Arm it, play music near the microphone, and watch the reading settle.</p>
+
+  <div class="graphs">
+    <section>
+      <h2>Onsets: the last 8 seconds</h2>
+      <canvas id="onsetCanvas"></canvas>
+      <div class="legend">
+        <span class="thick" style="--c: var(--total)">onset strength</span>
+        <span class="dot" style="--c: var(--kick)">peak on the beat grid</span>
+        <span class="dot" style="--c: var(--muted)">peak off the grid</span>
+        <span style="--c: var(--beat)">fitted beats (and half beats)</span>
+      </div>
+    </section>
+    <section>
+      <h2>Tempo candidates: comb score, 106&ndash;154 BPM</h2>
+      <canvas id="combCanvas"></canvas>
+      <div class="legend">
+        <span class="thick" style="--c: var(--snare)">comb score</span>
+        <span style="--c: var(--play)">the reading</span>
+      </div>
+    </section>
+    <section>
+      <h2>Periodicity over a wide range: where the raw beat energy is</h2>
+      <canvas id="wideCanvas"></canvas>
+      <div class="legend">
+        <span class="thick" style="--c: var(--light)">autocorrelation at the period of each tempo</span>
+        <span style="--c: var(--play)">reading, &times;&frac12; and &times;2</span>
+      </div>
+    </section>
+    <section>
+      <h2>The reading over time</h2>
+      <canvas id="historyCanvas"></canvas>
+      <div class="legend">
+        <span class="thick" style="--c: var(--kick)">grid fit</span>
+        <span class="thick" style="--c: var(--snare)">comb</span>
+        <span class="thick" style="--c: var(--crash)">interval histogram</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="side">
+    <section>
+      <h2>Listen</h2>
+      <div id="bpm" class="none">&ndash;&ndash;&ndash;.&ndash;&ndash;</div>
+      <div id="plusminus"></div>
+      <div id="status">Off. Arm to open the microphone.</div>
+      <div class="buttons">
+        <button id="arm" type="button" aria-pressed="false">Arm</button>
+        <button id="reset" type="button">Reset</button>
+      </div>
+      <div class="meter-row"><span>confidence</span><div class="meter"><i id="confidence"></i></div><output id="confidenceText"></output></div>
+      <div class="meter-row"><span>input level</span><div class="meter"><i id="level"></i></div><output id="levelText"></output></div>
+    </section>
+    <section>
+      <h2>Method</h2>
+      <fieldset id="methods">
+        <label><input type="radio" name="method" value="grid" checked> Grid fit</label>
+        <p class="note">The comb's tempo, refined by a straight line through the onsets on the beat grid, over up to 32 s. The most precise.</p>
+        <label><input type="radio" name="method" value="comb"> Comb</label>
+        <p class="note">The best candidate of the comb above, from the last 12 s.</p>
+        <label><input type="radio" name="method" value="ioi"> Interval histogram</label>
+        <p class="note">The most common time between onsets, folded into the range. Simple; slow to follow a tempo change.</p>
+      </fieldset>
+    </section>
+    <section>
+      <h2>Microphone</h2>
+      <p id="facts" class="facts">Not open.</p>
+    </section>
+  </div>
+</main>
+<script type="module" src="/src/tempoPage.ts"></script>
+</body>
+</html>
