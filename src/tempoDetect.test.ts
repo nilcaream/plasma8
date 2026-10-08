@@ -18,10 +18,12 @@ describe('Fft', () => {
 });
 
 // The floor of the bench (src/tempoBench.ts): the cases that carry the octave rules, the range's
-// edges, a fractional tempo, the 4:3 trap and the hold through a breakdown, 20 s each.
+// edges, a fractional tempo, the 3:2 and 4:3 traps with the shuffles that could fool the metre test,
+// and the hold through a breakdown, 20 s each.
 const FLOOR = [
   'snare only 130', 'kick half 130', 'synco kick 130', 'hats 8ths 130', 'hats 16ths 130', 'H half-time 140',
   'breakA 141.7', '4floor 110', '4floor 150', 'snare only 150', 'H dotted arp 110 weak drums', 'H phone breakB 130 babble',
+  'S 4floor 95', 'S snare only 95', 'H dotted arp 140 breakA', 'S dotted arp 105 breakA', 'S shuffle 128 (triplet 16ths)', 'S shuffle breakA 100',
 ];
 
 describe('TempoDetector', () => {
@@ -36,6 +38,18 @@ describe('TempoDetector', () => {
       for (const m of ['comb', 'ioi'] as const) expect(Math.abs(score(trace, m, spec).err)).toBeLessThan(0.2);
     });
   }
+
+  it('hears the beat of music busy with 16ths off the half-beat grid, and none in a breakdown', () => {
+    const beats = (name: string, from: number, to: number): number => {
+      const seen: boolean[] = [];
+      run(CASES.find((c) => c.name === name)!.spec, 0.25, (a, t) => { if (a && t >= from && t <= to) seen.push(a.beat); });
+      return seen.filter(Boolean).length / seen.length;
+    };
+    // half the onset strength or less on the half beats, almost all on the 16ths
+    expect(beats('H everything breakA 133', 8, 30)).toBeGreaterThan(0.9);
+    // the drums stop at 8 s: from 15 s the last 6 s hold nothing but the pad
+    expect(beats('C long breakdown 128 (8-22 s)', 15, 21)).toBe(0);
+  });
 
   it('holds the reading through a breakdown', () => {
     const spec = CASES.find((c) => c.name === 'C long breakdown 128 (8-22 s)')!.spec;

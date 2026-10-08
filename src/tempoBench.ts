@@ -51,6 +51,14 @@ export const CASES: BenchCase[] = [
   { name: 'H synco kick 117 phone room', spec: { bpm: 117, seconds: S, pattern: PATTERNS.syncoKick, phoneMic: true, reverb: 0.8, reverbTime: 1.2, velocityDb: 3, seed: 39 } },
   { name: 'H everything breakA 133', spec: { bpm: 133, seconds: S, pattern: PATTERNS.breakA, phoneMic: true, reverb: 0.7, noise: 1.5, babble: 1.5, dottedArpDb: -3, pad: true, jitterMs: 3, velocityDb: 4, seed: 40 } },
   { name: 'H everything 4floor 112.6', spec: { bpm: 112.6, seconds: S, pattern: PATTERNS.fourFloorFull, phoneMic: true, reverb: 0.7, noise: 1.5, babble: 1.5, stabsDb: -3, pad: true, velocityDb: 4, seed: 41 } },
+  // the slow end, 95–110, where 3:2 and 4:3 relatives fall inside the range; triplet shuffles divide the beat in three
+  { name: 'S 4floor 95', spec: { bpm: 95, seconds: S, pattern: PATTERNS.fourFloor, velocityDb: 3, seed: 71 } },
+  { name: 'S snare only 95', spec: { bpm: 95, seconds: S, pattern: PATTERNS.snareOnly, velocityDb: 3, seed: 72 } },
+  { name: 'S breakB 100 phone', spec: { bpm: 100, seconds: S, pattern: PATTERNS.breakB, phoneMic: true, velocityDb: 3, seed: 73 } },
+  { name: 'S dotted arp 105 breakA', spec: { bpm: 105, seconds: S, pattern: PATTERNS.breakA, dottedArpDb: 0, drumsDb: -6, velocityDb: 3, seed: 74 } },
+  { name: 'S everything 4floor 107.3', spec: { bpm: 107.3, seconds: S, pattern: PATTERNS.fourFloorFull, phoneMic: true, reverb: 0.7, noise: 1.5, babble: 1.5, dottedArpDb: -3, pad: true, velocityDb: 4, seed: 75 } },
+  { name: 'S shuffle 128 (triplet 16ths)', spec: { bpm: 128, seconds: S, pattern: PATTERNS.fourFloorFull, swing: 1 / 3, velocityDb: 3, seed: 76 } },
+  { name: 'S shuffle breakA 100', spec: { bpm: 100, seconds: S, pattern: PATTERNS.breakA, swing: 1 / 3, velocityDb: 3, seed: 77 } },
   // the music changes under the detector
   { name: 'C long breakdown 128 (8-22 s)', spec: { bpm: 128, seconds: 40, pattern: PATTERNS.fourFloorFull, pad: true, breakdown: [8, 22], velocityDb: 3, seed: 51 } },
   { name: 'C jump 128 to 135 at 15 s', spec: { bpm: 128, seconds: 40, pattern: PATTERNS.fourFloor, change: { at: 15, bpm: 135, over: 0 }, velocityDb: 3, seed: 52 } },

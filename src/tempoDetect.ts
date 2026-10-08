@@ -1,5 +1,5 @@
 /**
- * Tempo from an onset envelope, for the /tempo/ page: 110–150 BPM, octave
+ * Tempo from an onset envelope, for the /tempo/ page: 95–150 BPM, octave
  * safe. Three readings come out of one analysis:
  *
  * - comb: the autocorrelation of each band's envelope over the last
@@ -7,7 +7,9 @@
  *   four multiples of every candidate beat period in the range. A snare on
  *   2 and 4 only (half the beat rate) still lands on the 2nd and 4th teeth of
  *   the true tempo's comb, and on no comb of any other tempo in the range,
- *   because the range is less than an octave wide.
+ *   because the range is less than an octave wide. A 3:2 or 4:3 relative
+ *   inside the range is weighed against the winner by how their periods
+ *   divide: the beat in two and four, its relative in three.
  * - grid: the comb's tempo refined by a weighted least-squares line through
  *   the picked onset peaks on a half-beat grid, grown from the last 4 s to
  *   the last FIT_SECONDS, like the tap clock's line through taps.
@@ -17,10 +19,10 @@
 
 import { BANDS, OnsetEnvelope } from './onsets';
 
-export const MIN_BPM = 110;
+export const MIN_BPM = 95;
 export const MAX_BPM = 150;
 /** The candidates reach a little past the range, so its edges are found like any tempo inside. */
-export const SEARCH_LO = 106;
+export const SEARCH_LO = 91;
 export const SEARCH_HI = 154;
 const SEARCH_STEP = 0.05;
 /** The comb's rival candidate is the best one at least this far from the winner. */
@@ -30,6 +32,11 @@ const COMB_SECONDS = 12;
 const SHORT_COMB_SECONDS = 5;
 const FIT_SECONDS = 32;
 const HISTORY_SECONDS = 34;
+/** The tempo relations the comb cannot tell apart by its teeth alone, and the share of the winner's score a relative needs to be weighed. */
+const RELATIVES = [4 / 3, 3 / 4, 3 / 2, 2 / 3];
+const RELATIVE_SHARE = 0.5;
+/** How much more summed band autocorrelation at a half and a quarter period, less a third, a relative needs to take over. */
+const METRE_LEAD = 0.3;
 /** Weights of the comb's teeth at 1, 2, 3 and 4 beat periods. */
 const TEETH = [1, 1, 0.6, 0.6];
 /** Before this much envelope there is no reading. */
@@ -37,7 +44,10 @@ const MIN_SECONDS = 2.5;
 const PEAK_HALF = 0.05;
 const PEAK_K = 0.5;
 const LOCAL_SECONDS = 1;
-/** The first stage is also the beat test, long enough for a snare on 2 and 4 at 110 to hit 5 times. */
+/** The beat test's other way through: this share of the onset strength within SIXTEENTH_TOL seconds of the 16ths. */
+const SIXTEENTH_SHARE = 0.7;
+const SIXTEENTH_TOL = 0.015;
+/** The first stage is also the beat test, long enough for a snare on 2 and 4 at 95 to hit 4 times. */
 const FIT_STAGES = [6, 12, 24, 32];
 /** Wide view for the page: from this BPM to WIDE_HI, log-spaced. */
 export const WIDE_LO = 50;
@@ -174,10 +184,28 @@ export class TempoDetector {
       score[c] = w > 0 ? s / w : 0;
       if (score[c]! > score[best]!) best = c;
     }
+    // a 3:2 or 4:3 relative of the beat collects the same hits on its teeth (a dotted-eighth riff, a beat played in threes):
+    // between the two, the beat is the one whose period divides in two and four rather than in three
+    const metre = (c: number): number => {
+      const period = (60 * rate) / combBpm(c);
+      return bandAcf.reduce((s, r) => s + at(r, period / 2) + at(r, period / 4) - at(r, period / 3), 0);
+    };
+    const winner = best;
+    const relatives = RELATIVES.map((q) => peakNear(score, combBpm(winner) * q)).filter((c) => c >= 0 && score[c]! >= RELATIVE_SHARE * score[winner]!);
+    const leads = relatives.map((c) => metre(c) - metre(winner));
+    const top = leads.indexOf(Math.max(...leads));
+    if (top >= 0 && leads[top]! > METRE_LEAD) best = relatives[top]!;
+    // the ones the test ruled out: the old winner when it lost, every relative that lost to the winner
+    const explained = relatives.filter((_, i) => leads[i]! < -METRE_LEAD);
+    if (best !== winner) explained.push(winner);
     const reading = combBpm(best) + SEARCH_STEP * parabola(score, best);
-    // the margin of the best candidate over the best one at least MARGIN_BPM away, as a share of the best
+    // the margin of the best candidate over the best one at least MARGIN_BPM away, as a share of the best;
+    // a relative the metre test ruled out is no rival
     let rival = -Infinity;
-    for (let c = 0; c < COMB_POINTS; c++) if (Math.abs(c - best) * SEARCH_STEP >= MARGIN_BPM) rival = Math.max(rival, score[c]!);
+    for (let c = 0; c < COMB_POINTS; c++) {
+      if (Math.abs(c - best) * SEARCH_STEP < MARGIN_BPM || explained.some((e) => Math.abs(c - e) * SEARCH_STEP < MARGIN_BPM)) continue;
+      rival = Math.max(rival, score[c]!);
+    }
     const margin = score[best]! > 0 ? Math.max(0, Math.min(1, (score[best]! - Math.max(0, rival)) / score[best]!)) : 0;
     return { acf, bandAcf, score, reading, margin };
   }
@@ -240,6 +268,26 @@ function at(r: Float64Array, lag: number): number {
   if (i < 0 || i + 1 >= r.length) return 0;
   const f = lag - i;
   return r[i]! * (1 - f) + r[i + 1]! * f;
+}
+
+/** Share of the peaks' strength within SIXTEENTH_TOL of t = phase + k·sixteenth. */
+function sixteenthShare(peaks: Peak[], phase: number, sixteenth: number): number {
+  let on = 0, all = 0;
+  for (const p of peaks) {
+    const e = p.t - phase - Math.round((p.t - phase) / sixteenth) * sixteenth;
+    all += p.strength;
+    if (Math.abs(e) <= SIXTEENTH_TOL) on += p.strength;
+  }
+  return on / Math.max(1e-12, all);
+}
+
+/** The comb candidate with the highest score within 1.5 % of bpm, when that is a local maximum inside the search range; else -1. */
+function peakNear(score: Float64Array, bpm: number): number {
+  const lo = Math.max(1, Math.ceil((bpm * 0.985 - SEARCH_LO) / SEARCH_STEP));
+  const hi = Math.min(score.length - 2, Math.floor((bpm * 1.015 - SEARCH_LO) / SEARCH_STEP));
+  let c = -1;
+  for (let i = lo; i <= hi; i++) if (c < 0 || score[i]! > score[c]!) c = i;
+  return c >= 0 && score[c]! >= score[c - 1]! && score[c]! >= score[c + 1]! ? c : -1;
 }
 
 /** Offset in steps of the vertex of the parabola through i-1, i, i+1. */
@@ -393,8 +441,10 @@ export function fitGrid(peaks: Peak[], period0: number, now: number): GridFit | 
     const wide = Math.min(0.15 * half, tol + drift);
     const use = peaks.filter((p) => p.t > now - seconds);
     let line = fitLine(use, phase, half, wide, off);
-    // the first stage is the beat test: enough hits on the grid in the last seconds, most of the strength
-    if (!line || line.n < (fit ? 6 : 4) || (!fit && line.inW < 0.5 * line.allW)) break;
+    // the first stage is the beat test: enough hits on the grid in the last seconds, most of the strength on it,
+    // or, for music busy with 16ths, most of it on the 16ths of the line
+    if (!line || line.n < (fit ? 6 : 4)) break;
+    if (!fit && line.inW < 0.5 * line.allW && sixteenthShare(use, phase + line.a, line.b / 2) < SIXTEENTH_SHARE) break;
     // once more without the hits far off the first line (claps, ghost notes)
     const trimmed = fitLine(use, phase + line.a, line.b, Math.max(0.004, Math.min(wide, 3 * line.scale)), line.offOdd);
     if (trimmed && trimmed.n >= 4 && trimmed.inW >= 0.7 * line.inW) line = { ...trimmed, a: trimmed.a + line.a, allW: line.allW };

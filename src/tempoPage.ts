@@ -357,7 +357,8 @@ function drawComb(): void {
   let lo = 0, hi = 0.5;
   if (a) for (const v of a.combScore) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
   const xTicks: Tick[] = [];
-  for (let b = 110; b <= 150; b += s.w < 600 ? 10 : 5) xTicks.push({ x: b, label: String(b), strong: b === MIN_BPM || b === MAX_BPM });
+  if (s.w < 600) for (const b of [MIN_BPM, 110, 130, MAX_BPM]) xTicks.push({ x: b, label: String(b), strong: b === MIN_BPM || b === MAX_BPM });
+  else for (let b = MIN_BPM; b <= MAX_BPM; b += 5) xTicks.push({ x: b, label: String(b), strong: b === MIN_BPM || b === MAX_BPM });
   const { X, Y } = frame(s, SEARCH_LO, SEARCH_HI, lo, hi * 1.05, xTicks, [lo, 0, hi].filter((v, i, xs) => xs.indexOf(v) === i), 2);
   shadeOutside(s, X, Y, MIN_BPM, MAX_BPM, lo, hi * 1.05, SEARCH_LO, SEARCH_HI);
   if (!a) return;
@@ -378,7 +379,7 @@ function drawWide(): void {
   const L = Math.log2;
   let lo = 0, hi = 0.5;
   if (a) for (const v of a.wide) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
-  const labels = s.w < 600 ? [55, 75, 110, 150, 220, 300] : [55, 65, 75, 90, 110, 130, 150, 180, 220, 260, 300];
+  const labels = s.w < 600 ? [55, 75, 95, 150, 220, 300] : [55, 65, 75, 95, 110, 130, 150, 180, 220, 260, 300];
   const xTicks: Tick[] = labels.map((b) => ({ x: L(b), label: String(b), strong: b === MIN_BPM || b === MAX_BPM }));
   const { X, Y } = frame(s, L(WIDE_LO), L(WIDE_HI), lo, hi * 1.05, xTicks, [lo, 0, hi].filter((v, i, xs) => xs.indexOf(v) === i), 2);
   shadeOutside(s, X, Y, L(MIN_BPM), L(MAX_BPM), lo, hi * 1.05, L(WIDE_LO), L(WIDE_HI));
