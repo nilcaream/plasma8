@@ -26,6 +26,8 @@ const SEARCH_STEP = 0.05;
 /** The comb's rival candidate is the best one at least this far from the winner. */
 const MARGIN_BPM = 2;
 const COMB_SECONDS = 12;
+/** The comb that seeds the grid when the long one's tempo finds no grid (a tempo change). */
+const SHORT_COMB_SECONDS = 5;
 const FIT_SECONDS = 32;
 const HISTORY_SECONDS = 34;
 /** Weights of the comb's teeth at 1, 2, 3 and 4 beat periods. */
@@ -129,13 +131,10 @@ export class TempoDetector {
     return out;
   }
 
-  analyse(): Analysis | null {
+  /** Per-band autocorrelation of the last `seconds`, normalised and summed, and the comb over the candidates on it. */
+  private comb(seconds: number) {
     const rate = this.rate;
-    if (this.total < MIN_SECONDS * rate) return null;
-    const time = this.total / rate;
-
-    // --- periodicity: per-band autocorrelation, normalised, summed -----------------
-    const nc = Math.min(this.total, Math.round(COMB_SECONDS * rate), this.cap);
+    const nc = Math.min(this.total, Math.round(seconds * rate), this.cap);
     const maxLag = Math.min(nc - 1, Math.ceil((TEETH.length * 60 * rate) / SEARCH_LO) + 2);
     const acf = new Float64Array(maxLag + 1);
     const bandAcf: Float64Array[] = [];
@@ -157,15 +156,7 @@ export class TempoDetector {
         acf[l]! += r[l]!;
       }
     }
-    const at = (r: Float64Array, lag: number): number => {
-      const i = Math.floor(lag);
-      if (i < 0 || i + 1 >= r.length) return 0;
-      const f = lag - i;
-      return r[i]! * (1 - f) + r[i + 1]! * f;
-    };
-
-    // --- comb over the candidates ---------------------------------------------------
-    const combScore = new Float64Array(COMB_POINTS);
+    const score = new Float64Array(COMB_POINTS);
     let best = 0;
     for (let c = 0; c < COMB_POINTS; c++) {
       const period = (60 * rate) / combBpm(c);
@@ -176,14 +167,23 @@ export class TempoDetector {
         s += TEETH[k]! * at(acf, lag);
         w += TEETH[k]!;
       }
-      combScore[c] = w > 0 ? s / w : 0;
-      if (combScore[c]! > combScore[best]!) best = c;
+      score[c] = w > 0 ? s / w : 0;
+      if (score[c]! > score[best]!) best = c;
     }
-    const combReading = combBpm(best) + SEARCH_STEP * parabola(combScore, best);
+    const reading = combBpm(best) + SEARCH_STEP * parabola(score, best);
     // the margin of the best candidate over the best one at least MARGIN_BPM away, as a share of the best
     let rival = -Infinity;
-    for (let c = 0; c < COMB_POINTS; c++) if (Math.abs(c - best) * SEARCH_STEP >= MARGIN_BPM) rival = Math.max(rival, combScore[c]!);
-    const margin = combScore[best]! > 0 ? Math.max(0, Math.min(1, (combScore[best]! - Math.max(0, rival)) / combScore[best]!)) : 0;
+    for (let c = 0; c < COMB_POINTS; c++) if (Math.abs(c - best) * SEARCH_STEP >= MARGIN_BPM) rival = Math.max(rival, score[c]!);
+    const margin = score[best]! > 0 ? Math.max(0, Math.min(1, (score[best]! - Math.max(0, rival)) / score[best]!)) : 0;
+    return { acf, bandAcf, score, reading, margin };
+  }
+
+  analyse(): Analysis | null {
+    const rate = this.rate;
+    if (this.total < MIN_SECONDS * rate) return null;
+    const time = this.total / rate;
+
+    const { acf, bandAcf, score: combScore, reading: combReading, margin } = this.comb(COMB_SECONDS);
 
     const wide = new Float64Array(WIDE_POINTS);
     for (let i = 0; i < WIDE_POINTS; i++) wide[i] = at(acf, (60 * rate) / wideBpm(i));
@@ -206,8 +206,16 @@ export class TempoDetector {
     const odfStart = (this.total - nf) / rate;
 
     const peaks = pickPeaks(odf, rate, odfStart);
-    const grid = fitGrid(peaks, 60 / combReading, time);
-    const gridOk = grid !== null && Math.abs(grid.bpm - combReading) < 1.5;
+    let grid = fitGrid(peaks, 60 / combReading, time);
+    let gridOk = grid !== null && Math.abs(grid.bpm - combReading) < 1.5;
+    if (!gridOk && this.total > SHORT_COMB_SECONDS * rate) {
+      // after a tempo change the long comb still holds the old tempo for a few seconds: seed from the short one
+      const short = this.comb(SHORT_COMB_SECONDS).reading;
+      if (Math.abs(short - combReading) >= 1) {
+        const again = fitGrid(peaks, 60 / short, time);
+        if (again && Math.abs(again.bpm - short) < 1.5) { grid = again; gridOk = true; }
+      }
+    }
     const ioi = ioiTempo(peaks);
 
     // no hits on a beat grid lately (a breakdown, talk, silence): every method keeps its last reading with a beat
@@ -219,6 +227,14 @@ export class TempoDetector {
     const confidence = beat ? Math.min(1, (gridOk ? grid!.onGridShare : 0.25) / 0.5) * Math.min(1, margin / 0.2) : 0;
     return { time, beat, readings, grid: gridOk ? grid : null, combScore, wide, odf, odfStart, rate, peaks, confidence };
   }
+}
+
+/** r at a fractional lag, by a straight line between its neighbours. */
+function at(r: Float64Array, lag: number): number {
+  const i = Math.floor(lag);
+  if (i < 0 || i + 1 >= r.length) return 0;
+  const f = lag - i;
+  return r[i]! * (1 - f) + r[i + 1]! * f;
 }
 
 /** Offset in steps of the vertex of the parabola through i-1, i, i+1. */
