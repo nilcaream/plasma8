@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { CASES, run, score } from './tempoBench';
+import { TempoDetector } from './tempoDetect';
+import { render } from './tempoSynth';
 import { Fft } from './tempoFft';
 
 describe('Fft', () => {
@@ -42,6 +44,25 @@ describe('TempoDetector', () => {
     // within 0.5 BPM from the first reading on, the 14 s without drums included
     expect(s.settle05).toBeLessThan(3);
   });
+
+  // The synth's beats sit at -offset + k·60/bpm: the grid's beat must land on one of them within a few ms.
+  // Kicks 3-3-2 alone and 8th hats alone put as much on the off-beats as on the beats: there only the half beat is checked.
+  const BEATS: [string, boolean][] = [
+    ['4floor 128', true], ['snare only 130', true], ['kick half 130', true], ['breakA 141.7', true], ['H half-time 140', true],
+    ['H phone breakB 130 babble', true], ['synco kick 130', false], ['hats 8ths 130', false],
+  ];
+  for (const [name, parity] of BEATS) {
+    it(`puts the beat of ${name} on the synth's ${parity ? 'beat' : 'half beat'}`, () => {
+      const spec = { ...CASES.find((c) => c.name === name)!.spec, seconds: 20, offset: 0.37 };
+      const det = new TempoDetector(spec.fs ?? 48000);
+      const audio = render(spec);
+      for (let i = 0; i < audio.length; i += 2048) det.push(audio.subarray(i, Math.min(audio.length, i + 2048)));
+      const g = det.analyse()!.grid!;
+      const period = 60 / spec.bpm / (parity ? 1 : 2);
+      const e = (g.beat + spec.offset) / period;
+      expect(Math.abs(e - Math.round(e)) * period).toBeLessThan(0.005);
+    });
+  }
 
   it('follows a tempo jump within 8 s', () => {
     const spec = CASES.find((c) => c.name === 'C jump 128 to 135 at 15 s')!.spec;

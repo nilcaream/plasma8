@@ -23,6 +23,11 @@ export class OnsetEnvelope {
   readonly hop: number;
   /** Frames per second, exactly: fs / hop. */
   readonly rate: number;
+  /**
+   * Seconds from frame k's time k / rate to the centre of its window: the first frame comes at the first
+   * hop once the window is full, and a hit shows in the frames around the one centred on it.
+   */
+  readonly delay: number;
   /** Frames produced since the start. */
   frames = 0;
 
@@ -43,6 +48,7 @@ export class OnsetEnvelope {
     this.n = fs > 60000 ? 2048 : 1024;
     this.hop = Math.round(fs / FRAME_RATE);
     this.rate = fs / this.hop;
+    this.delay = (Math.ceil(this.n / this.hop) * this.hop - this.n / 2) / fs;
     this.fft = new Fft(this.n);
     this.win = new Float64Array(this.n);
     for (let i = 0; i < this.n; i++) this.win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / this.n);

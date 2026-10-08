@@ -58,6 +58,9 @@ export interface GridFit {
   period: number;
   /** Seconds the odd half beats (counted from phase) sit after the line. */
   offOdd: number;
+  /** The time of a whole beat, seconds, as heard: on the half-beat parity with more strength on the grid, its share of that strength 0.5..1. */
+  beat: number;
+  beatShare: number;
   inliers: number;
   /** Share of the peaks' strength that lies on the grid, 0..1. */
   onGridShare: number;
@@ -90,7 +93,7 @@ export const COMB_POINTS = Math.round((SEARCH_HI - SEARCH_LO) / SEARCH_STEP) + 1
 export const wideBpm = (i: number): number => WIDE_LO * Math.pow(WIDE_HI / WIDE_LO, i / (WIDE_POINTS - 1));
 
 export class TempoDetector {
-  readonly env: OnsetEnvelope;
+  env: OnsetEnvelope;
   readonly rate: number;
   private readonly cap: number;
   private readonly hist: Float32Array[];
@@ -114,8 +117,9 @@ export class TempoDetector {
     });
   }
 
-  /** Forget everything heard: the next reading starts from scratch. */
+  /** Forget everything heard: the next reading starts from scratch, and its times count from the next sample. */
   reset(): void {
+    this.env = new OnsetEnvelope(this.env.fs);
     this.total = 0;
     this.held = null;
     for (const h of this.hist) h.fill(0);
@@ -203,7 +207,8 @@ export class TempoDetector {
       const sd = Math.sqrt(Math.max(1e-12, sq / nf - mean * mean));
       for (let i = 0; i < nf; i++) odf[i]! += (weights[b]! * Math.max(0, x[i]! - mean)) / sd;
     }
-    const odfStart = (this.total - nf) / rate;
+    // frames timed by their window's centre, so a peak is at the time of its hit in the audio
+    const odfStart = this.env.delay + (this.total - nf) / rate;
 
     const peaks = pickPeaks(odf, rate, odfStart);
     let grid = fitGrid(peaks, 60 / combReading, time);
@@ -402,12 +407,17 @@ export function fitGrid(peaks: Peak[], period0: number, now: number): GridFit | 
     tol = Math.max(0.008, Math.min(0.15 * half, 4 * line.scale));
   }
   if (!fit || fit.span < 2) return null;
+  // the beat is the half-beat parity with more strength on the grid: kick and snare, not the off-beat hats
+  const parityW = [0, 0];
   for (const p of peaks) {
     const m = Math.round((p.t - phase) / half);
     p.onGrid = Math.abs(p.t - phase - m * half - off * (Math.abs(m) % 2)) <= tol;
+    if (p.onGrid && p.t > now - FIT_SECONDS) parityW[Math.abs(m) % 2]! += p.strength;
   }
   const period = 2 * half;
   return {
+    beat: parityW[1]! > parityW[0]! ? phase + half + off : phase,
+    beatShare: Math.max(...parityW) / Math.max(1e-12, parityW[0]! + parityW[1]!),
     bpm: 60 / period,
     sd: (60 / (period * period)) * 2 * fit.se,
     phase,
