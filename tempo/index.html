@@ -57,6 +57,8 @@
   }
   @media (max-width: 860px) {
     main { grid-template-columns: minmax(0, 1fr); }
+    /* on a phone the controls come right under the title, before the graphs */
+    h1, .sub { order: -2; }
     .side { order: -1; }
   }
   h1 { font-size: 20px; margin: 0 0 4px; grid-column: 1 / -1; }

@@ -23,6 +23,8 @@ export const MAX_BPM = 150;
 export const SEARCH_LO = 106;
 export const SEARCH_HI = 154;
 const SEARCH_STEP = 0.05;
+/** The comb's rival candidate is the best one at least this far from the winner. */
+const MARGIN_BPM = 2;
 const COMB_SECONDS = 12;
 const FIT_SECONDS = 32;
 const HISTORY_SECONDS = 34;
@@ -52,6 +54,8 @@ export interface GridFit {
   /** A beat (or half-beat) time, seconds, and the beat period. */
   phase: number;
   period: number;
+  /** Seconds the odd half beats (counted from phase) sit after the line. */
+  offOdd: number;
   inliers: number;
   /** Share of the peaks' strength that lies on the grid, 0..1. */
   onGridShare: number;
@@ -75,7 +79,7 @@ export interface Analysis {
   odfStart: number;
   rate: number;
   peaks: Peak[];
-  /** 0..1: how sure the reading is (share of onset strength on the grid, scaled by the comb's contrast). */
+  /** 0..1: how sure the reading is: the share of onset strength on the grid (full at half) times the comb winner's margin over its rival (full at a fifth). */
   confidence: number;
 }
 
@@ -176,9 +180,10 @@ export class TempoDetector {
       if (combScore[c]! > combScore[best]!) best = c;
     }
     const combReading = combBpm(best) + SEARCH_STEP * parabola(combScore, best);
-    const sorted = Array.from(combScore).sort((a, b) => a - b);
-    const median = sorted[sorted.length >> 1]!;
-    const contrast = combScore[best]! > 0 ? Math.max(0, Math.min(1, (combScore[best]! - median) / combScore[best]!)) : 0;
+    // the margin of the best candidate over the best one at least MARGIN_BPM away, as a share of the best
+    let rival = -Infinity;
+    for (let c = 0; c < COMB_POINTS; c++) if (Math.abs(c - best) * SEARCH_STEP >= MARGIN_BPM) rival = Math.max(rival, combScore[c]!);
+    const margin = combScore[best]! > 0 ? Math.max(0, Math.min(1, (combScore[best]! - Math.max(0, rival)) / combScore[best]!)) : 0;
 
     const wide = new Float64Array(WIDE_POINTS);
     for (let i = 0; i < WIDE_POINTS; i++) wide[i] = at(acf, (60 * rate) / wideBpm(i));
@@ -210,7 +215,8 @@ export class TempoDetector {
     const fresh: Record<Method, number | null> = { grid: gridOk ? grid!.bpm : combReading, comb: combReading, ioi };
     if (beat) this.held = fresh;
     const readings = beat || !this.held ? fresh : this.held;
-    const confidence = beat ? (gridOk ? grid!.onGridShare : 0.5) * Math.min(1, contrast * 1.5) : 0;
+    // full when half the onset strength is on the grid and the comb's winner leads its rival by a fifth
+    const confidence = beat ? Math.min(1, (gridOk ? grid!.onGridShare : 0.25) / 0.5) * Math.min(1, margin / 0.2) : 0;
     return { time, beat, readings, grid: gridOk ? grid : null, combScore, wide, odf, odfStart, rate, peaks, confidence };
   }
 }
@@ -381,8 +387,8 @@ export function fitGrid(peaks: Peak[], period0: number, now: number): GridFit | 
   }
   if (!fit || fit.span < 2) return null;
   for (const p of peaks) {
-    const e = (p.t - phase) / half;
-    p.onGrid = Math.abs(e - Math.round(e)) * half <= tol;
+    const m = Math.round((p.t - phase) / half);
+    p.onGrid = Math.abs(p.t - phase - m * half - off * (Math.abs(m) % 2)) <= tol;
   }
   const period = 2 * half;
   return {
@@ -390,6 +396,7 @@ export function fitGrid(peaks: Peak[], period0: number, now: number): GridFit | 
     sd: (60 / (period * period)) * 2 * fit.se,
     phase,
     period,
+    offOdd: off,
     inliers: fit.n,
     onGridShare: fit.inW / Math.max(1e-12, fit.allW),
     rmsMs: fit.rms * 1000,

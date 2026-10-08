@@ -19,6 +19,8 @@ const EVERY = 0.25;
 const SETTLE_BPM = 0.05;
 const SETTLE_SECONDS = 4;
 const ONSET_VIEW = 8;
+/** The input level meter falls this many dB a second. */
+const LEVEL_FALL = 20;
 
 // The worklet only gathers the microphone's samples into blocks and posts them.
 const WORKLET = `
@@ -130,7 +132,9 @@ function hear(block: Float32Array): void {
   if (!det) return;
   let sq = 0;
   for (let i = 0; i < block.length; i++) sq += block[i]! * block[i]!;
-  level = 10 * Math.log10(sq / block.length + 1e-12);
+  // a peak meter: it jumps up to a loud block and falls LEVEL_FALL dB a second, so the gaps between hits do not empty it
+  const db = 10 * Math.log10(sq / block.length + 1e-12);
+  level = Math.max(db, level - (LEVEL_FALL * block.length) / det.env.fs);
   det.push(block);
   if (det.seconds >= nextAt) {
     nextAt = det.seconds + EVERY;
@@ -225,7 +229,7 @@ function drawOnsets(): void {
       ctx.strokeStyle = colors.beat;
       ctx.lineWidth = beat ? 2 : 1;
       ctx.setLineDash(beat ? [] : [3, 4]);
-      const x = X(rel(g.phase + m * half));
+      const x = X(rel(g.phase + m * half + (Math.abs(m) % 2) * g.offOdd));
       ctx.beginPath(); ctx.moveTo(x, Y(top)); ctx.lineTo(x, Y(0)); ctx.stroke();
     }
     ctx.setLineDash([]);
@@ -265,7 +269,7 @@ function drawComb(): void {
   let lo = 0, hi = 0.5;
   if (a) for (const v of a.combScore) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
   const xTicks: Tick[] = [];
-  for (let b = 110; b <= 150; b += 5) xTicks.push({ x: b, label: String(b), strong: b === MIN_BPM || b === MAX_BPM });
+  for (let b = 110; b <= 150; b += s.w < 600 ? 10 : 5) xTicks.push({ x: b, label: String(b), strong: b === MIN_BPM || b === MAX_BPM });
   const { X, Y } = frame(s, SEARCH_LO, SEARCH_HI, lo, hi * 1.05, xTicks, [lo, 0, hi].filter((v, i, xs) => xs.indexOf(v) === i), 2);
   shadeOutside(s, X, Y, MIN_BPM, MAX_BPM, lo, hi * 1.05, SEARCH_LO, SEARCH_HI);
   if (!a) return;
@@ -286,7 +290,8 @@ function drawWide(): void {
   const L = Math.log2;
   let lo = 0, hi = 0.5;
   if (a) for (const v of a.wide) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
-  const xTicks: Tick[] = [55, 65, 75, 90, 110, 130, 150, 180, 220, 260, 300].map((b) => ({ x: L(b), label: String(b), strong: b === MIN_BPM || b === MAX_BPM }));
+  const labels = s.w < 600 ? [55, 75, 110, 150, 220, 300] : [55, 65, 75, 90, 110, 130, 150, 180, 220, 260, 300];
+  const xTicks: Tick[] = labels.map((b) => ({ x: L(b), label: String(b), strong: b === MIN_BPM || b === MAX_BPM }));
   const { X, Y } = frame(s, L(WIDE_LO), L(WIDE_HI), lo, hi * 1.05, xTicks, [lo, 0, hi].filter((v, i, xs) => xs.indexOf(v) === i), 2);
   shadeOutside(s, X, Y, L(MIN_BPM), L(MAX_BPM), lo, hi * 1.05, L(WIDE_LO), L(WIDE_HI));
   if (!a) return;
