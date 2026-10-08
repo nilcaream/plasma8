@@ -5,8 +5,9 @@
  * table, on demand) and src/tempoDetect.test.ts (the floor every change keeps).
  */
 
-import { METHODS, type Method, TempoDetector } from './tempoDetect';
-import { PATTERNS, render, tempoAt, type TrackSpec } from './tempoSynth';
+import { BeatClock } from './beatClock';
+import { type Analysis, METHODS, type Method, TempoDetector } from './tempoDetect';
+import { beatTimes, PATTERNS, render, tempoAt, type TrackSpec } from './tempoSynth';
 
 export interface BenchCase { name: string; spec: TrackSpec }
 
@@ -62,8 +63,8 @@ export const CASES: BenchCase[] = [
 
 export interface Trace { t: number[]; readings: Record<Method, (number | null)[]> }
 
-/** Feeds a track in blocks and analyses every `every` seconds. */
-export function run(spec: TrackSpec, every = 0.25): Trace {
+/** Feeds a track in blocks and analyses every `every` seconds, handing each analysis to `each` when given. */
+export function run(spec: TrackSpec, every = 0.25, each?: (a: Analysis | null, t: number) => void): Trace {
   const fs = spec.fs ?? 48000;
   const audio = render(spec);
   const det = new TempoDetector(fs);
@@ -77,6 +78,7 @@ export function run(spec: TrackSpec, every = 0.25): Trace {
       const a = det.analyse();
       trace.t.push((i + block) / fs);
       for (const m of METHODS) trace.readings[m].push(a ? a.readings[m] : null);
+      each?.(a, (i + block) / fs);
     }
   }
   return trace;
@@ -110,4 +112,63 @@ export function score(trace: Trace, method: Method, spec: TrackSpec): Score {
   const final = bpm + err;
   const octave = Math.abs(err) > 1 && [2, 0.5, 1.5, 2 / 3, 4 / 3, 3 / 4].some((q) => Math.abs(final / (bpm * q) - 1) < 0.02);
   return { err, maxErr, settle05: settle(0.5), settle01: settle(0.1), octave };
+}
+
+export interface ClockScore {
+  /** Seconds of audio at the clock's first beat (Infinity: never). */
+  start: number;
+  /** The clock's tempo minus the truth at the end, and the largest miss from 5 s after the start, BPM. */
+  err: number;
+  maxErr: number;
+  /** |the clock's beat - the nearest true beat| from 5 s after the start, ms: median and largest, half beats left out. */
+  phaseMs: number;
+  maxPhaseMs: number;
+  /** Share of those readings whose beat sits on the half beat (more than a quarter beat off). */
+  half: number;
+  /** Tempo changes and re-anchors taken. */
+  changes: number;
+  anchors: number;
+  /** For a tempo change: the seconds after it at which the clock took the new tempo (Infinity: never). */
+  took: number;
+  /** The detector's confidence from the start on: 10th percentile and median. */
+  conf10: number;
+  conf50: number;
+}
+
+/** Runs a track (which needs `offset`) through the detector and a beat clock, read every quarter second. */
+export function scoreClock(spec: TrackSpec): ClockScore {
+  const clock = new BeatClock();
+  const beats = beatTimes(spec);
+  const c = spec.change;
+  // the minutes around a tempo change are scored by `took`, not by the errors
+  const changing = (t: number): boolean => !!c && t >= c.at && t < c.at + c.over + 10;
+  let start = Infinity, took = Infinity;
+  const errs: number[] = [], phases: number[] = [], conf: number[] = [];
+  let halves = 0;
+  run(spec, 0.25, (a, t) => {
+    if (!a) return;
+    clock.update(a);
+    if (clock.beat === null) return;
+    if (start === Infinity) start = t;
+    conf.push(a.confidence);
+    const truth = tempoAt(spec, t);
+    if (c && t >= c.at && took === Infinity && Math.abs(clock.bpm - c.bpm) < 1) took = t - c.at;
+    if (t < start + 5 || changing(t)) return;
+    errs.push(clock.bpm - truth);
+    const pred = clock.beat + Math.round((t - clock.beat) / clock.period) * clock.period;
+    let near = beats[0]!;
+    for (const b of beats) if (Math.abs(b - pred) < Math.abs(near - pred)) near = b;
+    const e = (pred - near) * 1000;
+    if (Math.abs(e) > (60000 / truth) / 4) halves++;
+    else phases.push(Math.abs(e));
+  });
+  const q = (xs: number[], f: number): number => {
+    const s = [...xs].sort((x, y) => x - y);
+    return s.length ? s[Math.min(s.length - 1, Math.floor(f * s.length))]! : NaN;
+  };
+  return {
+    start, err: errs.length ? errs[errs.length - 1]! : NaN, maxErr: Math.max(...errs.map(Math.abs)),
+    phaseMs: q(phases, 0.5), maxPhaseMs: Math.max(...phases), half: halves / Math.max(1, halves + phases.length),
+    changes: clock.changes, anchors: clock.anchors, took, conf10: q(conf, 0.1), conf50: q(conf, 0.5),
+  };
 }

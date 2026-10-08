@@ -242,6 +242,19 @@ export function tempoAt(spec: TrackSpec, t: number): number {
   return spec.bpm + ((t - c.at) / c.over) * (c.bpm - spec.bpm);
 }
 
+/** The time of every 16th from -offset, the tempo integrated step by step. */
+function sixteenths(spec: TrackSpec, offset: number): number[] {
+  const grid: number[] = [];
+  for (let t = -offset; t < spec.seconds + 60 / spec.bpm / 4; t += 60 / tempoAt(spec, Math.max(0, t)) / 4) grid.push(t);
+  return grid;
+}
+
+/** The times of the track's beats as rendered, later ones moved by the dropouts before them; needs `offset`. */
+export function beatTimes(spec: TrackSpec): number[] {
+  const shift = (t: number): number => (spec.dropouts ?? []).reduce((s, [at, ms]) => (t >= at ? s + ms / 1000 : s), t);
+  return sixteenths(spec, spec.offset ?? 0).filter((_, i) => i % 4 === 0).map(shift);
+}
+
 export function render(spec: TrackSpec): Float32Array {
   const fs = spec.fs ?? 48000;
   const r = rng(spec.seed ?? 1);
@@ -254,9 +267,7 @@ export function render(spec: TrackSpec): Float32Array {
   const k = takes(() => kick(fs, r)), s = takes(() => snare(fs, r));
   const h = takes(() => hat(fs, r, 0.025, 0.08, 0.35)), oh = takes(() => hat(fs, r, 0.15, 0.3, 0.25));
   const bassNotes = [55, 55, 65.4, 49].map((f) => bass(fs, step * 1.5, f));
-  // the time of every 16th, the tempo integrated step by step
-  const grid: number[] = [];
-  for (let t = -offset; t < spec.seconds + step; t += 60 / tempoAt(spec, Math.max(0, t)) / 4) grid.push(t);
+  const grid = sixteenths(spec, offset);
   const steps = grid.length;
   const drums = Math.pow(10, (spec.drumsDb ?? 0) / 20);
   const vel = (): number => drums * Math.pow(10, ((r() * 2 - 1) * (spec.velocityDb ?? 0)) / 20);

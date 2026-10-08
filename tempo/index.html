@@ -98,6 +98,10 @@
   .meter i { display: block; height: 100%; width: 0; background: var(--play); }
   .meter-row { display: grid; grid-template-columns: 90px minmax(0, 1fr) 56px; gap: 8px; align-items: center; margin: 6px 0; font-variant-numeric: tabular-nums; }
   .meter-row output { text-align: right; color: var(--muted); }
+  /* the strobe is light, whatever the theme: white over near black */
+  #strobe { position: relative; height: 72px; border-radius: 6px; background: #111113; overflow: hidden; }
+  #strobe i { position: absolute; inset: 0; background: #ffffff; opacity: 0; }
+  .side > section > .note { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
   fieldset { border: 0; margin: 0; padding: 0; }
   fieldset label { display: block; margin: 4px 0; }
   fieldset .note { color: var(--muted); font-size: 12px; margin: 0 0 4px 22px; }
@@ -137,7 +141,7 @@
       </div>
     </section>
     <section>
-      <h2>The reading over time</h2>
+      <h2>The reading over time: the last 30 seconds</h2>
       <canvas id="historyCanvas"></canvas>
       <div class="legend">
         <span class="thick" style="--c: var(--kick)">grid fit</span>
@@ -159,6 +163,12 @@
       </div>
       <div class="meter-row"><span>confidence</span><div class="meter"><i id="confidence"></i></div><output id="confidenceText"></output></div>
       <div class="meter-row"><span>input level</span><div class="meter"><i id="level"></i></div><output id="levelText"></output></div>
+    </section>
+    <section>
+      <h2>Beat</h2>
+      <div id="strobe"><i id="strobeLight"></i></div>
+      <p class="note" id="strobeText"></p>
+      <p class="note">A beat clock that runs on by itself, timed to the sound as it reaches the microphone. It keeps going through breakdowns and silence; it takes a new tempo only after 2 s of precise fits, and re-anchors on the music every 4 hits.</p>
     </section>
     <section>
       <h2>Method</h2>

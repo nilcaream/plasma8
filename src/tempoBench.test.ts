@@ -5,9 +5,9 @@
  */
 
 import { describe, it } from 'vitest';
-import { CASES, run, score } from './tempoBench';
+import { CASES, run, score, scoreClock } from './tempoBench';
 import { METHODS } from './tempoDetect';
-import { render, wav } from './tempoSynth';
+import { PATTERNS, render, type TrackSpec, wav } from './tempoSynth';
 
 const WAV_CASES = ['4floor 128', 'snare only 130', 'breakA 141.7', 'H everything breakA 133', 'H half-time 140'];
 
@@ -26,6 +26,12 @@ describe.skipIf(!process.env.BPM_WAVS)('tempo wavs', () => {
       const name = c.name.replace(/[^a-z0-9.]+/gi, '-').toLowerCase();
       writeFileSync(`${process.env.BPM_WAVS}/${name}.wav`, wav(render(spec), spec.fs ?? 48000));
     }
+    // the beat clock's checks: snare hits leave digital silence between them, which marks the true beats in the capture
+    const clockWavs: [string, TrackSpec][] = [
+      ['snare-130-breakdown', { bpm: 130, seconds: 60, pattern: PATTERNS.snareOnly, breakdown: [12, 20], seed: 61 }],
+      ['snare-130-to-138', { bpm: 130, seconds: 60, pattern: PATTERNS.snareOnly, change: { at: 15, bpm: 138, over: 0 }, seed: 62 }],
+    ];
+    for (const [name, spec] of clockWavs) writeFileSync(`${process.env.BPM_WAVS}/${name}.wav`, wav(render(spec), 48000));
   }, 600_000);
 });
 
@@ -57,5 +63,18 @@ describe.skipIf(!process.env.BPM_BENCH)('tempo bench', () => {
       rows.push(`${m}: within 0.1 BPM ${t.in01}/${CASES.length}, within 0.5 ${t.in05}/${CASES.length}, octave errors ${t.oct}, median settle(0.5) ${fmt(settled[settled.length >> 1] ?? Infinity, 1)} s, mean |err| (no octave) ${fmt(meanAbs, 3)}`);
     }
     writeFileSync(process.env.BPM_BENCH!, rows.join('\n') + '\n');
+  }, 600_000);
+});
+
+// The beat clock's table: `env BPM_CLOCK=/path/table.md npx vitest run src/tempoBench.test.ts`
+describe.skipIf(!process.env.BPM_CLOCK)('beat clock bench', () => {
+  it('prints the table', async () => {
+    const { writeFileSync } = await import(/* @vite-ignore */ FS);
+    const rows = ['| case | start s | bpm err / max | phase ms median / max | half | changes | anchors | took s | confidence p10 / p50 |', '|---|---|---|---|---|---|---|---|---|'];
+    for (const c of CASES) {
+      const s = scoreClock({ ...c.spec, offset: 0.37 });
+      rows.push(`| ${c.name} | ${fmt(s.start, 2)} | ${fmt(s.err, 3)} / ${fmt(s.maxErr, 2)} | ${fmt(s.phaseMs, 1)} / ${fmt(s.maxPhaseMs, 1)} | ${fmt(s.half, 2)} | ${s.changes} | ${s.anchors} | ${c.spec.change ? fmt(s.took, 1) : ''} | ${fmt(s.conf10, 2)} / ${fmt(s.conf50, 2)} |`);
+    }
+    writeFileSync(process.env.BPM_CLOCK!, rows.join('\n') + '\n');
   }, 600_000);
 });
