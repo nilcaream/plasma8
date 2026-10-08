@@ -20,9 +20,9 @@ export const JULIA_KNOBS: readonly Knob[] = [
   ...triple('palD', 0, 1, [0, 1]),
   // may move: list 2
   range('edge', 0.994, 1.15, [0.8, 1.15]),
-  range('wander', 0, 0.126, [0, 0.4]),
-  range('centreOff', 0, 0.295, [0, 1]),
-  range('centreAngle', 1.784, 3.607, [0, TAU]),
+  range('wander', 0.034, 0.166, [0, 0.4]),
+  range('centreOff', 0, 0.347, [0, 1]),
+  range('centreAngle', 1.784, 3.902, [0, TAU]),
   // never move
   range('bands', 1.5, 5.101, [0.3, 10]),
   ...triple('palA', 0.45, 0.6, [0, 1]),
@@ -64,12 +64,12 @@ export const drawJuliaParams = (rng: Rng): ShaderParams => juliaParams(drawKnobs
 
 /**
  * The values that may move: two lists, each drawn on its own. An instance moves
- * the palette frequency (palD, all three of its values), and 1 of the centre's
+ * the palette frequency (palD, all three of its values), and 3 of the centre's
  * offset and angle, the wander and the edge. Nothing outside the lists moves.
  */
 export const JULIA_MOVING: readonly MovingList[] = [
   { pick: 1, entries: ['palD'] },
-  { pick: 1, entries: ['centreOff', 'centreAngle', 'wander', 'edge'] },
+  { pick: 3, entries: ['centreOff', 'centreAngle', 'wander', 'edge'] },
 ];
 
 const KEYS = JULIA_KNOBS.map((k) => k.key);

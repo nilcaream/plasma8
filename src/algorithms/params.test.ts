@@ -197,7 +197,7 @@ describe('plasma\'s random ranges', () => {
 describe('julia\'s random ranges', () => {
   // the ones set on the debug panel (8 Oct 19:50) that differ from the earlier code's
   const RANGES: Record<string, [number, number]> = {
-    centreOff: [0, 0.295], centreAngle: [1.784, 3.607], theta: [1.093, 5.391], edge: [0.994, 1.15], wander: [0, 0.126], zoom: [1.311, 1.8],
+    centreOff: [0, 0.347], centreAngle: [1.784, 3.902], theta: [1.093, 5.391], edge: [0.994, 1.15], wander: [0.034, 0.166], zoom: [1.311, 1.8],
   };
 
   it('are the ones set on the debug panel: every draw inside, both ends reached', () => {
