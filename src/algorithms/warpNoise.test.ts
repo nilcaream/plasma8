@@ -5,12 +5,12 @@ import { WARP_NOISE_KNOBS, WARP_NOISE_MOVING, drawWarpNoiseMoving, drawWarpNoise
 
 /** The min and max of every random knob, and the value of the fixed one, as the debug panel's Copy gives them. */
 const FILE: Record<string, [number, number] | number> = {
-  scale: [3.553, 5.294], warp: [2.5, 3.664],
+  scale: [3.553, 5.294], warp: [2.5, 4.632],
   'palA.0': [0.5, 0.64], 'palA.1': [0.5, 0.64], 'palA.2': [0.5, 0.64],
   'palB.0': [0.14, 0.432], 'palB.1': [0.14, 0.447], 'palB.2': [0.14, 0.447],
   palCBase: [1.233, 1.878], 'palCStep.0': [-0.158, 0.151], 'palCStep.1': [-0.151, 0.151], 'palCStep.2': [-0.17, 0.145],
   'palD.0': [0, 1], 'palD.1': [0, 1], 'palD.2': [0, 1],
-  'speed.0': [0.03, 0.114], 'speed.1': [0.04, 0.12], 'offset.0': [0, 60], 'offset.1': [0, 60], 'offset2.0': [0, 60], 'offset2.1': [0, 0.5],
+  'speed.0': [0.03, 0.114], 'speed.1': [0.04, 0.12], 'offset.0': [0, 60], 'offset.1': [0, 60], 'offset2.0': [0, 60], 'offset2.1': [0, 7.26],
   rotate: [0, 0], 'A.kick': [0, 1], 'A.snare': [0, 1], 'A.crash': [0, 1], flashGain: 0.5,
 };
 
@@ -37,11 +37,11 @@ describe('drawWarpNoiseParams', () => {
       expect(scale).toBeGreaterThanOrEqual(3.553);
       expect(scale).toBeLessThan(5.294);
       expect(warp).toBeGreaterThanOrEqual(2.5);
-      expect(warp).toBeLessThan(3.664);
+      expect(warp).toBeLessThan(4.632);
       expect(flow).toBeLessThan(0.114);
       expect(warpSpeed).toBeLessThan(0.12);
       expect(p.u_rotate).toBe(0);
-      expect((p.u_offset2 as number[])[1]).toBeLessThan(0.5);
+      expect((p.u_offset2 as number[])[1]).toBeLessThan(7.26);
       // the palette swings at most 0.447 around a middle of at least 0.5: it stays inside 0.05..1.09
       for (const v of p.u_palA as number[]) expect(v).toBeGreaterThanOrEqual(0.5);
       for (const v of p.u_palB as number[]) expect(v).toBeLessThan(0.447);

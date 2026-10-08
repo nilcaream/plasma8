@@ -219,7 +219,7 @@ describe('warp noise\'s random ranges', () => {
     'palB.0': [0.14, 0.432], 'palB.1': [0.14, 0.447], 'palB.2': [0.14, 0.447],
     palCBase: [1.233, 1.878],
     'palCStep.0': [-0.158, 0.151], 'palCStep.1': [-0.151, 0.151], 'palCStep.2': [-0.17, 0.145],
-    scale: [3.553, 5.294], 'speed.0': [0.03, 0.114], warp: [2.5, 3.664], 'offset2.1': [0, 0.5],
+    scale: [3.553, 5.294], 'speed.0': [0.03, 0.114], warp: [2.5, 4.632], 'offset2.1': [0, 7.26],
   };
 
   it('are the ones set on the debug panel: every draw inside, both ends reached', () => {
