@@ -5,7 +5,9 @@
  *
  * Its tempo moves in two ways only. A grid within SAME_BPM of it is the same tempo, measured more precisely, and is
  * taken at the next re-anchor. A grid further away is a new tempo, taken only when it is sure: the fits must stay
- * within SAME_BPM of each other for CHANGE_SECONDS in a row, each with a standard error of at most CHANGE_SD.
+ * within SAME_BPM of each other for CHANGE_SECONDS in a row, each with a standard error of at most CHANGE_SD. An
+ * analysis that hears no beat neither counts for the new tempo nor breaks the run: in quiet or sparse music the beat
+ * comes and goes from one analysis to the next, and a run that needs every one of them never finishes.
  *
  * Its offset moves in steps: every ANCHOR_PEAKS new on-grid peaks the clock takes the grid's beat (and its tempo,
  * when it is the same one and precise). A step of more than STEP_BEATS is taken only when the next re-anchor finds
@@ -57,7 +59,8 @@ export class BeatClock {
   /** Takes one analysis; the clock moves only as the rules above say. */
   update(a: Analysis): void {
     const g = a.grid;
-    if (!a.beat || !g) { this.candidate = null; return; }
+    // no beat heard says nothing about a new tempo either way: the candidate waits for the next beat
+    if (!a.beat || !g) return;
     if (this.beat === null) { this.take(g, a); return; }
     if (Math.abs(g.bpm - this.bpm) <= SAME_BPM) {
       this.candidate = null;

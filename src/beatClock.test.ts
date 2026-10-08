@@ -86,6 +86,15 @@ describe('beat clock', () => {
     expect(clock.changes).toBe(1);
   });
 
+  it('takes a new tempo when the beat comes and goes between the precise fits', () => {
+    const clock = new BeatClock();
+    clock.update(seen(3, 121, 2.9));
+    // quiet music: every other analysis hears no beat, with the grid still at the true tempo
+    feed(clock, 10, 12, (t) => (t % 0.5 === 0 ? seen(t, 135, 9.8) : { ...seen(t, 135, 9.8), beat: false }));
+    expect(clock.bpm).toBeCloseTo(135, 6);
+    expect(clock.changes).toBe(1);
+  });
+
   // on the synthetic tracks (offset 0.37 s, so the true beats are known)
   const on = (name: string) => scoreClock({ ...CASES.find((c) => c.name === name)!.spec, offset: 0.37 });
 
