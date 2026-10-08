@@ -95,6 +95,43 @@ describe('beat clock', () => {
     expect(clock.changes).toBe(1);
   });
 
+  it('does not take a new tempo from a few lone fits, nor from fits far apart', () => {
+    const clock = new BeatClock();
+    clock.update(seen(3, 128, 2.9));
+    const lone = (every: number) => (t: number): Analysis => (t % every === 0 ? seen(t, 135, 9.8) : { ...seen(t, 135, 9.8), beat: false });
+    // three precise fits a second apart span 2 s, but are too few
+    feed(clock, 10, 12, lone(1));
+    expect(clock.bpm).toBeCloseTo(128, 6);
+    // one every 3 s for 21 s: many, but never a run
+    feed(clock, 15, 36, lone(3));
+    expect(clock.bpm).toBeCloseTo(128, 6);
+    expect(clock.changes).toBe(0);
+  });
+
+  it('does not take a new tempo from two lone fits 20 s apart, a breakdown between them', () => {
+    const clock = new BeatClock();
+    clock.update(seen(3, 128, 2.9));
+    clock.update(seen(10, 135, 9.8));
+    feed(clock, 10.25, 29.75, silent);
+    clock.update(seen(30, 135, 9.8));
+    expect(clock.bpm).toBeCloseTo(128, 6);
+    expect(clock.changes).toBe(0);
+  });
+
+  it('takes the new tempo on the beat flicker of Burial "Archangel" through a quiet room', () => {
+    // the analyses that heard a beat, from the trace of the mic take at speaker volume 0.3: the clock started on a
+    // first reading of 121.07, the fits then read 135.15; every other analysis heard no beat
+    const heard = [8.77, 8.98, 10.01, 10.26, 10.52, 11.24, 11.5, 11.76, 12.99, 13.24, 14.74, 14.99, 15.25, 16.75, 17, 17.98];
+    const clock = new BeatClock();
+    clock.update(seen(2.75, 121.07, 2.5));
+    for (const t of heard) {
+      clock.update({ ...seen(t - 0.13, 135.15, 8.5), beat: false });
+      clock.update(seen(t, 135.15, 8.5, { sd: 0.04 }));
+    }
+    expect(clock.bpm).toBeCloseTo(135.15, 6);
+    expect(clock.changes).toBe(1);
+  });
+
   // on the synthetic tracks (offset 0.37 s, so the true beats are known)
   const on = (name: string) => scoreClock({ ...CASES.find((c) => c.name === name)!.spec, offset: 0.37 });
 

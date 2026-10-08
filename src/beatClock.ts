@@ -5,9 +5,10 @@
  *
  * Its tempo moves in two ways only. A grid within SAME_BPM of it is the same tempo, measured more precisely, and is
  * taken at the next re-anchor. A grid further away is a new tempo, taken only when it is sure: the fits must stay
- * within SAME_BPM of each other for CHANGE_SECONDS in a row, each with a standard error of at most CHANGE_SD. An
- * analysis that hears no beat neither counts for the new tempo nor breaks the run: in quiet or sparse music the beat
- * comes and goes from one analysis to the next, and a run that needs every one of them never finishes.
+ * within SAME_BPM of each other for CHANGE_SECONDS in a row, each with a standard error of at most CHANGE_SD, at
+ * least CHANGE_FITS of them and none more than CHANGE_GAP after the one before. An analysis that hears no beat
+ * neither counts for the new tempo nor breaks the run: in quiet or sparse music the beat comes and goes from one
+ * analysis to the next, and a run that needs every one of them never finishes.
  *
  * Its offset moves in steps: every ANCHOR_PEAKS new on-grid peaks the clock takes the grid's beat (and its tempo,
  * when it is the same one and precise). A step of more than STEP_BEATS is taken only when the next re-anchor finds
@@ -26,6 +27,13 @@ export const CHANGE_SECONDS = 2;
  * of onset strength on the grid over the whole fit window, which still holds the old tempo for many seconds after a change.
  */
 export const CHANGE_SD = 0.1;
+/** ...at least this many of them (half the analyses of CHANGE_SECONDS, one every 0.25 s)... */
+export const CHANGE_FITS = 4;
+/**
+ * ...and none more than this many seconds after the one before: two lone fits far apart are not a run. Through a quiet
+ * room the precise fits of a held tempo came 1.0–1.5 s apart (Four Tet "Baby", Burial "Archangel").
+ */
+export const CHANGE_GAP = 2;
 /** The clock takes the grid's beat every this many new on-grid peaks. */
 export const ANCHOR_PEAKS = 4;
 /** A re-anchor moves the offset by at most this share of a beat at once; a bigger step needs two re-anchors in a row that agree. */
@@ -50,7 +58,7 @@ export class BeatClock {
   anchors = 0;
   private lastPeak = -Infinity;
   private count = 0;
-  private candidate: { bpm: number; since: number } | null = null;
+  private candidate: { bpm: number; since: number; last: number; fits: number } | null = null;
   /** A big offset step seen at the last re-anchor and not yet taken, seconds. */
   private step: number | null = null;
 
@@ -71,9 +79,15 @@ export class BeatClock {
       return;
     }
     if (g.sd > CHANGE_SD) { this.candidate = null; return; }
-    if (!this.candidate || Math.abs(g.bpm - this.candidate.bpm) > SAME_BPM) { this.candidate = { bpm: g.bpm, since: a.time }; return; }
-    this.candidate.bpm = g.bpm;
-    if (a.time - this.candidate.since >= CHANGE_SECONDS) { this.take(g, a); this.changes++; }
+    const c = this.candidate;
+    if (!c || Math.abs(g.bpm - c.bpm) > SAME_BPM || a.time - c.last > CHANGE_GAP) {
+      this.candidate = { bpm: g.bpm, since: a.time, last: a.time, fits: 1 };
+      return;
+    }
+    c.bpm = g.bpm;
+    c.last = a.time;
+    c.fits++;
+    if (a.time - c.since >= CHANGE_SECONDS && c.fits >= CHANGE_FITS) { this.take(g, a); this.changes++; }
   }
 
   /** The grid's beat and tempo, as they are: the first fit, or a new tempo. */
