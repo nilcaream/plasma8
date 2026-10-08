@@ -7,12 +7,27 @@
 import { describe, it } from 'vitest';
 import { CASES, run, score } from './tempoBench';
 import { METHODS } from './tempoDetect';
+import { render, wav } from './tempoSynth';
+
+const WAV_CASES = ['4floor 128', 'snare only 130', 'breakA 141.7', 'H everything breakA 133', 'H half-time 140'];
 
 // the project has no node types; the bench needs only these two
 declare const process: { env: Record<string, string | undefined> };
 const FS = 'node:fs';
 
 const fmt = (v: number, d: number): string => (Number.isFinite(v) ? v.toFixed(d) : '—');
+
+// WAVs for the page's end-to-end run (Chrome's fake microphone): `env BPM_WAVS=/dir npx vitest run src/tempoBench.test.ts`
+describe.skipIf(!process.env.BPM_WAVS)('tempo wavs', () => {
+  it('writes the files', async () => {
+    const { writeFileSync } = await import(/* @vite-ignore */ FS);
+    for (const c of CASES.filter((c) => WAV_CASES.includes(c.name))) {
+      const spec = { ...c.spec, seconds: 60, change: undefined, breakdown: undefined };
+      const name = c.name.replace(/[^a-z0-9.]+/gi, '-').toLowerCase();
+      writeFileSync(`${process.env.BPM_WAVS}/${name}.wav`, wav(render(spec), spec.fs ?? 48000));
+    }
+  }, 600_000);
+});
 
 describe.skipIf(!process.env.BPM_BENCH)('tempo bench', () => {
   it('prints the table', async () => {

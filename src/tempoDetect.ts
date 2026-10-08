@@ -251,36 +251,84 @@ export function pickPeaks(odf: Float32Array, rate: number, start: number): Peak[
 interface Line {
   /** Intercept (seconds, from the phase given) and slope (seconds per half beat), the slope's standard error. */
   a: number; b: number; se: number;
-  rms: number; n: number;
+  /** How much later than the line the off-beat hits peak, seconds. */
+  offOdd: number;
+  rms: number;
+  /** A robust spread of the residuals (1.4826 × their weighted median), seconds. */
+  scale: number;
+  n: number;
   /** Strength on the grid and of all peaks given. */
   inW: number; allW: number;
   span: number;
 }
 
-/** Weighted least squares of the peaks within tol of the grid phase + m·half, against m. */
-function fitLine(peaks: Peak[], phase: number, half: number, tol: number): Line | null {
-  let W = 0, Wm = 0, Wt = 0, n = 0, allW = 0;
+/** The inverse of a small symmetric matrix by Gauss-Jordan, or null when it is singular. */
+function invert(m: Float64Array[]): number[][] | null {
+  const n = m.length;
+  const a = m.map((row, i) => [...row, ...Array.from({ length: n }, (_, j) => (i === j ? 1 : 0))]);
+  for (let c = 0; c < n; c++) {
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(a[r]![c]!) > Math.abs(a[p]![c]!)) p = r;
+    if (Math.abs(a[p]![c]!) < 1e-12) return null;
+    [a[c], a[p]] = [a[p]!, a[c]!];
+    const d = a[c]![c]!;
+    for (let k = 0; k < 2 * n; k++) a[c]![k]! /= d;
+    for (let r = 0; r < n; r++) {
+      if (r === c) continue;
+      const f = a[r]![c]!;
+      for (let k = 0; k < 2 * n; k++) a[r]![k]! -= f * a[c]![k]!;
+    }
+  }
+  return a.map((row) => row.slice(n));
+}
+
+/** Weighted least squares of the peaks within tol of the grid phase + m·half, against m (off-beats with an offset of their own). */
+function fitLine(peaks: Peak[], phase: number, half: number, tol: number, off = 0): Line | null {
+  let W = 0, n = 0, allW = 0;
   const ms: number[] = [], ts: number[] = [], ws: number[] = [];
   for (const p of peaks) {
     allW += p.strength;
     const m = Math.round((p.t - phase) / half);
-    const e = p.t - phase - m * half;
+    const e = p.t - phase - m * half - off * (Math.abs(m) % 2);
     if (Math.abs(e) > tol) continue;
     ms.push(m); ts.push(p.t - phase); ws.push(p.strength);
-    W += p.strength; Wm += p.strength * m; Wt += p.strength * (p.t - phase); n++;
+    W += p.strength; n++;
   }
   if (n < 3) return null;
-  const mx = Wm / W, my = Wt / W;
-  let sxx = 0, sxy = 0;
-  for (let i = 0; i < n; i++) { const dx = ms[i]! - mx; sxx += ws[i]! * dx * dx; sxy += ws[i]! * dx * (ts[i]! - my); }
-  if (sxx <= 0) return null;
-  const b = sxy / sxx, a = my - b * mx;
+  // Off-beat hits (odd m) get an offset of their own: their instruments (open hats, bass) reach their
+  // onset peak a few ms apart from the kick and snare, and a single line would bend to that.
+  let wOdd = 0;
+  for (let i = 0; i < n; i++) if (Math.abs(ms[i]!) % 2 === 1) wOdd += ws[i]!;
+  const parity = wOdd > 0.05 * W && wOdd < 0.95 * W;
+  const cols = parity ? 3 : 2;
+  const x = (i: number, k: number): number => (k === 0 ? 1 : k === 1 ? ms[i]! : Math.abs(ms[i]!) % 2);
+  const A = Array.from({ length: cols }, () => new Float64Array(cols));
+  const y = new Float64Array(cols);
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < cols; j++) {
+      y[j]! += ws[i]! * x(i, j) * ts[i]!;
+      for (let k = 0; k < cols; k++) A[j]![k]! += ws[i]! * x(i, j) * x(i, k);
+    }
+  }
+  const inv = invert(A);
+  if (!inv) return null;
+  const coef = inv.map((row) => row.reduce((s, v, k) => s + v * y[k]!, 0));
+  const a = coef[0]!, b = coef[1]!, offOdd = parity ? coef[2]! : 0;
   let rr = 0;
-  for (let i = 0; i < n; i++) { const r = ts[i]! - a - b * ms[i]!; rr += ws[i]! * r * r; }
+  const res: { r: number; w: number }[] = [];
+  for (let i = 0; i < n; i++) {
+    const r = ts[i]! - a - b * ms[i]! - offOdd * (Math.abs(ms[i]!) % 2);
+    rr += ws[i]! * r * r;
+    res.push({ r: Math.abs(r), w: ws[i]! });
+  }
   const rms = Math.sqrt(rr / W);
   // weights scaled to a mean of 1 for the standard error
-  const se = Math.sqrt(((rr / W) * n) / Math.max(1, n - 2) / ((sxx * n) / W));
-  return { a, b, se, rms, n, inW: W, allW, span: (Math.max(...ms) - Math.min(...ms)) * b };
+  const se = Math.sqrt((((rr / W) * n) / Math.max(1, n - cols)) * inv[1]![1]! * (W / n));
+  // weighted median of the absolute residuals, as a standard deviation: a few weak stray hits do not move it
+  res.sort((x, y) => x.r - y.r);
+  let acc = 0, mad = 0;
+  for (const x of res) { acc += x.w; if (acc >= W / 2) { mad = x.r; break; } }
+  return { a, b, offOdd, se, rms, scale: 1.4826 * mad, n, inW: W, allW, span: (Math.max(...ms) - Math.min(...ms)) * b };
 }
 
 /**
@@ -309,23 +357,27 @@ export function fitGrid(peaks: Peak[], period0: number, now: number): GridFit | 
   phase += Math.round((now - phase) / half) * half;
 
   let tol = 0.15 * half;
+  let off = 0;
   let fit: Line | null = null;
   for (const seconds of FIT_STAGES) {
-    // grow only while the line, carried back to the stage's start, is still sure to half the tolerance
-    if (fit && (fit.se * seconds) / half > tol / 2) break;
+    // the line carried back to the stage's start drifts by its slope error times the half beats in between:
+    // the stage takes hits that far off (3 standard errors), and is not tried when that is no longer a grid
+    const drift = fit ? (3 * fit.se * seconds) / half : 0;
+    const wide = Math.min(0.15 * half, tol + drift);
     const use = peaks.filter((p) => p.t > now - seconds);
-    let line = fitLine(use, phase, half, tol);
+    let line = fitLine(use, phase, half, wide, off);
     // the first stage is the beat test: enough hits on the grid in the last seconds, most of the strength
     if (!line || line.n < (fit ? 6 : 4) || (!fit && line.inW < 0.5 * line.allW)) break;
     // once more without the hits far off the first line (claps, ghost notes)
-    const trimmed = fitLine(use, phase + line.a, line.b, Math.max(0.008, Math.min(tol, 3 * line.rms)));
-    if (trimmed && trimmed.n >= 0.7 * line.n) line = { ...trimmed, a: trimmed.a + line.a, allW: line.allW };
+    const trimmed = fitLine(use, phase + line.a, line.b, Math.max(0.004, Math.min(wide, 3 * line.scale)), line.offOdd);
+    if (trimmed && trimmed.n >= 4 && trimmed.inW >= 0.7 * line.inW) line = { ...trimmed, a: trimmed.a + line.a, allW: line.allW };
     // a longer stage that moves the slope by more than both stages' errors allow is a different tempo
     if (fit && Math.abs(line.b - half) > 4 * Math.hypot(fit.se, line.se) + 1e-6) break;
     fit = line;
     phase += line.a;
     half = line.b;
-    tol = Math.max(0.012, Math.min(0.15 * half, 4 * line.rms));
+    off = line.offOdd;
+    tol = Math.max(0.008, Math.min(0.15 * half, 4 * line.scale));
   }
   if (!fit || fit.span < 2) return null;
   for (const p of peaks) {

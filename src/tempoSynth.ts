@@ -195,10 +195,13 @@ function phone(x: Float32Array, fs: number): Float32Array {
   return out;
 }
 
+/** Adds a sound with its last 5 ms faded out: a cut tail would click (a broadband onset the music does not have). */
 function addAt(dst: Float32Array, src: Float32Array, at: number, gain = 1): void {
+  const fade = Math.min(src.length, 240);
   for (let i = 0; i < src.length; i++) {
     const j = at + i;
-    if (j >= 0 && j < dst.length) dst[j]! += gain * src[i]!;
+    const tail = src.length - i;
+    if (j >= 0 && j < dst.length) dst[j]! += gain * src[i]! * (tail < fade ? tail / fade : 1);
   }
 }
 
