@@ -16,15 +16,16 @@ const TAU = 2 * Math.PI;
  * order of PLASMA_MOVING; then the values that never move; then the beat voices.
  */
 export const PLASMA_KNOBS: readonly Knob[] = [
-  // may move
-  range('freq.2', 4.979, 6.777, [0.5, 16]),
-  range('orbit.0', 0.467, 0.883, [0, 1.5]),
-  range('orbit.1', 0.892, 1.287, [0, 1.5]),
-  range('freq.0', 1.891, 5.226, [0.5, 12]),
-  range('freq.1', 1.466, 6.25, [0.5, 12]),
-  range('cycles', 0.6, 1.3, [0.1, 3]),
+  // may move: list 1
+  range('cycles', 0.544, 2.359, [0.1, 3]),
+  // may move: list 2
+  range('freq.2', 0.5, 9.304, [0.5, 16]),
+  range('orbit.0', 0, 1.5, [0, 1.5]),
+  range('orbit.1', 0, 1.5, [0, 1.5]),
+  range('freq.0', 0.5, 12, [0.5, 12]),
+  range('freq.1', 0.5, 12, [0.5, 12]),
   // never move
-  range('scale', 1.099, 2.209, [0.3, 4]),
+  range('scale', 0.825, 1.158, [0.3, 4]),
   range('swirl', -0.792, 0.726, [-3, 3]),
   range('dir1', 0, 6.277, [0, TAU]),
   range('dir2', 0, 6.283, [0, TAU]),
@@ -75,10 +76,13 @@ export function plasmaParams(v: Values): ShaderParams {
 export const drawPlasmaParams = (rng: Rng): ShaderParams => plasmaParams(drawKnobs(PLASMA_KNOBS, rng));
 
 /**
- * The values that may move: one list, and an instance moves 3 of its 6 entries.
- * Nothing outside the list moves.
+ * The values that may move: two lists, each drawn on its own. An instance moves
+ * the cycles, and 3 of the 5 others. Nothing outside the lists moves.
  */
-export const PLASMA_MOVING: readonly MovingList[] = [{ pick: 3, entries: ['freq.2', 'orbit.0', 'orbit.1', 'freq.0', 'freq.1', 'cycles'] }];
+export const PLASMA_MOVING: readonly MovingList[] = [
+  { pick: 1, entries: ['cycles'] },
+  { pick: 3, entries: ['freq.2', 'orbit.0', 'orbit.1', 'freq.0', 'freq.1'] },
+];
 
 const KEYS = PLASMA_KNOBS.map((k) => k.key);
 

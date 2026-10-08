@@ -176,9 +176,9 @@ describe('plasma\'s random ranges', () => {
   const RANGES: Record<string, [number, number]> = {
     'palA.0': [0.089, 0.868], 'palA.1': [0.211, 0.8], 'palA.2': [0.226, 0.758],
     'palB.0': [0.395, 1], 'palB.1': [0.405, 1], 'palB.2': [0.411, 1],
-    'freq.0': [1.891, 5.226], 'freq.1': [1.466, 6.25], 'freq.2': [4.979, 6.777],
-    'speed.0': [0.3, 0.843], 'speed.1': [0.3, 0.882], 'orbit.0': [0.467, 0.883], 'orbit.1': [0.892, 1.287],
-    scale: [1.099, 2.209], swirl: [-0.792, 0.726],
+    'freq.0': [0.5, 12], 'freq.1': [0.5, 12], 'freq.2': [0.5, 9.304],
+    'speed.0': [0.3, 0.843], 'speed.1': [0.3, 0.882], 'orbit.0': [0, 1.5], 'orbit.1': [0, 1.5],
+    scale: [0.825, 1.158], swirl: [-0.792, 0.726], cycles: [0.544, 2.359],
   };
 
   it('are the ones set on the debug panel: every draw inside, both ends reached', () => {

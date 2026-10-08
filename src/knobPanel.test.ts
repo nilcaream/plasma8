@@ -112,7 +112,7 @@ describe('every algorithm\'s movable knobs', () => {
       }
     }
     const plasma = ALGORITHMS.find((a) => a.name === 'plasma')!.movable!;
-    expect(plasma['freq.2']).toBe('list 1: pick 3 of 6');
+    expect(plasma['freq.2']).toBe('list 2: pick 3 of 5');
     expect(plasma.scale).toBeUndefined();
     expect(plasma['palD.1']).toBeUndefined();
   });
