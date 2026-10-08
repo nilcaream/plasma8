@@ -129,55 +129,38 @@ describe('the far end', () => {
 });
 
 describe('the tunnel\'s moving values', () => {
-  it('are two lists: palD or the hue drift, and the twist, one each', () => {
-    expect(TUNNEL_MOVING).toEqual([{ pick: 1, entries: ['palD', 'hueDrift'] }, { pick: 1, entries: ['twist'] }]);
+  it('are two lists, each picking both its entries: palD and the hue drift, and the twist and the far end', () => {
+    expect(TUNNEL_MOVING).toEqual([{ pick: 2, entries: ['palD', 'hueDrift'] }, { pick: 2, entries: ['twist', 'farEnd'] }]);
   });
 
-  it('move the twist every time, and either palD (all three values) or the hue drift, as often as one another; the far end never moves', () => {
+  it('move palD (all three values), the hue drift, the twist and the far end (both coordinates) every time, and nothing else', () => {
     const rng = createRng(9);
-    let palD = 0;
-    let hue = 0;
-    for (let i = 0; i < 600; i++) {
-      const keys = drawTunnelMoving(rng).map((m) => m.key);
-      expect(keys).toContain('twist');
-      expect(keys.some((k) => k.startsWith('farEnd'))).toBe(false);
-      if (keys.includes('hueDrift')) {
-        hue++;
-        expect(keys.sort()).toEqual(['hueDrift', 'twist']);
-      } else {
-        palD++;
-        expect(keys.sort()).toEqual(['palD.0', 'palD.1', 'palD.2', 'twist']);
-      }
+    for (let i = 0; i < 100; i++) {
+      expect(drawTunnelMoving(rng).map((m) => m.key).sort()).toEqual(['farEnd.x', 'farEnd.y', 'hueDrift', 'palD.0', 'palD.1', 'palD.2', 'twist']);
     }
-    expect(palD + hue).toBe(600);
-    expect(palD / 600).toBeGreaterThan(0.4);
-    expect(palD / 600).toBeLessThan(0.6);
   });
 
-  it('give the three palD values a walk of their own, from another start, and a voice each', () => {
+  it('give the three palD values and the two far-end values a walk of their own, from another start, and a voice each', () => {
     const rng = createRng(10);
-    let triples = 0;
     let otherStart = 0;
     let otherVoice = 0;
     for (let i = 0; i < 400; i++) {
-      const palD = drawTunnelMoving(rng).filter((m) => m.key.startsWith('palD'));
-      if (palD.length === 0) continue;
-      triples++;
+      const moving = drawTunnelMoving(rng);
+      expect(new Set(moving.map((m) => m.walk)).size).toBe(7);
+      const palD = moving.filter((m) => m.key.startsWith('palD'));
       if (new Set(palD.map((m) => movingAt(m, 0, 0))).size === 3) otherStart++;
-      if (new Set(palD.map((m) => m.voice)).size > 1) otherVoice++;
+      if (new Set(moving.map((m) => m.voice)).size > 1) otherVoice++;
     }
-    expect(triples).toBeGreaterThan(100);
-    expect(otherStart).toBe(triples);
-    expect(otherVoice).toBeGreaterThan(triples * 0.6);
-    expect(otherVoice).toBeLessThan(triples);
+    expect(otherStart).toBe(400);
+    expect(otherVoice).toBeGreaterThan(390);
   });
 
   it('walk the whole range each is drawn from, and the panel marks them by list', () => {
     const rng = createRng(11);
     for (const m of drawTunnelMoving(rng)) expect([m.min, m.max]).toEqual(drawBounds(TUNNEL_KNOBS.find((k) => k.key === m.key)!.draw));
-    expect(Object.keys(tunnel.movable!).sort()).toEqual(['hueDrift', 'palD.0', 'palD.1', 'palD.2', 'twist']);
-    expect(tunnel.movable!.hueDrift).toBe('list 1: pick 1 of 2');
-    expect(tunnel.movable!.twist).toBe('list 2: pick 1 of 1');
+    expect(Object.keys(tunnel.movable!).sort()).toEqual(['farEnd.x', 'farEnd.y', 'hueDrift', 'palD.0', 'palD.1', 'palD.2', 'twist']);
+    expect(tunnel.movable!.hueDrift).toBe('list 1: pick 2 of 2');
+    expect(tunnel.movable!['farEnd.y']).toBe('list 2: pick 2 of 2');
   });
 });
 

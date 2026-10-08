@@ -20,12 +20,11 @@ export const TUNNEL_KNOBS: readonly Knob[] = [
   // may move: list 1
   ...triple('palD', 0, 1, [0, 1]),
   range('hueDrift', 0.024, 0.079, [0, 0.2]),
-  // may move: list 2 (the spiral)
+  // may move: list 2; the spiral, and the far end: where it sits on screen (uv), the tube bends to it
   range('twist', -0.5, 0.5, [-0.5, 0.5]),
-  // never move
-  // far end: where it sits on screen (uv); the tube bends to it
   range('farEnd.x', -0.271, 0.271, [-0.6, 0.6]),
   range('farEnd.y', -0.271, 0.271, [-0.6, 0.6]),
+  // never move
   ...triple('palA', 0.45, 0.6, [0, 1]),
   ...triple('palB', 0.35, 0.5, [0, 1]),
   ...triple('palC', 0.6, 1.2, [0, 3]),
@@ -80,12 +79,13 @@ export function divePhases(): (v: Values, inputs: FrameInputs) => ShaderParams {
 
 /**
  * The values that may move: two lists, each drawn on its own. An instance moves
- * 1 of palD (all three of its values) and the hue drift, and the twist.
+ * 2 of 2 of palD (all three of its values) and the hue drift, and 2 of 2 of the
+ * twist and the far end (both coordinates): all of them, every time.
  * Nothing outside the lists moves.
  */
 export const TUNNEL_MOVING: readonly MovingList[] = [
-  { pick: 1, entries: ['palD', 'hueDrift'] },
-  { pick: 1, entries: ['twist'] },
+  { pick: 2, entries: ['palD', 'hueDrift'] },
+  { pick: 2, entries: ['twist', 'farEnd'] },
 ];
 
 const KEYS = TUNNEL_KNOBS.map((k) => k.key);
