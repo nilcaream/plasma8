@@ -10,7 +10,7 @@ const FILE: Record<string, [number, number] | number> = {
   'palA.0': [0.089, 0.868], 'palA.1': [0.211, 0.8], 'palA.2': [0.226, 0.758],
   'palB.0': [0.395, 1], 'palB.1': [0.405, 1], 'palB.2': [0.411, 1],
   'palC.0': [0.6, 1.4], 'palC.1': [0.6, 1.4], 'palC.2': [0.6, 1.4], 'palD.0': [0, 1], 'palD.1': [0, 1], 'palD.2': [0, 1],
-  cycles: [0.544, 2.359], 'speed.0': [0.3, 0.843], 'speed.1': [0.3, 0.882], 'speed.2': [0.4, 1.1], 'speed.3': [0.2, 0.8], mode: [0, 2],
+  cycles: [0.544, 2.359], 'speed.0': [0.08, 0.29], 'speed.1': [0.092, 0.302], 'speed.2': [0.078, 0.378], 'speed.3': [0.052, 0.33], mode: [0, 2],
   'A.kick': [0, 1], 'A.snare': [0, 1], 'A.crash': [0, 1],
   flashGain: 1, swirlSpin: 0.011, orbitSpeed: 0.02, colourDrift: 0.021,
 };
