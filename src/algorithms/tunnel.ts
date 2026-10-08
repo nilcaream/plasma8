@@ -101,5 +101,5 @@ export const tunnel: AlgorithmDef = {
   knobs: TUNNEL_KNOBS,
   movable: listLabels(TUNNEL_MOVING, KEYS),
   create: (gl, values, rng, options) =>
-    shaderAlgorithm(gl, TUNNEL_NAME, source, tunnelParams, values, relativeAmountsOf, options?.moves === false ? [] : drawTunnelMoving(rng, options?.bounds), divePhases()),
+    shaderAlgorithm(gl, TUNNEL_NAME, source, tunnelParams, values, relativeAmountsOf, drawTunnelMoving(rng, options?.bounds), divePhases()),
 };

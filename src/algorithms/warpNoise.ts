@@ -77,5 +77,5 @@ export const warpNoise: AlgorithmDef = {
   knobs: WARP_NOISE_KNOBS,
   movable: listLabels(WARP_NOISE_MOVING, KEYS),
   create: (gl, values, rng, options) =>
-    shaderAlgorithm(gl, WARP_NOISE_NAME, source, warpNoiseParams, values, relativeAmountsOf, options?.moves === false ? [] : drawWarpNoiseMoving(rng, options?.bounds)),
+    shaderAlgorithm(gl, WARP_NOISE_NAME, source, warpNoiseParams, values, relativeAmountsOf, drawWarpNoiseMoving(rng, options?.bounds)),
 };

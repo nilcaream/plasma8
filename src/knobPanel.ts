@@ -155,10 +155,12 @@ export class KnobPanel {
     });
   }
 
-  /** What a new instance is asked for: no moving values while "Moves off" is on, and moving values inside the min..max set here. */
+  /**
+   * What a new instance is asked for: its moving values walk inside the min..max set here. It has them while
+   * "Moves off" is on too (held, see `show`), so that turning the switch off again starts them.
+   */
   options(def: AlgorithmDef): CreateOptions {
     return {
-      moves: !this.movesOff,
       bounds: (key) => {
         const r = this.rangeOf(def.name, def.knobs.find((k) => k.key === key)!, 0);
         return [r.min, r.max];

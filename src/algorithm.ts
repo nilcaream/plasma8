@@ -53,8 +53,6 @@ export interface Algorithm {
 
 /** What the debug panel asks of a new instance. */
 export interface CreateOptions {
-  /** false: no value moves; every value stays as drawn. */
-  moves: boolean;
   /** The min and max a moving value walks between: the panel's min and max for the knob; the code's range when left out. */
   bounds?: (key: string) => readonly [number, number];
 }

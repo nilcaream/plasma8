@@ -82,7 +82,7 @@ describe('plasma\'s moving values', () => {
   it('moves only the values given to moveWhileHeld while held, by the kick over their min..max, and stands still where it was left once they are taken off', () => {
     const { gl, floats } = mockGl();
     const values = drawKnobs(plasma.knobs, createRng(1));
-    const algorithm = plasma.create(gl, values, createRng(2), { moves: false });
+    const algorithm = plasma.create(gl, values, createRng(2));
     const at = (key: string, beats: number): number | undefined => {
       algorithm.draw(null, frame(beats, 0, 1, 120));
       return floats.get(key);
@@ -106,15 +106,18 @@ describe('plasma\'s moving values', () => {
     expect([at('u_scale', 0.3), at('u_scale', 5.7)]).toEqual([1.4, 1.4]);
   });
 
-  it('has no moving values when made with the moves off, and some when made with them on or by default', () => {
+  it('always has its moving values, held or not, so that Moves off set before it was made still lets it move when released', () => {
     for (const def of [plasma, tunnel, warpNoise, julia]) {
-      for (let seed = 1; seed <= 20; seed++) {
-        const { gl } = mockGl();
-        const values = drawKnobs(def.knobs, createRng(seed));
-        expect(def.create(gl, values, createRng(seed), { moves: false }).moving).toEqual([]);
-        expect(def.create(gl, values, createRng(seed), { moves: true }).moving!.length).toBeGreaterThanOrEqual(2);
-        expect(def.create(gl, values, createRng(seed)).moving!.length).toBeGreaterThanOrEqual(2);
-      }
+      const { gl, floats } = mockGl();
+      const values = drawKnobs(def.knobs, createRng(4));
+      const algorithm = def.create(gl, values, createRng(4), { bounds: () => [0.2, 0.3] });
+      expect(algorithm.moving!.length, def.name).toBeGreaterThanOrEqual(2);
+      algorithm.hold!(true);
+      const held = [0.3, 5.7, 11.1].map((b) => { algorithm.draw(null, frame(b, 0, 1, 120)); return [...floats.entries()].join(); });
+      expect(new Set(held).size, def.name).toBe(1);
+      algorithm.hold!(false);
+      const released = [0.3, 5.7, 11.1, 17.3].map((b) => { algorithm.draw(null, frame(b, 0, 1, 120)); return [...floats.entries()].join(); });
+      expect(new Set(released).size, def.name).toBeGreaterThan(1);
     }
   });
 
@@ -123,10 +126,10 @@ describe('plasma\'s moving values', () => {
       for (let seed = 1; seed <= 20; seed++) {
         const { gl } = mockGl();
         const values = drawKnobs(def.knobs, createRng(seed));
-        const given = def.create(gl, values, createRng(seed), { moves: true, bounds: () => [0.2, 0.3] }).moving!;
+        const given = def.create(gl, values, createRng(seed), { bounds: () => [0.2, 0.3] }).moving!;
         expect(given.length).toBeGreaterThanOrEqual(2);
         for (const m of given) expect([m.min, m.max]).toEqual([0.2, 0.3]);
-        const code = def.create(gl, values, createRng(seed), { moves: true }).moving!;
+        const code = def.create(gl, values, createRng(seed)).moving!;
         expect(code.some((m) => m.min !== 0.2 || m.max !== 0.3)).toBe(true);
       }
     }
@@ -150,8 +153,9 @@ describe('the tunnel\'s dive phases', () => {
     const { gl, floats } = mockGl();
     const values = drawKnobs(tunnel.knobs, createRng(3));
     Object.assign(values, { twist: 0.2, hueDrift: 0.04, speed: 2, 'farEnd.x': 0.2, 'farEnd.y': -0.1 });
-    // the twist always moves: with the moves off, their values are the ones set above
-    const algorithm = tunnel.create(gl, values, createRng(0), { moves: false });
+    // the twist always moves: held, their values are the ones set above
+    const algorithm = tunnel.create(gl, values, createRng(0));
+    algorithm.hold!(true);
     const frameAt = (time: number): FrameInputs => ({ ...frame(0, 0, 0.5, 120), time });
     algorithm.draw(null, frameAt(10));
     algorithm.draw(null, frameAt(11));

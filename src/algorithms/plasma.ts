@@ -95,5 +95,5 @@ export const plasma: AlgorithmDef = {
   knobs: PLASMA_KNOBS,
   movable: listLabels(PLASMA_MOVING, KEYS),
   create: (gl, values, rng, options) =>
-    shaderAlgorithm(gl, PLASMA_NAME, source, plasmaParams, values, relativeAmountsOf, options?.moves === false ? [] : drawPlasmaMoving(rng, options?.bounds)),
+    shaderAlgorithm(gl, PLASMA_NAME, source, plasmaParams, values, relativeAmountsOf, drawPlasmaMoving(rng, options?.bounds)),
 };

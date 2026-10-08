@@ -85,5 +85,5 @@ export const julia: AlgorithmDef = {
   knobs: JULIA_KNOBS,
   movable: listLabels(JULIA_MOVING, KEYS),
   create: (gl, values, rng, options) =>
-    shaderAlgorithm(gl, JULIA_NAME, source, juliaParams, values, relativeAmountsOf, options?.moves === false ? [] : drawJuliaMoving(rng, options?.bounds)),
+    shaderAlgorithm(gl, JULIA_NAME, source, juliaParams, values, relativeAmountsOf, drawJuliaMoving(rng, options?.bounds)),
 };
