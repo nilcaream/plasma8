@@ -12,7 +12,7 @@ const FILE: Record<string, [number, number] | number> = {
   'palC.0': [0.7, 1.3], 'palC.1': [0.7, 1.3], 'palC.2': [0.7, 1.3],
   centreAngle: [1.784, 3.902], segments: [3, 9], theta: [1.093, 5.391], zoom: [1.311, 1.8], spin: [-0.05, 0.05],
   'A.kick': [0, 1], 'A.snare': [0, 1], 'A.crash': [0, 1],
-  flashGain: 0.5, glow: 0.216, wanderSpeed: 0.221,
+  flashGain: 0.5, glow: 0.216, wanderSpeed: 0.1,
 };
 
 describe('the julia\'s knobs', () => {

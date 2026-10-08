@@ -37,7 +37,7 @@ export const JULIA_KNOBS: readonly Knob[] = [
   // fixed in code: the flash gain, the glow's strength and how fast c drifts
   fixed('flashGain', 0.5, GAIN_RANGE, 'follows the beat'),
   fixed('glow', 0.216, [0, 1], 'look'),
-  fixed('wanderSpeed', 0.221, [0, 1], 'moves with time'),
+  fixed('wanderSpeed', 0.1, [0, 1], 'moves with time'),
 ];
 
 export function juliaParams(v: Values): ShaderParams {

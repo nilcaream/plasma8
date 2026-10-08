@@ -53,7 +53,7 @@ describe('julia parameters', () => {
 describe('julia\'s beat flash', () => {
   it('has the flash gain 0.5, the glow and the wander speed as fixed values, read by the shader', () => {
     const p = juliaParams(drawKnobs(JULIA_KNOBS, createRng(1)));
-    expect([p.u_flashGain, p.u_glow, p.u_wanderSpeed]).toEqual([0.5, 0.216, 0.221]);
+    expect([p.u_flashGain, p.u_glow, p.u_wanderSpeed]).toEqual([0.5, 0.216, 0.1]);
     for (const key of ['u_flashGain', 'u_glow', 'u_wanderSpeed']) expect(juliaSource).toContain(`uniform float ${key};`);
     expect(fixedGroups(JULIA_KNOBS).map((g) => [g.group, g.knobs.map((k) => k.key)])).toEqual([
       ['follows the beat', ['flashGain']], ['look', ['glow']], ['moves with time', ['wanderSpeed']],
