@@ -1,3 +1,4 @@
+import './style.css';
 import { ALGORITHMS, chooseAlgorithm } from './algorithms';
 import type { Algorithm, AlgorithmDef, FrameInputs } from './algorithm';
 import { Band, metronomeShown } from './band';
