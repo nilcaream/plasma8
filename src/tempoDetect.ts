@@ -32,11 +32,20 @@ const COMB_SECONDS = 12;
 const SHORT_COMB_SECONDS = 5;
 const FIT_SECONDS = 32;
 const HISTORY_SECONDS = 34;
-/** The tempo relations the comb cannot tell apart by its teeth alone, and the share of the winner's score a relative needs to be weighed. */
+/**
+ * The tempo relations the comb cannot tell apart by its teeth alone, and the share of the winner's score a relative
+ * needs to be weighed: below it the comb has decided (and the confidence's margin is full anyway).
+ */
 const RELATIVES = [4 / 3, 3 / 4, 3 / 2, 2 / 3];
 const RELATIVE_SHARE = 0.5;
 /** How much more summed band autocorrelation at a half and a quarter period, less a third, a relative needs to take over. */
 const METRE_LEAD = 0.3;
+/**
+ * What a grid that holds the hits counts for in that lead, when only one of the two has one. Measured on real music: a
+ * swung 2-step gives the beat's grid-less 3:4 relative up to +0.8 of metre; a breakdown's pad gave a wrong relative a
+ * grid with −1.6 of metre against it; a riff in threes −1.4 to −2.7.
+ */
+const GRID_LEAD = 1;
 /** Weights of the comb's teeth at 1, 2, 3 and 4 beat periods. */
 const TEETH = [1, 1, 0.6, 0.6];
 /** Before this much envelope there is no reading. */
@@ -77,6 +86,9 @@ export interface GridFit {
   rmsMs: number;
   span: number;
 }
+
+/** The combined onset envelope over the fit window, the time of its first frame, and its picked peaks. */
+interface Envelope { odf: Float32Array; odfStart: number; peaks: Peak[] }
 
 export interface Analysis {
   /** Seconds of audio seen since the last reset (newest frame). */
@@ -184,45 +196,50 @@ export class TempoDetector {
       score[c] = w > 0 ? s / w : 0;
       if (score[c]! > score[best]!) best = c;
     }
-    // a 3:2 or 4:3 relative of the beat collects the same hits on its teeth (a dotted-eighth riff, a beat played in threes):
-    // between the two, the beat is the one whose period divides in two and four rather than in three
-    const metre = (c: number): number => {
-      const period = (60 * rate) / combBpm(c);
-      return bandAcf.reduce((s, r) => s + at(r, period / 2) + at(r, period / 4) - at(r, period / 3), 0);
-    };
-    const winner = best;
-    const relatives = RELATIVES.map((q) => peakNear(score, combBpm(winner) * q)).filter((c) => c >= 0 && score[c]! >= RELATIVE_SHARE * score[winner]!);
-    const leads = relatives.map((c) => metre(c) - metre(winner));
-    const top = leads.indexOf(Math.max(...leads));
-    if (top >= 0 && leads[top]! > METRE_LEAD) best = relatives[top]!;
-    // the ones the test ruled out: the old winner when it lost, every relative that lost to the winner
-    const explained = relatives.filter((_, i) => leads[i]! < -METRE_LEAD);
-    if (best !== winner) explained.push(winner);
-    const reading = combBpm(best) + SEARCH_STEP * parabola(score, best);
-    // the margin of the best candidate over the best one at least MARGIN_BPM away, as a share of the best;
-    // a relative the metre test ruled out is no rival
-    let rival = -Infinity;
-    for (let c = 0; c < COMB_POINTS; c++) {
-      if (Math.abs(c - best) * SEARCH_STEP < MARGIN_BPM || explained.some((e) => Math.abs(c - e) * SEARCH_STEP < MARGIN_BPM)) continue;
-      rival = Math.max(rival, score[c]!);
-    }
-    const margin = score[best]! > 0 ? Math.max(0, Math.min(1, (score[best]! - Math.max(0, rival)) / score[best]!)) : 0;
-    return { acf, bandAcf, score, reading, margin };
+    return { acf, bandAcf, score, best, reading: readingAt(score, best) };
   }
 
-  analyse(): Analysis | null {
+  /**
+   * A 3:2 or 4:3 relative of the beat collects the same hits on the comb's teeth (a dotted-eighth riff, a swung
+   * 2-step, a beat played in threes), so the comb scores the two nearly level. Between the two, the beat is the one
+   * whose period divides in two and four rather than in three, and whose grid holds the hits (the beat test passes at
+   * its period), each tested on an envelope weighted for its own period. Without `rescue` a winner with no grid stays as it is, so that a tempo change (the short comb) is
+   * tried before a relative. Returns the beat's candidate, its envelope and grid, and the relatives this ruled out.
+   */
+  private decide(score: Float64Array, bandAcf: Float64Array[], winner: number, env: Envelope, time: number, rescue: boolean) {
+    const metre = (c: number): number => {
+      const period = (60 * this.rate) / combBpm(c);
+      return bandAcf.reduce((s, r) => s + at(r, period / 2) + at(r, period / 4) - at(r, period / 3), 0);
+    };
+    const fit = (c: number, on: Peak[]) => {
+      const g = fitGrid(on, 60 / readingAt(score, c), time);
+      return g && Math.abs(g.bpm - readingAt(score, c)) < 1.5 ? g : null;
+    };
+    let best = winner;
+    let grid = fit(winner, env.peaks);
+    const explained: number[] = [];
+    if (!grid && !rescue) return { best, grid, env, explained };
+    for (const q of RELATIVES) {
+      const c = peakNear(score, combBpm(winner) * q);
+      if (c < 0 || score[c]! < RELATIVE_SHARE * score[winner]!) continue;
+      const own = this.envelope(bandAcf, readingAt(score, c));
+      const other = fit(c, own.peaks);
+      const lead = metre(c) - metre(best) + GRID_LEAD * (Number(other !== null) - Number(grid !== null));
+      if (lead > METRE_LEAD) {
+        explained.push(best);
+        best = c;
+        grid = other;
+        env = own;
+      } else if (lead < -METRE_LEAD) explained.push(c);
+    }
+    return { best, grid, env, explained };
+  }
+
+  /** The bands' envelopes over the fit window, each weighted by its periodicity at the beat of bpm, and the peaks on their sum. */
+  private envelope(bandAcf: Float64Array[], bpm: number): Envelope {
     const rate = this.rate;
-    if (this.total < MIN_SECONDS * rate) return null;
-    const time = this.total / rate;
-
-    const { acf, bandAcf, score: combScore, reading: combReading, margin } = this.comb(COMB_SECONDS);
-
-    const wide = new Float64Array(WIDE_POINTS);
-    for (let i = 0; i < WIDE_POINTS; i++) wide[i] = at(acf, (60 * rate) / wideBpm(i));
-
-    // --- combined envelope over the fit window, weighted by each band's periodicity --
     const nf = Math.min(this.total, Math.round(FIT_SECONDS * rate), this.cap);
-    const beatLag = (60 * rate) / combReading;
+    const beatLag = (60 * rate) / bpm;
     const weights = bandAcf.map((r) => Math.max(0, at(r, beatLag)) + Math.max(0, at(r, 2 * beatLag)));
     if (weights.every((w) => w <= 0)) weights.fill(1);
     const odf = new Float32Array(nf);
@@ -237,18 +254,42 @@ export class TempoDetector {
     }
     // frames timed by their window's centre, so a peak is at the time of its hit in the audio
     const odfStart = this.env.delay + (this.total - nf) / rate;
+    return { odf, odfStart, peaks: pickPeaks(odf, rate, odfStart) };
+  }
 
-    const peaks = pickPeaks(odf, rate, odfStart);
-    let grid = fitGrid(peaks, 60 / combReading, time);
-    let gridOk = grid !== null && Math.abs(grid.bpm - combReading) < 1.5;
-    if (!gridOk && this.total > SHORT_COMB_SECONDS * rate) {
+  analyse(): Analysis | null {
+    const rate = this.rate;
+    if (this.total < MIN_SECONDS * rate) return null;
+    const time = this.total / rate;
+
+    const { acf, bandAcf, score: combScore, best: winner } = this.comb(COMB_SECONDS);
+
+    const wide = new Float64Array(WIDE_POINTS);
+    for (let i = 0; i < WIDE_POINTS; i++) wide[i] = at(acf, (60 * rate) / wideBpm(i));
+
+    const first = this.envelope(bandAcf, readingAt(combScore, winner));
+    let decided = this.decide(combScore, bandAcf, winner, first, time, false);
+    let grid = decided.grid;
+    let env = decided.env;
+    if (!grid && this.total > SHORT_COMB_SECONDS * rate) {
       // after a tempo change the long comb still holds the old tempo for a few seconds: seed from the short one
-      const short = this.comb(SHORT_COMB_SECONDS).reading;
-      if (Math.abs(short - combReading) >= 1) {
-        const again = fitGrid(peaks, 60 / short, time);
-        if (again && Math.abs(again.bpm - short) < 1.5) { grid = again; gridOk = true; }
+      const short = this.comb(SHORT_COMB_SECONDS);
+      if (Math.abs(short.reading - readingAt(combScore, winner)) >= 1) {
+        const again = this.decide(short.score, short.bandAcf, short.best, first, time, true);
+        if (again.grid) { grid = again.grid; env = again.env; }
       }
     }
+    if (!grid) {
+      // no tempo change either: a relative of the winner whose grid holds the hits
+      decided = this.decide(combScore, bandAcf, winner, first, time, true);
+      grid = decided.grid;
+      env = decided.env;
+    }
+    const combReading = readingAt(combScore, decided.best);
+    const margin = marginOf(combScore, decided.best, decided.explained);
+    const gridOk = grid !== null;
+    const { odf, odfStart, peaks } = env;
+    if (!gridOk) grid = fitGrid(peaks, 60 / combReading, time);
     const ioi = ioiTempo(peaks);
 
     // no hits on a beat grid lately (a breakdown, talk, silence): every method keeps its last reading with a beat
@@ -279,6 +320,21 @@ function sixteenthShare(peaks: Peak[], phase: number, sixteenth: number): number
     if (Math.abs(e) <= SIXTEENTH_TOL) on += p.strength;
   }
   return on / Math.max(1e-12, all);
+}
+
+/** The tempo of comb candidate c, refined by a parabola through its neighbours. */
+function readingAt(score: Float64Array, c: number): number {
+  return combBpm(c) + SEARCH_STEP * parabola(score, c);
+}
+
+/** The lead of candidate best over the best one at least MARGIN_BPM away and not ruled out, as a share of best's score. */
+function marginOf(score: Float64Array, best: number, explained: number[]): number {
+  let rival = -Infinity;
+  for (let c = 0; c < score.length; c++) {
+    if (Math.abs(c - best) * SEARCH_STEP < MARGIN_BPM || explained.some((e) => Math.abs(c - e) * SEARCH_STEP < MARGIN_BPM)) continue;
+    rival = Math.max(rival, score[c]!);
+  }
+  return score[best]! > 0 ? Math.max(0, Math.min(1, (score[best]! - Math.max(0, rival)) / score[best]!)) : 0;
 }
 
 /** The comb candidate with the highest score within 1.5 % of bpm, when that is a local maximum inside the search range; else -1. */

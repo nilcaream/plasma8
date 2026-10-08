@@ -24,6 +24,7 @@ const FLOOR = [
   'snare only 130', 'kick half 130', 'synco kick 130', 'hats 8ths 130', 'hats 16ths 130', 'H half-time 140',
   'breakA 141.7', '4floor 110', '4floor 150', 'snare only 150', 'H dotted arp 110 weak drums', 'H phone breakB 130 babble',
   'S 4floor 95', 'S snare only 95', 'H dotted arp 140 breakA', 'S dotted arp 105 breakA', 'S shuffle 128 (triplet 16ths)', 'S shuffle breakA 100',
+  'S 2-step 135 shuffle phone noise',
 ];
 
 describe('TempoDetector', () => {

@@ -1,13 +1,15 @@
 /**
  * The real-music bench, on demand: recordings of music through a room and a microphone, with the
  * tempo the web lists for each, kept outside the repository (they are copyrighted music and room
- * audio). BPM_REAL names a directory with index.json ([{ file, artist, title, webBpm }]) and the
+ * audio). BPM_REAL names a directory with index.json, or the file BPM_REAL_INDEX names there
+ * ([{ file, artist, title, webBpm }], entries without webBpm skipped), and the
  * 16-bit PCM WAVs it lists; the table goes to the file BPM_REAL_OUT names, and the last analysis of
  * each recording to <BPM_REAL_OUT>.json:
  * `env BPM_REAL=/dir BPM_REAL_OUT=/path/table.md npx vitest run src/tempoReal.test.ts`.
  */
 
 import { describe, it } from 'vitest';
+import { BeatClock } from './beatClock';
 import { combBpm, METHODS, type Method, TempoDetector, wideBpm, type Analysis } from './tempoDetect';
 
 // the project has no node types; the bench needs only these
@@ -58,14 +60,16 @@ describe.skipIf(!process.env.BPM_REAL)('real-music bench', () => {
   it('prints the table', async () => {
     const { readFileSync, writeFileSync } = await import(/* @vite-ignore */ FS);
     const dir = process.env.BPM_REAL!;
-    const list: Recording[] = JSON.parse(readFileSync(`${dir}/index.json`, 'utf8'));
-    const rows = ['| recording | web | ' + METHODS.map((m) => `${m} last 10 s (share right)`).join(' | ') + ' | confidence | comb tops | wide tops |'];
-    rows.push('|---|---|' + METHODS.map(() => '---').join('|') + '|---|---|---|');
+    const list: Recording[] = JSON.parse(readFileSync(`${dir}/${process.env.BPM_REAL_INDEX ?? 'index.json'}`, 'utf8'));
+    const rows = ['| recording | web | ' + METHODS.map((m) => `${m} last 10 s (share right)`).join(' | ') + ' | confidence | beat | clock bpm / anchors / changes | comb tops | wide tops |'];
+    rows.push('|---|---|' + METHODS.map(() => '---').join('|') + '|---|---|---|---|---|');
     const detail: Record<string, unknown> = {};
-    for (const r of list) {
+    const tally = Object.fromEntries(METHODS.map((m) => [m, {} as Record<string, number>]));
+    for (const r of list.filter((r) => r.webBpm)) {
       const { fs, samples } = decode(readFileSync(`${dir}/${r.file}`));
       const det = new TempoDetector(fs);
-      const seen: { t: number; readings: Record<Method, number | null>; confidence: number }[] = [];
+      const clock = new BeatClock();
+      const seen: { t: number; readings: Record<Method, number | null>; confidence: number; beat: boolean }[] = [];
       let last: Analysis | null = null;
       let next = 0.25;
       for (let i = 0; i < samples.length; i += 2048) {
@@ -73,7 +77,7 @@ describe.skipIf(!process.env.BPM_REAL)('real-music bench', () => {
         if ((i + 2048) / fs >= next) {
           next += 0.25;
           const a = det.analyse();
-          if (a) { seen.push({ t: a.time, readings: a.readings, confidence: a.confidence }); last = a; }
+          if (a) { seen.push({ t: a.time, readings: a.readings, confidence: a.confidence, beat: a.beat }); last = a; clock.update(a); }
         }
       }
       const end = seen[seen.length - 1]?.t ?? 0;
@@ -82,10 +86,14 @@ describe.skipIf(!process.env.BPM_REAL)('real-music bench', () => {
         const v = tail.map((s) => s.readings[m]).filter((x): x is number => x !== null);
         const right = seen.filter((s) => s.t > 10 && relation(s.readings[m], r.webBpm) === 'right').length / Math.max(1, seen.filter((s) => s.t > 10).length);
         const mid = v.length ? median(v) : null;
-        return `${fmt(mid)} ${relation(mid, r.webBpm)} (${Math.round(right * 100)} %)`;
+        const rel = relation(mid, r.webBpm);
+        tally[m]![rel] = (tally[m]![rel] ?? 0) + 1;
+        return `${fmt(mid)} ${rel} (${Math.round(right * 100)} %)`;
       });
       const conf = median(tail.map((s) => s.confidence));
-      rows.push(`| ${r.file} | ${r.webBpm} | ${cells.join(' | ')} | ${conf.toFixed(2)} | ${last ? tops(last.combScore, combBpm, 4) : ''} | ${last ? tops(last.wide, wideBpm, 6) : ''} |`);
+      const late = seen.filter((s) => s.t > 10);
+      const beat = late.filter((s) => s.beat).length / Math.max(1, late.length);
+      rows.push(`| ${r.file} | ${r.webBpm} | ${cells.join(' | ')} | ${conf.toFixed(2)} | ${Math.round(beat * 100)} % | ${clock.beat === null ? '—' : `${clock.bpm.toFixed(2)} / ${clock.anchors} / ${clock.changes}`} | ${last ? tops(last.combScore, combBpm, 4) : ''} | ${last ? tops(last.wide, wideBpm, 6) : ''} |`);
       detail[r.file] = last && {
         trace: seen.map((s) => [+s.t.toFixed(2), ...METHODS.map((m) => s.readings[m] && +s.readings[m]!.toFixed(2)), +s.confidence.toFixed(2)]),
         grid: last.grid, rate: last.rate, odfStart: last.odfStart, odf: Array.from(last.odf, (v) => +v.toFixed(3)),
@@ -93,6 +101,8 @@ describe.skipIf(!process.env.BPM_REAL)('real-music bench', () => {
         wide: Array.from(last.wide, (v, i) => [+wideBpm(i).toFixed(1), +v.toFixed(4)]),
       };
     }
+    rows.push('');
+    for (const m of METHODS) rows.push(`${m}: ${Object.entries(tally[m]!).map(([k, n]) => `${k} ${n}`).join(', ')}`);
     writeFileSync(process.env.BPM_REAL_OUT!, rows.join('\n') + '\n');
     writeFileSync(`${process.env.BPM_REAL_OUT!}.json`, JSON.stringify(detail));
   }, 600_000);

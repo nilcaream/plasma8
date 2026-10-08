@@ -59,6 +59,8 @@ export const CASES: BenchCase[] = [
   { name: 'S everything 4floor 107.3', spec: { bpm: 107.3, seconds: S, pattern: PATTERNS.fourFloorFull, phoneMic: true, reverb: 0.7, noise: 1.5, babble: 1.5, dottedArpDb: -3, pad: true, velocityDb: 4, seed: 75 } },
   { name: 'S shuffle 128 (triplet 16ths)', spec: { bpm: 128, seconds: S, pattern: PATTERNS.fourFloorFull, swing: 1 / 3, velocityDb: 3, seed: 76 } },
   { name: 'S shuffle breakA 100', spec: { bpm: 100, seconds: S, pattern: PATTERNS.breakA, swing: 1 / 3, velocityDb: 3, seed: 77 } },
+  { name: 'S 2-step 135 shuffle phone noise', spec: { bpm: 135, seconds: S, pattern: PATTERNS.breakB, swing: 1 / 3, phoneMic: true, noise: 1, velocityDb: 3, seed: 78 } },
+  { name: 'S 2-step 135 shuffle hats 16ths', spec: { bpm: 135, seconds: S, pattern: PATTERNS.hats16, swing: 1 / 3, velocityDb: 3, seed: 79 } },
   // the music changes under the detector
   { name: 'C long breakdown 128 (8-22 s)', spec: { bpm: 128, seconds: 40, pattern: PATTERNS.fourFloorFull, pad: true, breakdown: [8, 22], velocityDb: 3, seed: 51 } },
   { name: 'C jump 128 to 135 at 15 s', spec: { bpm: 128, seconds: 40, pattern: PATTERNS.fourFloor, change: { at: 15, bpm: 135, over: 0 }, velocityDb: 3, seed: 52 } },
