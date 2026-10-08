@@ -55,6 +55,8 @@ export const CASES: BenchCase[] = [
   { name: 'C jump 128 to 135 at 15 s', spec: { bpm: 128, seconds: 40, pattern: PATTERNS.fourFloor, change: { at: 15, bpm: 135, over: 0 }, velocityDb: 3, seed: 52 } },
   { name: 'C jump 140 to 124 breakA', spec: { bpm: 140, seconds: 40, pattern: PATTERNS.breakA, change: { at: 15, bpm: 124, over: 0 }, velocityDb: 3, seed: 53 } },
   { name: 'C ramp 126 to 128 in 10 s', spec: { bpm: 126, seconds: 40, pattern: PATTERNS.fourFloorFull, change: { at: 10, bpm: 128, over: 10 }, velocityDb: 3, seed: 54 } },
+  { name: 'C dropouts snare only 130', spec: { bpm: 130, seconds: 40, pattern: PATTERNS.snareOnly, dropouts: [[12, 10], [21, 21.3], [29, 10]], seed: 55 } },
+  { name: 'C dropouts 4floor 128', spec: { bpm: 128, seconds: 40, pattern: PATTERNS.fourFloorFull, dropouts: [[12, 10], [21, 21.3], [29, 10]], velocityDb: 3, seed: 56 } },
   { name: 'H everything halftime 147.2', spec: { bpm: 147.2, seconds: S, pattern: PATTERNS.halfTime, phoneMic: true, reverb: 0.7, noise: 1.5, babble: 1.5, dottedArpDb: -6, velocityDb: 4, seed: 42 } },
 ];
 

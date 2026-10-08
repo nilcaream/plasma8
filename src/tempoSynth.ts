@@ -49,6 +49,8 @@ export interface TrackSpec {
   dottedArpDb?: number;
   /** Chord stabs on the off-beat 16ths 3, 6, 11 and 14, at this level in dB. */
   stabsDb?: number;
+  /** Audio glitches: at each [seconds, ms], that many ms of silence are inserted and everything after comes late. */
+  dropouts?: [number, number][];
 }
 
 export const PATTERNS = {
@@ -329,6 +331,12 @@ export function render(spec: TrackSpec): Float32Array {
     }
   }
   for (let i = 0; i < n; i++) out[i] = Math.max(-1, Math.min(1, out[i]!));
+  for (const [at, ms] of [...(spec.dropouts ?? [])].sort((a, b) => b[0] - a[0])) {
+    // from the last one back, so earlier times stay where they are
+    const i = Math.round(at * fs), gap = Math.round((ms / 1000) * fs);
+    out.copyWithin(i + gap, i, n - gap);
+    out.fill(0, i, i + gap);
+  }
   return out;
 }
 
