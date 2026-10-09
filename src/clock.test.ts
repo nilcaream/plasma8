@@ -318,34 +318,3 @@ describe('TapClock tap marks', () => {
   });
 });
 
-describe('TapClock set by hand', () => {
-  it('takes exactly that tempo and leaves the beat where it is', () => {
-    const clock = new TapClock(0);
-    const last = tapEvery(clock, 1000, 500, 10);
-    const now = last + 200;
-    const before = clock.read(now);
-    clock.setBpm(133, now);
-    const after = clock.read(now);
-    expect(after.bpm).toBe(133);
-    expect(after.bpmError).toBeUndefined();
-    expect(after.beats).toBeCloseTo(before.beats, 8);
-    expect(clock.read(now + 60000).beats - after.beats).toBeCloseTo(133, 6);
-  });
-
-  it('halves above 180 like every other tempo that comes in', () => {
-    const clock = new TapClock(0);
-    clock.setBpm(200, 100);
-    expect(clock.read(100).bpm).toBe(100);
-  });
-
-  it('makes the next tap a fresh count, even within a second', () => {
-    const clock = new TapClock(0);
-    const last = tapEvery(clock, 1000, 500, 10);
-    clock.setBpm(90, last + 100);
-    clock.tap(last + 300);
-    const r = clock.read(last + 300);
-    expect(r.taps).toBe(1);
-    expect(r.beats).toBe(0);
-    expect(r.bpm).toBe(90);
-  });
-});

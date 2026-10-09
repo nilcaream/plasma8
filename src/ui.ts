@@ -43,7 +43,7 @@ export class Sliders {
  * which the look lights. A press changes the setting through `settingPatch` and tells `onChange`.
  */
 export class Panel {
-  private readonly root = byId('switches');
+  private readonly root = byId('bar');
   private readonly buttons = [...this.root.querySelectorAll<HTMLButtonElement>('button[data-setting]')];
   private readonly listen = byId('group-listen');
   private readonly dot = byId('mic-dot');

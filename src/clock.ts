@@ -203,20 +203,6 @@ export class TapClock {
     this.anchor = line.meanY - (meanBeat * 60000) / this.bpm;
   }
 
-  /** Sets the tempo by hand, keeping the beat position it is at now. The next tap starts a fresh count. */
-  setBpm(bpm: number, now: number): void {
-    const { beats } = this.read(now);
-    this.bpm = toBpm(bpm);
-    this.bpmError = undefined;
-    this.anchor = now - (beats * 60000) / this.bpm;
-    this.lastTap = -Infinity;
-    this.count = 0;
-    this.window = [];
-    this.off = 0;
-    this.halved = undefined;
-    this.marks = [];
-  }
-
   /** The taps of the current run to draw, oldest first. */
   tapMarks(): TapMark[] {
     const firstInWindow = this.count - this.window.length;

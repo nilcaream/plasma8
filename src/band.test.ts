@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { PANEL_MS, metronomeShown, panelShown } from './band';
+import { PANEL_MS, inBand, metronomeShown, panelShown } from './band';
+
+describe('inBand', () => {
+  it('is every height above the band bottom, so the panels and the gaps between them alike', () => {
+    expect(inBand(0, 88)).toBe(true);
+    expect(inBand(40, 88)).toBe(true);
+    expect(inBand(87.9, 88)).toBe(true);
+  });
+
+  it('is not the page below the band', () => {
+    expect(inBand(88, 88)).toBe(false);
+    expect(inBand(400, 88)).toBe(false);
+  });
+});
 
 describe('metronomeShown', () => {
   it('is up while the user taps, and also while the panel is up, whatever the taps', () => {

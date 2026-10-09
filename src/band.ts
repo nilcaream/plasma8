@@ -1,15 +1,20 @@
 /**
  * The panel across the top of the page: the one place for every control (src/ui.ts,
- * src/tapWidget.ts, src/tempoWheel.ts). A touch or a move of the mouse anywhere shows
- * the whole panel (the metronome, the tapping widget, the tempo wheel, the sliders, the
- * buttons) and each touch starts the PANEL_MS again; then it fades. The panel's
- * controls are the only things on the page a press is not a press on: between them it
- * is transparent and a press falls through to the page. With ?debug the band is
- * outlined and the panel, the metronome included, is up from the load and never fades.
+ * src/tapWidget.ts). A touch or a move of the mouse anywhere shows the whole panel (the
+ * metronome, the buttons, the tapping widget, the sliders) and each touch starts the
+ * PANEL_MS again; then it fades, and the mouse pointer with it. The band, the row the panel
+ * occupies across the full width, panels and the gaps between them alike, is the one part of
+ * the page a press is not a press on: it is no tempo tap and no bar 1, it only brings the
+ * panel back. With ?debug the band is outlined and the panel is up from the load and never fades.
  */
 
 /** The panel stays this long after the last touch, then fades. */
 export const PANEL_MS = 5000;
+
+/** Whether a press at height `y` (client pixels from the top) is in the band that ends at `bandBottom`. */
+export function inBand(y: number, bandBottom: number): boolean {
+  return y < bandBottom;
+}
 
 /** Whether the panel is up: a finger or a mouse button is down on it, or the last touch was less than PANEL_MS ago; with ?debug (`pinned`) always. */
 export function panelShown(lastTouchAt: number, now: number, held: boolean, pinned = false): boolean {
@@ -54,9 +59,8 @@ export class Band {
     };
     window.addEventListener('pointerup', release);
     window.addEventListener('pointercancel', release);
-    // a slider moved, a key or the mouse wheel on the tempo wheel, the focus arriving by Tab
+    // a slider moved, a key, the focus arriving by Tab
     this.root.addEventListener('input', touch);
-    this.root.addEventListener('wheel', touch, { passive: true });
     this.root.addEventListener('keydown', touch);
     this.root.addEventListener('focusin', touch);
   }
@@ -64,6 +68,11 @@ export class Band {
   /** The panel comes back, or stays, for PANEL_MS more: a touch or a move of the mouse anywhere on the page. */
   touch(): void {
     this.lastTouchAt = performance.now();
+  }
+
+  /** Whether a press at client height `y` is in the band. */
+  covers(y: number): boolean {
+    return inBand(y, this.root.getBoundingClientRect().bottom);
   }
 
   /** Whether the event target is one of the panel's controls: keys are taps unless the focus is in here. */
@@ -83,6 +92,8 @@ export class Band {
     if (shown !== this.shown) {
       this.shown = shown;
       this.root.classList.toggle('shown', shown);
+      // the mouse pointer goes with the panel and comes back with it
+      document.body.classList.toggle('idle', !shown);
       // keys are taps unless the focus is in here, so give the focus back
       if (!shown && this.hasTarget(document.activeElement)) (document.activeElement as HTMLElement).blur();
     }

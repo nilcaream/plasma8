@@ -1,42 +1,26 @@
-:root {
-  --fg: rgba(255, 255, 255, 0.92);
-  --panel: rgba(12, 12, 16, 0.55);
-  --accent: #ff6a3d;
-}
-
 /*
- * The look of the panel's buttons: a rack of modules, each a group of flat rectangular keys under a small engraved label,
- * the pressed key's label lit like a lamp. Between the groups there is nothing: the picture shows through.
+ * The look of the page in one place. One gap is used for every padding, margin and space between things; one amber lights
+ * everything that is on; every panel has the same background, rounding and text.
  */
 :root {
   /* colours */
-  --group-bg: rgba(14, 14, 18, 0.72);
-  --group-edge: rgba(255, 255, 255, 0.14);
-  --group-label: rgba(255, 255, 255, 0.5);
-  --key-bg: rgba(255, 255, 255, 0.05);
-  --key-bg-hover: rgba(255, 255, 255, 0.11);
-  --key-bg-down: rgba(255, 255, 255, 0.2);
-  --key-edge: rgba(255, 255, 255, 0.16);
-  --key-text: rgba(255, 255, 255, 0.55);
-  --key-lit: #ffb23d;
-  --key-lit-bg: rgba(255, 178, 61, 0.12);
-  --key-lit-edge: rgba(255, 178, 61, 0.55);
-  --key-glow: 0 0 6px rgba(255, 178, 61, 0.85), 0 0 14px rgba(255, 178, 61, 0.45);
+  --fg: rgba(255, 255, 255, 0.92);
+  --accent: #ffb23d;
+  --accent-bg: color-mix(in srgb, var(--accent) 14%, transparent);
+  --accent-glow: 0 0 6px color-mix(in srgb, var(--accent) 85%, transparent), 0 0 14px color-mix(in srgb, var(--accent) 45%, transparent);
+  --panel: rgba(12, 12, 16, 0.55);
+  --key-bg: rgba(255, 255, 255, 0.08);
+  --key-bg-hover: rgba(255, 255, 255, 0.16);
+  --key-bg-down: rgba(255, 255, 255, 0.26);
   --dot-colour: #ff2d2d;
   /* sizes */
-  --key-h: 34px;
-  --key-min-w: 38px;
-  --key-pad-x: 10px;
-  --key-gap: 2px;
-  --key-radius: 2px;
-  --key-font: 12px;
-  --group-gap: 8px;
-  --group-pad: 8px;
-  --group-radius: 4px;
-  --label-font: 10px;
-  --label-space: 0.12em;
+  --gap: 10px;
+  --part-h: 72px;
+  --radius: 10px;
+  --key-h: 32px;
+  --key-radius: 4px;
   --dot-size: 14px;
-  --dot-inset: 14px;
+  --band-h: calc(env(safe-area-inset-top, 0px) + var(--gap) + var(--part-h) + var(--gap));
 }
 html,
 body {
@@ -52,6 +36,11 @@ body {
   font: 13px/1.4 system-ui, sans-serif;
   color: var(--fg);
 }
+/* the mouse pointer goes with the panel and comes back with it */
+body.idle,
+body.idle * {
+  cursor: none;
+}
 #stage {
   position: fixed;
   inset: 0;
@@ -61,16 +50,10 @@ body {
 }
 
 /*
- * The band: the whole width at the top, the one place for every control and the only place where a tap is not a tempo tap.
- * One row of parts of the same height, the metronome left, the tapping widget at the centre, the wheel and the sliders right;
- * on a narrow screen (a phone held upright) a second row takes the wheel and the sliders. A press in it shows all the parts for 5 s.
+ * The band: the whole width at the top, the one place for every control and the one place where a press is no tempo tap and no bar 1.
+ * One row of panels of the same height with the same space between them: the metronome, the tempo source, continuous listen,
+ * the shortest and the longest visual, the tapping widget, what plays, the sliders. A touch in it shows all the panels for 5 s.
  */
-:root {
-  --gap: 8px;
-  --part-h: 72px;
-  --radius: 10px;
-  --band-h: calc(env(safe-area-inset-top, 0px) + var(--gap) + var(--part-h) + var(--gap));
-}
 #bar {
   position: fixed;
   z-index: 1; /* above the ?debug knob panel, so a part is never covered */
@@ -81,36 +64,17 @@ body {
   box-sizing: border-box;
   padding: calc(env(safe-area-inset-top, 0px) + var(--gap)) calc(env(safe-area-inset-right, 0px) + var(--gap)) var(--gap)
     calc(env(safe-area-inset-left, 0px) + var(--gap));
-  display: grid;
-  grid-template-columns: minmax(max-content, 1fr) auto minmax(max-content, 1fr);
-  align-items: start;
-  column-gap: var(--gap);
-}
-#controls {
-  justify-self: end;
   display: flex;
+  flex-wrap: nowrap;
+  justify-content: space-between;
+  align-items: flex-start;
   gap: var(--gap);
-}
-@media (max-width: 599px) {
-  :root {
-    --band-h: calc(env(safe-area-inset-top, 0px) + var(--gap) + 2 * (var(--part-h) + var(--gap)));
-  }
-  #bar {
-    row-gap: var(--gap);
-  }
-  #controls {
-    grid-column: 1 / -1;
-    justify-self: stretch;
-    justify-content: flex-end;
-  }
-  #menu {
-    flex: 1;
-    max-width: 300px;
-  }
+  pointer-events: none;
 }
 
-/* Every part of the panel: the same height, background, radius and text, and invisible and out of the way until the panel is up. */
+/* Every panel: the same height, background, rounding and text, and invisible and out of the way until the panel is up. */
 .part {
+  flex: none;
   height: var(--part-h);
   box-sizing: border-box;
   border-radius: var(--radius);
@@ -155,13 +119,13 @@ body {
 
 /* The tapping widget: 4 dots while counting in, then the early/late strip, and the tempo under it. */
 #tap-widget {
-  width: 200px;
-  padding: 0 10px;
+  width: 180px;
+  padding: 0 var(--gap);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 8px;
+  gap: var(--gap);
 }
 #tap-dots,
 #tap-strip {
@@ -171,7 +135,7 @@ body {
 #tap-dots {
   display: none;
   align-items: center;
-  gap: 14px;
+  gap: var(--gap);
 }
 #tap-widget.counting #tap-dots {
   display: flex;
@@ -229,61 +193,20 @@ body {
   color: #5fe08a;
 }
 
-/* The whole-number tempo wheel, left of the sliders: three rows show, the middle one is the tempo. */
-#tempo-wheel {
-  position: relative;
-  width: 56px;
-  overflow: hidden;
-  cursor: ns-resize;
-  outline: none;
-  touch-action: none;
-}
-#tempo-wheel:focus-visible {
-  box-shadow: 0 0 0 2px var(--accent);
-}
-#tempo-wheel-rows {
-  position: absolute;
-  inset: 0;
-  -webkit-mask-image: linear-gradient(transparent, #000 28%, #000 72%, transparent);
-  mask-image: linear-gradient(transparent, #000 28%, #000 72%, transparent);
-}
-#tempo-wheel::before {
-  /* the row that is the tempo */
-  content: '';
-  position: absolute;
-  left: 6px;
-  right: 6px;
-  top: calc(50% - 12px);
-  height: 24px;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.14);
-}
-#tempo-wheel-rows span {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(50% - 12px);
-  height: 24px;
-  line-height: 24px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-  pointer-events: none;
-}
-
 /* The intensity and strobe sliders. */
 #menu {
-  width: 220px;
-  padding: 0 12px;
+  width: 200px;
+  padding: 0 var(--gap);
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 8px;
+  gap: var(--gap);
 }
 #menu label {
   display: grid;
-  grid-template-columns: 62px 1fr 34px;
+  grid-template-columns: 58px 1fr 34px;
   align-items: center;
-  gap: 8px;
+  gap: var(--gap);
 }
 #menu output {
   text-align: right;
@@ -297,59 +220,33 @@ body {
   accent-color: var(--accent);
 }
 
-/* The panel's buttons: tempo source, continuous listen, min and max length, what plays. */
-#bar {
-  row-gap: var(--gap);
-  pointer-events: none; /* between its parts the panel is transparent: a press there is a press on the page */
-}
-#switches {
-  grid-column: 1 / -1;
-  /* no width of its own to the grid's tracks: it takes the row's width and the groups wrap inside it */
-  width: 0;
-  min-width: 100%;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: var(--group-gap);
-}
-/* a module: its label engraved on top, its keys side by side under it; the background is its own, nothing joins it to the next */
+/* The buttons: tempo source, continuous listen, min and max length, what plays. The keys of one panel are as wide as its widest, the name is under them. */
 .group {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 5px;
-  padding: 0 var(--group-pad);
-  border: 1px solid var(--group-edge);
-  border-radius: var(--group-radius);
-  background: var(--group-bg);
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-}
-.group-label {
-  font-size: var(--label-font);
-  line-height: 1;
-  letter-spacing: var(--label-space);
-  text-transform: uppercase;
+  align-items: center;
+  gap: var(--gap);
+  padding: 0 var(--gap);
+  text-align: center;
   white-space: nowrap;
-  color: var(--group-label);
 }
 .keys {
-  display: flex;
-  gap: var(--key-gap);
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: var(--gap);
 }
 .key {
-  min-width: var(--key-min-w);
   height: var(--key-h);
-  padding: 0 var(--key-pad-x);
+  padding: 0 var(--gap);
   font: inherit;
-  font-size: var(--key-font);
-  letter-spacing: 0.04em;
-  color: var(--key-text);
+  color: var(--fg);
   background: var(--key-bg);
-  border: 1px solid var(--key-edge);
+  border: 0;
   border-radius: var(--key-radius);
   cursor: pointer;
-  transition: background 0.1s, color 0.1s, border-color 0.1s, text-shadow 0.1s;
+  transition: background 0.1s, color 0.1s, text-shadow 0.1s;
 }
 .key:hover {
   background: var(--key-bg-hover);
@@ -358,37 +255,42 @@ body {
   background: var(--key-bg-down);
 }
 .key:focus-visible {
-  outline: 1px solid var(--key-lit);
+  outline: 1px solid var(--accent);
   outline-offset: 1px;
 }
 /* the pressed key: its label lights up */
 .key[aria-pressed='true'] {
-  color: var(--key-lit);
-  background: var(--key-lit-bg);
-  border-color: var(--key-lit-edge);
-  text-shadow: var(--key-glow);
+  color: var(--accent);
+  background: var(--accent-bg);
+  text-shadow: var(--accent-glow);
 }
 .key:disabled {
   cursor: default;
 }
-.group.inactive .key,
+.group.inactive .keys,
 .group.inactive .group-label {
   opacity: 0.35;
 }
-#mic-note {
-  align-self: center;
-}
-/* the red dot: always on while the microphone listens, also when the panel has faded */
+
+/* The microphone: a red dot bottom left, on while it listens, also when the panel has faded; a note beside it when it could not be opened. */
 #mic-dot {
   position: fixed;
   z-index: 2;
-  left: calc(env(safe-area-inset-left, 0px) + var(--dot-inset));
-  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--dot-inset));
+  left: calc(env(safe-area-inset-left, 0px) + var(--gap));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--gap));
   width: var(--dot-size);
   height: var(--dot-size);
   border-radius: 50%;
   background: var(--dot-colour);
   box-shadow: 0 0 8px 2px color-mix(in srgb, var(--dot-colour) 70%, transparent);
+  pointer-events: none;
+}
+#mic-note {
+  position: fixed;
+  z-index: 2;
+  left: calc(env(safe-area-inset-left, 0px) + var(--gap) + var(--dot-size) + var(--gap));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--gap));
+  line-height: var(--dot-size);
   pointer-events: none;
 }
 

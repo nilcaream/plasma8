@@ -23,7 +23,6 @@ import { movingAt } from './moving';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
 import { Sureness } from './sure';
 import { TapWidget, widgetView, type WidgetView } from './tapWidget';
-import { TempoWheel } from './tempoWheel';
 import { DebugOverlay, Metronome, Panel, Sliders, showFatal } from './ui';
 
 interface Running {
@@ -145,12 +144,7 @@ function main(): void {
   const flashLimiter = new FlashLimiter();
 
   const tapWidget = new TapWidget();
-  // dragging the wheel sets the tempo to the whole number it shows, and the beat stays where it is
-  // (while the tempo is detected the wheel only shows it)
-  const wheel = new TempoWheel((bpm) => {
-    if (live.source === 'tap') tapClock.setBpm(bpm, performance.now());
-  });
-  // the band across the top: every control lives there, and a press on one of its controls is never a tempo tap (src/band.ts)
+  // the band across the top: every control lives there, and a press anywhere in it is never a tempo tap or a bar 1 (src/band.ts)
   // a press in it prints what is on the screen as one console block (src/dump.ts)
   const peaks = new FlashPeaks();
   let seen: { r: ClockReading; intensity: number; strobe: number; flash: number; fade: number; now: number } | undefined;
@@ -287,7 +281,7 @@ function main(): void {
     band.touch();
     const ask = mayListenOnPress();
     if (ask) listen();
-    if (band.hasTarget(e.target) || knobPanel.contains(e.target) || !isTapPointer(e)) return;
+    if (band.covers(e.clientY) || knobPanel.contains(e.target) || !isTapPointer(e)) return;
     press(`pointer ${e.pointerId}`, e.timeStamp);
   });
   const release = (owner: string): void => {
@@ -396,7 +390,6 @@ function main(): void {
     tapWidget.update({ ...widget, visible: widget.visible || panelUp });
     metronome.show(metronomeShown(widget.visible, panelUp));
     panel.showMic(mic.listening, mic.error ? `The microphone could not be opened (${mic.error}).` : '');
-    wheel.show(r.bpm);
     metronome.update(r);
     debug.update(r, {
       name: current.def.name,
