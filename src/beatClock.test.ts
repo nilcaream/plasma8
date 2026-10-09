@@ -9,7 +9,7 @@ function seen(time: number, bpm: number, beat: number, more: Partial<GridFit> = 
   const period = 60 / bpm;
   const peaks: Peak[] = [];
   for (let t = beat + Math.floor((time - 8 - beat) / period) * period; t <= time; t += period) if (t >= time - 8) peaks.push({ t, strength: 1, onGrid: true });
-  const grid: GridFit = { bpm, sd: 0.005, phase: beat, period, offOdd: 0, beat, beatShare: 0.9, inliers: peaks.length, onGridShare: 0.8, rmsMs: 0.5, span: 8, ...more };
+  const grid: GridFit = { bpm, sd: 0.005, phase: beat, period, offOdd: 0, beat, beatShare: 0.9, inliers: peaks.length, onGridShare: 0.8, rmsMs: 0.5, firstSpread: 0.01, span: 8, ...more };
   return { time, beat: true, readings: { grid: bpm, comb: bpm, ioi: bpm }, grid, combScore: new Float64Array(0), wide: new Float64Array(0), odf: new Float32Array(0), odfStart: 0, rate: 100, peaks, confidence: 1 };
 }
 

@@ -62,6 +62,11 @@ const SIXTEENTH_SHARE = 0.7;
 const SIXTEENTH_TOL = 0.015;
 /** The first stage is also the beat test, long enough for a snare on 2 and 4 at 95 to hit 4 times. */
 const FIT_STAGES = [6, 12, 24, 32];
+/**
+ * The beat's spread: hits on a grid sit 1–5 % of a half beat off the first stage's line, swung ones up to 6.5 %, while
+ * a chance fit (a pad's chord changes) spreads 4–9 %: above this, only chance fits are left.
+ */
+const BEAT_RMS = 0.07;
 /** Wide view for the page: from this BPM to WIDE_HI, log-spaced. */
 export const WIDE_LO = 50;
 export const WIDE_HI = 320;
@@ -88,6 +93,8 @@ export interface GridFit {
   /** Share of the peaks' strength that lies on the grid, 0..1. */
   onGridShare: number;
   rmsMs: number;
+  /** The first stage's weighted rms off the line, as a share of the half beat it started from. */
+  firstSpread: number;
   span: number;
 }
 
@@ -299,7 +306,8 @@ export class TempoDetector {
     const ioi = ioiTempo(peaks);
 
     // no hits on a beat grid lately (a breakdown, talk, silence): every method keeps its last reading with a beat
-    const beat = grid !== null;
+    // a grid whose first hits spread as a chance fit does (a pad's chord changes) keeps the reading, but is no beat
+    const beat = grid !== null && grid.firstSpread <= BEAT_RMS;
     const fresh: Record<Method, number | null> = { grid: gridOk ? grid!.bpm : combReading, comb: combReading, ioi };
     if (beat) this.held = fresh;
     const readings = beat || !this.held ? fresh : this.held;
@@ -496,6 +504,7 @@ export function fitGrid(peaks: Peak[], period0: number, now: number): GridFit | 
   let tol = 0.15 * half;
   let off = 0;
   let fit: Line | null = null;
+  let firstSpread = 0;
   for (const seconds of FIT_STAGES) {
     // the line carried back to the stage's start drifts by its slope error times the half beats in between:
     // the stage takes hits that far off (3 standard errors), and is not tried when that is no longer a grid
@@ -507,6 +516,7 @@ export function fitGrid(peaks: Peak[], period0: number, now: number): GridFit | 
     // or, for music busy with 16ths, most of it on the 16ths of the line
     if (!line || line.n < (fit ? 6 : 4)) break;
     if (!fit && line.inW < 0.5 * line.allW && sixteenthShare(use, phase + line.a, line.b / 2) < SIXTEENTH_SHARE) break;
+    if (!fit) firstSpread = line.rms / half;
     // once more without the hits far off the first line (claps, ghost notes)
     const trimmed = fitLine(use, phase + line.a, line.b, Math.max(0.004, Math.min(wide, 3 * line.scale)), line.offOdd);
     if (trimmed && trimmed.n >= 4 && trimmed.inW >= 0.7 * line.inW) line = { ...trimmed, a: trimmed.a + line.a, allW: line.allW };
@@ -538,6 +548,7 @@ export function fitGrid(peaks: Peak[], period0: number, now: number): GridFit | 
     inliers: fit.n,
     onGridShare: fit.inW / Math.max(1e-12, fit.allW),
     rmsMs: fit.rms * 1000,
+    firstSpread,
     span: fit.span,
   };
 }

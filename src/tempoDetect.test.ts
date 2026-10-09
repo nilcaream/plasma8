@@ -58,6 +58,32 @@ describe('TempoDetector', () => {
     expect(beats('C long breakdown 128 (8-22 s)', 15, 21)).toBe(0);
   });
 
+  // A pad's chord changes fit a grid by chance: hits smeared evenly over ±20 % of the half beat still fill the line's
+  // ±15 % window, and their first stage spreads 0.04-0.085 of the half beat, half of it above BEAT_RMS. Those grids are
+  // no beat: over six seeds the beat share falls from 0.865 to 0.649. Hits played loosely, 6 % off the line on either
+  // side, spread about 0.047 and stay a beat.
+  it('hears no beat in hits that fit the grid only by chance', () => {
+    const beats = (seed: number, off: (rand: () => number) => number): number => {
+      const fs = 44100, half = 30 / 128, x = new Float32Array(20 * fs);
+      const rand = (): number => (seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 2 ** 32;
+      for (let t = 0.5; t < 19.5; t += half) {
+        const at = Math.round((t + off(rand) * half) * fs);
+        for (let i = 0; i < 0.01 * fs; i++) x[at + i]! += (2 * rand() - 1) * Math.exp(-i / (0.002 * fs));
+      }
+      const det = new TempoDetector(fs);
+      const seen: boolean[] = [];
+      for (let i = 0; i < x.length; i += fs / 4) {
+        det.push(x.subarray(i, i + fs / 4));
+        const a = det.analyse();
+        if (a && a.time >= 8) seen.push(a.beat);
+      }
+      return seen.filter(Boolean).length / seen.length;
+    };
+    expect(beats(1, (rand) => 0.06 * (Math.floor(3 * rand()) - 1))).toBeGreaterThan(0.9);
+    const smeared = [1, 2, 3, 4, 5, 6].map((seed) => beats(seed, (rand) => 0.2 * (2 * rand() - 1)));
+    expect(smeared.reduce((a, b) => a + b, 0) / smeared.length).toBeLessThan(0.75);
+  }, 30000);
+
   // 6 s into a pad-only breakdown the short comb's winner is a guess, and the pad's hits fit the grid of its 2:3 relative,
   // 85.34 for 128, which the range from 80 holds: that reading was kept until the drums returned at 22.5 s.
   it('holds the reading through a breakdown', () => {
