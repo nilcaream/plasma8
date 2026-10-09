@@ -34,6 +34,16 @@ export const CHANGE_FITS = 4;
  * room the precise fits of a held tempo came 1.0–1.5 s apart (Four Tet "Baby", Burial "Archangel").
  */
 export const CHANGE_GAP = 2;
+/**
+ * A fit counts toward a new tempo only when its grid holds at least this share of the evidence of the tempo the clock
+ * holds; one below it is taken as no beat heard. Evidence is the onset strength on a grid's half beats over the last
+ * EVIDENCE_SECONDS. Through a beatless stretch of pad and claps the grid wanders over a few weak hits that any tempo
+ * fits; their evidence stays a fraction of the beat's, while a real new tempo is about as strong as the old one.
+ */
+export const EVIDENCE_SHARE = 0.5;
+export const EVIDENCE_SECONDS = 4;
+/** The held tempo's evidence is the most it had, halving every this many seconds, so a quieter new tempo is taken in the end. */
+export const EVIDENCE_HALF_LIFE = 30;
 /** The clock takes the grid's beat every this many new on-grid peaks. */
 export const ANCHOR_PEAKS = 4;
 /** A re-anchor moves the offset by at most this share of a beat at once; a bigger step needs two re-anchors in a row that agree. */
@@ -61,6 +71,9 @@ export class BeatClock {
   private candidate: { bpm: number; since: number; last: number; fits: number } | null = null;
   /** A big offset step seen at the last re-anchor and not yet taken, seconds. */
   private step: number | null = null;
+  /** The held tempo's evidence at its most, and when. */
+  private held = 0;
+  private heldAt = 0;
 
   get bpm(): number { return 60 / this.period; }
 
@@ -70,14 +83,17 @@ export class BeatClock {
     // no beat heard says nothing about a new tempo either way: the candidate waits for the next beat
     if (!a.beat || !g) return;
     if (this.beat === null) { this.take(g, a); return; }
+    const e = evidence(a, g);
     if (Math.abs(g.bpm - this.bpm) <= SAME_BPM) {
       this.candidate = null;
+      if (e >= this.heldNow(a.time)) { this.held = e; this.heldAt = a.time; }
       for (const p of a.peaks) {
         if (p.onGrid && p.t > this.lastPeak + SAME_PEAK) { this.count++; this.lastPeak = p.t; }
       }
       if (this.count >= ANCHOR_PEAKS) this.anchor(g);
       return;
     }
+    if (e < EVIDENCE_SHARE * this.heldNow(a.time)) return;
     if (g.sd > CHANGE_SD) { this.candidate = null; return; }
     const c = this.candidate;
     if (!c || Math.abs(g.bpm - c.bpm) > SAME_BPM || a.time - c.last > CHANGE_GAP) {
@@ -90,8 +106,12 @@ export class BeatClock {
     if (a.time - c.since >= CHANGE_SECONDS && c.fits >= CHANGE_FITS) { this.take(g, a); this.changes++; }
   }
 
+  private heldNow(time: number): number { return this.held * 0.5 ** ((time - this.heldAt) / EVIDENCE_HALF_LIFE); }
+
   /** The grid's beat and tempo, as they are: the first fit, or a new tempo. */
   private take(g: GridFit, a: Analysis): void {
+    this.held = evidence(a, g);
+    this.heldAt = a.time;
     this.beat = g.beat;
     this.period = g.period;
     this.candidate = null;
@@ -127,4 +147,17 @@ export class BeatClock {
     this.anchors++;
     this.version++;
   }
+}
+
+/** The onset strength of the last EVIDENCE_SECONDS within the fit's tolerance (15 % of a half beat) of the grid's half beats. */
+function evidence(a: Analysis, g: GridFit): number {
+  const half = g.period / 2;
+  const tol = 0.15 * half;
+  let on = 0;
+  for (const p of a.peaks) {
+    if (p.t <= a.time - EVIDENCE_SECONDS) continue;
+    const d = p.t - g.beat - Math.round((p.t - g.beat) / half) * half;
+    if (Math.abs(d) <= tol) on += p.strength;
+  }
+  return on;
 }
