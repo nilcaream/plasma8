@@ -205,7 +205,7 @@ function main(): void {
   mic.onAnalysis = (a) => {
     if (a?.beat) heard = { at: performance.now(), confidence: a.confidence };
     // an analysis without a beat comes with nothing new: the clock and the sureness skip it
-    if (!sure.update(a, mic.clock.beat === null ? null : mic.clock.bpm)) return;
+    if (!sure.update(a, mic.clock.beat === null ? null : mic.clock.bpm, mic.clock.changes)) return;
     if (live.source === 'detect' && !live.continuous && mic.listening) {
       mic.disarm();
       console.info(`[plasma8] the tempo is sure, ${mic.clock.bpm.toFixed(2)} BPM: the microphone is closed`);

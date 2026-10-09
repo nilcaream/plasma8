@@ -19,6 +19,7 @@ export const SURE_CONFIDENCE = 0.5;
 export class Sureness {
   private fits: { t: number; bpm: number }[] = [];
   private sureNow = false;
+  private clockChanges: number | null = null;
 
   get sure(): boolean { return this.sureNow; }
 
@@ -40,10 +41,19 @@ export class Sureness {
   reset(): void {
     this.fits = [];
     this.sureNow = false;
+    this.clockChanges = null;
   }
 
-  /** Takes one analysis and the beat clock's tempo; whether the tempo is sure now. Once sure, it stays sure until reset. */
-  update(a: Analysis | null, clockBpm: number | null): boolean {
+  /**
+   * Takes one analysis, the beat clock's tempo and its count of tempo changes; whether the tempo is sure now. Once sure, it
+   * stays sure until reset, or until the clock takes a new tempo (the music changed while listening on): then it starts again.
+   */
+  update(a: Analysis | null, clockBpm: number | null, clockChanges = 0): boolean {
+    if (this.clockChanges !== null && clockChanges !== this.clockChanges) {
+      this.fits = [];
+      this.sureNow = false;
+    }
+    this.clockChanges = clockChanges;
     if (this.sureNow || !a) return this.sureNow;
     const g = a.grid;
     if (a.beat && g && g.sd <= SURE_SD && a.confidence >= SURE_CONFIDENCE) this.fits.push({ t: a.time, bpm: g.bpm });

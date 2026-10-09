@@ -40,6 +40,15 @@ describe('Sureness', () => {
     expect(sure.update(analysis(21), 128)).toBe(false);
   });
 
+  it('starts again when the beat clock takes a new tempo, and not when its count stays', () => {
+    const sure = new Sureness();
+    for (let t = 3; t < 3 + SURE_SECONDS; t += 0.25) sure.update(analysis(t), 128, 2);
+    expect(sure.sure).toBe(true);
+    expect(sure.update(analysis(8, { beat: false }), 128, 2)).toBe(true);
+    expect(sure.update(analysis(8.25, { bpm: 135 }), 135, 3)).toBe(false);
+    expect(sure.agreeing).toBe(1); // the fits of the old tempo are gone; this one counts
+  });
+
   it('is not sure while the fits wander more than SURE_SPREAD BPM', () => {
     const sure = new Sureness();
     let got = false;
@@ -126,6 +135,26 @@ describe('Sureness on the synthetic bench', () => {
     });
     return { at, bpm, truth };
   };
+
+  it.each(['C jump 128 to 135 at 15 s', 'C jump 140 to 124 breakA'])(
+    'listening on through %s, is sure of the first tempo, unsure once the clock takes the second, then sure of it',
+    (name) => {
+      const c = CASES.find((x) => x.name === name)!;
+      const clock = new BeatClock();
+      const sure = new Sureness();
+      const states: { t: number; sure: boolean }[] = [];
+      run(c.spec, 0.25, (a, t) => {
+        if (a) clock.update(a);
+        states.push({ t, sure: sure.update(a, clock.beat === null ? null : clock.bpm, clock.changes) });
+      });
+      const at = c.spec.change!.at;
+      expect(states.some((s) => s.t < at && s.sure)).toBe(true);
+      expect(states.some((s) => s.t > at && !s.sure)).toBe(true);
+      expect(states.at(-1)!.sure).toBe(true);
+      expect(Math.abs(clock.bpm - c.spec.change!.bpm)).toBeLessThan(0.1);
+    },
+    60_000,
+  );
 
   it.each(['4floor 128', 'breakA 130', 'snare only 130', 'H half-time 140', 'S shuffle 128 (triplet 16ths)'])(
     'is sure within 10 s of %s, at its tempo',
