@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PANEL_MS, inBand, lastTouch, metronomeShown, panelShown } from './band';
+import { PANEL_MS, inBand, lastTouch, metronomeShown, micHoldsPanel, panelShown } from './band';
 
 describe('inBand', () => {
   it('is every height above the band bottom, so the panels and the gaps between them alike', () => {
@@ -60,6 +60,20 @@ describe('panelShown', () => {
       expect(panelShown(touched, now, false)).toBe(true);
     }
     expect(panelShown(lastTouch(touched, 60000 + PANEL_MS, false, false), 60000 + PANEL_MS, false)).toBe(false);
+  });
+
+  it('is held by the microphone only while the tempo is being found: once sure, the 5 s count runs though the microphone stays open (Continuous)', () => {
+    expect(micHoldsPanel(true, false)).toBe(true);
+    expect(micHoldsPanel(true, true)).toBe(false);
+    expect(micHoldsPanel(false, false)).toBe(false);
+    expect(micHoldsPanel(false, true)).toBe(false);
+    // finding the tempo until 12 s, sure after, the microphone open throughout
+    let touched = 2000;
+    for (let now = 0; now <= 30000; now += 100) {
+      touched = lastTouch(touched, now, micHoldsPanel(true, now >= 12000), false);
+      // the count runs from the last frame before sure (11.9 s)
+      expect(panelShown(touched, now, false)).toBe(now < 11900 + PANEL_MS);
+    }
   });
 
   it('keeps a later real touch: the count runs from the last touch or from the close, whichever is later', () => {

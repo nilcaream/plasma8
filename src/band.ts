@@ -3,7 +3,7 @@
  * src/tapWidget.ts). A touch or a move of the mouse anywhere shows the whole panel (the
  * metronome, the buttons, the tapping widget, the sliders) and each touch starts the
  * PANEL_MS again; then it fades, and the mouse pointer with it. It does not fade while the
- * microphone listens or the mouse pointer is in the band: the count starts when they stop. The band, the row the panel
+ * microphone is finding the tempo or the mouse pointer is in the band: the count starts when they stop. The band, the row the panel
  * occupies across the full width, panels and the gaps between them alike, is the one part of
  * the page a press is not a press on: it is no tempo tap and no bar 1, it only brings the
  * panel back. With ?debug the band is outlined and the panel is up from the load and never fades.
@@ -23,7 +23,16 @@ export function panelShown(lastTouchAt: number, now: number, held: boolean, pinn
 }
 
 /**
- * The time of the last touch as the panel counts it: while the microphone listens, or while the mouse pointer is in the band,
+ * Whether the microphone holds the panel up: while Detect is still finding the tempo, not once it is sure, even when the
+ * microphone stays open (Continuous). A search that starts again later does not bring the panel back by itself: it starts
+ * from a touch (a press, a button), which shows the panel anyway.
+ */
+export function micHoldsPanel(listening: boolean, sure: boolean): boolean {
+  return listening && !sure;
+}
+
+/**
+ * The time of the last touch as the panel counts it: while the microphone holds it up (micHoldsPanel), or while the mouse pointer is in the band,
  * the panel is touched all the time, so its PANEL_MS count starts when the microphone closes or the pointer leaves, or at the
  * last real touch, whichever is later.
  */
@@ -105,9 +114,9 @@ export class Band {
     this.lastTouchAt = -Infinity;
   }
 
-  /** Call once a frame, with whether the microphone listens; whether the panel is up. */
-  update(now: number, listening = false): boolean {
-    if (!this.dismissed) this.lastTouchAt = lastTouch(this.lastTouchAt, now, listening, this.inside);
+  /** Call once a frame, with whether the microphone holds the panel up (micHoldsPanel); whether the panel is up. */
+  update(now: number, micHolds = false): boolean {
+    if (!this.dismissed) this.lastTouchAt = lastTouch(this.lastTouchAt, now, micHolds, this.inside);
     const shown = panelShown(this.lastTouchAt, now, this.held, this.debug);
     if (shown !== this.shown) {
       this.shown = shown;

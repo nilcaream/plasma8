@@ -1,7 +1,7 @@
 import './style.css';
 import { ALGORITHMS, chooseAlgorithm } from './algorithms';
 import type { Algorithm, AlgorithmDef, FrameInputs } from './algorithm';
-import { Band, metronomeShown } from './band';
+import { Band, metronomeShown, micHoldsPanel } from './band';
 import { DEFAULT_SHAPE, flash } from './beatVoices';
 import { TapClock, clampBpm, type ClockReading } from './clock';
 import { DetectClock } from './detectClock';
@@ -390,7 +390,7 @@ function main(): void {
     });
 
     // the panel up (a press in the band) shows the widget as it was last seen and the metronome, whatever the taps; taps alone show the widget and the metronome
-    const panelUp = band.update(now, mic.listening || mic.arming);
+    const panelUp = band.update(now, micHoldsPanel(mic.listening || mic.arming, sure.sure));
     // the tapping widget is the tap clock's; while the tempo is detected it only shows the tempo, when the panel is up
     const widget: WidgetView =
       live.source === 'tap'
