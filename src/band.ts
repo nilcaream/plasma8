@@ -23,12 +23,13 @@ export function panelShown(lastTouchAt: number, now: number, held: boolean, pinn
 }
 
 /**
- * Whether the microphone holds the panel up: while Detect is still finding the tempo, not once it is sure, even when the
- * microphone stays open (Continuous). A search that starts again later does not bring the panel back by itself: it starts
- * from a touch (a press, a button), which shows the panel anyway.
+ * Whether the microphone holds the panel up: while Detect is still finding the tempo, not once it has been sure since the
+ * listen started, even when the microphone stays open (Continuous). A search that starts again later does not bring the
+ * panel back by itself: one from a touch (a press, a button) shows the panel anyway, and one from the clock taking a new
+ * tempo while listening on leaves it down.
  */
-export function micHoldsPanel(listening: boolean, sure: boolean): boolean {
-  return listening && !sure;
+export function micHoldsPanel(listening: boolean, wasSure: boolean): boolean {
+  return listening && !wasSure;
 }
 
 /**

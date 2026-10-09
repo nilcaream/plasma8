@@ -49,6 +49,18 @@ describe('Sureness', () => {
     expect(sure.agreeing).toBe(1); // the fits of the old tempo are gone; this one counts
   });
 
+  it('was sure through a new tempo taken by the clock, until reset', () => {
+    const sure = new Sureness();
+    expect(sure.wasSure).toBe(false);
+    for (let t = 3; t < 3 + SURE_SECONDS; t += 0.25) sure.update(analysis(t), 128, 2);
+    expect(sure.wasSure).toBe(true);
+    sure.update(analysis(8.25, { bpm: 135 }), 135, 3);
+    expect(sure.sure).toBe(false);
+    expect(sure.wasSure).toBe(true);
+    sure.reset();
+    expect(sure.wasSure).toBe(false);
+  });
+
   it('is not sure while the fits wander more than SURE_SPREAD BPM', () => {
     const sure = new Sureness();
     let got = false;

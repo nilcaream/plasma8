@@ -390,7 +390,7 @@ function main(): void {
     });
 
     // the panel up (a press in the band) shows the widget as it was last seen and the metronome, whatever the taps; taps alone show the widget and the metronome
-    const panelUp = band.update(now, micHoldsPanel(mic.listening || mic.arming, sure.sure));
+    const panelUp = band.update(now, micHoldsPanel(mic.listening || mic.arming, sure.wasSure));
     // the tapping widget is the tap clock's; while the tempo is detected it only shows the tempo, when the panel is up
     const widget: WidgetView =
       live.source === 'tap'

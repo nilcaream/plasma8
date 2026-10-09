@@ -20,9 +20,13 @@ export const SURE_CONFIDENCE = 0.5;
 export class Sureness {
   private fits: { t: number; bpm: number }[] = [];
   private sureNow = false;
+  private sureOnce = false;
   private clockChanges: number | null = null;
 
   get sure(): boolean { return this.sureNow; }
+
+  /** Whether the tempo has been sure since the last reset: a new tempo taken by the clock takes sure back, not this. */
+  get wasSure(): boolean { return this.sureOnce; }
 
   /**
    * How many of the fits in the last SURE_SECONDS agree (lie within SURE_SPREAD BPM of each other, the biggest such group), for
@@ -42,6 +46,7 @@ export class Sureness {
   reset(): void {
     this.fits = [];
     this.sureNow = false;
+    this.sureOnce = false;
     this.clockChanges = null;
   }
 
@@ -67,6 +72,7 @@ export class Sureness {
     if (hi - lo > SURE_SPREAD) return false;
     if (Math.abs((lo + hi) / 2 - clockBpm) > SAME_BPM) return false;
     this.sureNow = true;
+    this.sureOnce = true;
     return true;
   }
 }
