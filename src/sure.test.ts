@@ -61,13 +61,14 @@ describe('Sureness', () => {
     expect(feed(new Sureness(), 3, 10, 128, { confidence: SURE_CONFIDENCE / 2 })).toBe(false);
   });
 
-  it('starts the run again at a beat that is heard but not precise or not confident', () => {
+  it('does not count a beat that is heard but not precise or not confident, and keeps the run', () => {
     const sure = new Sureness();
     feed(sure, 3, 1.5); // 7 fits, short of SURE_FITS
     sure.update(analysis(4.75, { sd: SURE_SD * 2 }), 128);
-    expect(sure.update(analysis(5, {}), 128)).toBe(false);
-    expect(feed(sure, 5.25, 0.5)).toBe(false);
-    expect(feed(sure, 5.75, 2)).toBe(true);
+    sure.update(analysis(5, { confidence: SURE_CONFIDENCE / 2 }), 128);
+    expect(sure.update(analysis(5.25), 128)).toBe(false); // 8 fits
+    expect(sure.update(analysis(5.5), 128)).toBe(false); // 9
+    expect(sure.update(analysis(5.75), 128)).toBe(true); // 10, the two misses left out
   });
 
   it('skips an analysis that hears no beat, as the beat clock does: it neither counts nor breaks the run', () => {
