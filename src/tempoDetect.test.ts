@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CASES, run, score } from './tempoBench';
-import { TempoDetector } from './tempoDetect';
+import { SEARCH_HI, SEARCH_LO, TempoDetector } from './tempoDetect';
 import { render } from './tempoSynth';
 import { Fft } from './tempoFft';
 
@@ -25,9 +25,15 @@ const FLOOR = [
   'breakA 141.7', '4floor 110', '4floor 150', 'snare only 150', 'H dotted arp 110 weak drums', 'H phone breakB 130 babble',
   'S 4floor 95', 'S snare only 95', 'H dotted arp 140 breakA', 'S dotted arp 105 breakA', 'S shuffle 128 (triplet 16ths)', 'S shuffle breakA 100',
   'S 2-step 135 shuffle phone noise',
+  // the wide range: its slow end, where the half of the double would be the next candidate, and its fast edge
+  'X 4floor 80', 'X 4floor 90', 'X snare only 90', 'X breakB 88 phone', 'X half-time 87', 'X 4floor 158',
 ];
 
 describe('TempoDetector', () => {
+  it('never offers a tempo and its double as candidates', () => {
+    expect(SEARCH_HI).toBeLessThan(2 * SEARCH_LO);
+  });
+
   for (const name of FLOOR) {
     it(`reads ${name}`, () => {
       const spec = { ...CASES.find((c) => c.name === name)!.spec, seconds: 20 };
@@ -52,6 +58,8 @@ describe('TempoDetector', () => {
     expect(beats('C long breakdown 128 (8-22 s)', 15, 21)).toBe(0);
   });
 
+  // 6 s into a pad-only breakdown the short comb's winner is a guess, and the pad's hits fit the grid of its 2:3 relative,
+  // 85.34 for 128, which the range from 80 holds: that reading was kept until the drums returned at 22.5 s.
   it('holds the reading through a breakdown', () => {
     const spec = CASES.find((c) => c.name === 'C long breakdown 128 (8-22 s)')!.spec;
     const trace = run(spec);

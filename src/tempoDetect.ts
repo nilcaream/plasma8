@@ -1,13 +1,13 @@
 /**
- * Tempo from an onset envelope, for the /tempo/ page: 95–150 BPM, octave
- * safe. Three readings come out of one analysis:
+ * Tempo from an onset envelope, for the /tempo/ page and the main page's Detect:
+ * 80–158 BPM. Three readings come out of one analysis:
  *
  * - comb: the autocorrelation of each band's envelope over the last
  *   COMB_SECONDS, normalised per band and summed, read by a comb of the first
  *   four multiples of every candidate beat period in the range. A snare on
  *   2 and 4 only (half the beat rate) still lands on the 2nd and 4th teeth of
- *   the true tempo's comb, and on no comb of any other tempo in the range,
- *   because the range is less than an octave wide. A 3:2 or 4:3 relative
+ *   the true tempo's comb; the range is under an octave, so a tempo and its
+ *   half or double are never both candidates. A 3:2 or 4:3 relative
  *   inside the range is weighed against the winner by how their periods
  *   divide: the beat in two and four, its relative in three.
  * - grid: the comb's tempo refined by a weighted least-squares line through
@@ -19,11 +19,15 @@
 
 import { BANDS, OnsetEnvelope } from './onsets';
 
-export const MIN_BPM = 95;
-export const MAX_BPM = 150;
-/** The candidates reach a little past the range, so its edges are found like any tempo inside. */
-export const SEARCH_LO = 91;
-export const SEARCH_HI = 154;
+export const MIN_BPM = 80;
+export const MAX_BPM = 158;
+/**
+ * The candidates reach a little past the range, so its edges are found like any tempo inside. The search stays
+ * under an octave (SEARCH_HI < 2 × SEARCH_LO), so a tempo and its double are never both candidates and every half or
+ * double folds to one reading.
+ */
+export const SEARCH_LO = 79.5;
+export const SEARCH_HI = 158.9;
 const SEARCH_STEP = 0.05;
 /** The comb's rival candidate is the best one at least this far from the winner. */
 const MARGIN_BPM = 2;
@@ -275,7 +279,9 @@ export class TempoDetector {
       // after a tempo change the long comb still holds the old tempo for a few seconds: seed from the short one
       const short = this.comb(SHORT_COMB_SECONDS);
       if (Math.abs(short.reading - readingAt(combScore, winner)) >= 1) {
-        const again = this.decide(short.score, short.bandAcf, short.best, first, time, true);
+        // only its own tempo: a relative of the short comb's winner is a guess, and a pad (a breakdown) has hits
+        // that fit one by chance
+        const again = this.decide(short.score, short.bandAcf, short.best, first, time, false);
         if (again.grid) { grid = again.grid; env = again.env; }
       }
     }
