@@ -14,13 +14,13 @@ import {
 } from './pageGraphs';
 import { PageTempo } from './pageTempo';
 
-type Key = 'I' | 'kick' | 'snare' | 'crash' | 'G' | keyof Shape;
-const P: Record<Key, number> = { I: 0.5, kick: 0.3, snare: 0.1, crash: 0.8, G: DEFAULT_GAIN, ...DEFAULT_SHAPE };
+type Key = 'S' | 'kick' | 'snare' | 'crash' | 'G' | keyof Shape;
+const P: Record<Key, number> = { S: 0.5, kick: 0.3, snare: 0.1, crash: 0.8, G: DEFAULT_GAIN, ...DEFAULT_SHAPE };
 const shape = (): Shape => ({ a0: P.a0, a1: P.a1, p0: P.p0, p1: P.p1 });
 const amounts = (): Amounts => ({ kick: P.kick, snare: P.snare, crash: P.crash });
 
 function at(beats: number) {
-  const f = flash(beats, P.I, amounts(), shape());
+  const f = flash(beats, P.S, amounts(), shape());
   return { ...f, light: light(f.total, P.G) };
 }
 
@@ -31,12 +31,12 @@ const tempo = new PageTempo(performance.now(), 120);
 const set = (key: Key) => (v: number): void => { P[key] = v; writeFormulas(); };
 
 const live = controlGroup(controls, 'Live',
-  `Set by the user, with the slider and taps: I ${LIVE.intensity.min}-${LIVE.intensity.max}, BPM ${LIVE.bpm.min}-${LIVE.bpm.max} (the tap clock's limits).`);
-slider(live, { label: 'I', ...LIVE.intensity, step: 0.01, value: P.I, digits: 2 }, set('I'));
+  `Set by the user: S, the Strobe slider, ${LIVE.intensity.min}-${LIVE.intensity.max} (the intensity slider does not set the flash). In the app the tempo comes from Tap (${LIVE.bpm.min}-${LIVE.bpm.max} BPM, the tap clock's limits) or from Detect (${LIVE.detectBpm.min}-${LIVE.detectBpm.max} BPM, the microphone); this page has the Tap button.`);
+slider(live, { label: 'S', ...LIVE.intensity, step: 0.01, value: P.S, digits: 2 }, set('S'));
 const showTempo = tempoControls(live, el<HTMLButtonElement>('tap'), tempo);
 
 const random = controlGroup(controls, 'Random per instance',
-  `Drawn when an instance starts: each A from U(${BEATS.amount.min}, ${BEATS.amount.max}). The sliders span exactly that.`);
+  `Drawn when an instance starts: each A from U(${BEATS.amount.min}, ${BEATS.amount.max}). The app then divides the three by the largest (relativeAmountsOf), so its strongest voice flashes at exactly S. The sliders span the drawn range and are used as they are here, undivided: set the largest to ${BEATS.amount.max} to see what the app flashes.`);
 const amountSliders = Object.fromEntries(VOICE_NAMES.map((name) => [name,
   slider(random, { label: 'A_' + name, ...BEATS.amount, step: 0.01, value: P[name], digits: 2 }, set(name))])) as Record<VoiceName, (v: number) => void>;
 button(random, 'Draw again', 'redraw').addEventListener('click', () => {
@@ -49,7 +49,7 @@ button(random, 'Draw again', 'redraw').addEventListener('click', () => {
 });
 
 const fixed = controlGroup(controls, 'Fixed in code',
-  'Constants in src/beatVoices.ts; x0 is the value at intensity 0, x1 at 1. Wide spans for trying values. '
+  'Constants in src/beatVoices.ts; x0 is the value at S = 0, x1 at 1. Wide spans for trying values. '
   + `a stops at ${BEATS.rise.max} beat, the window: a longer rise would reach into the fall before it. `
   + `p stops at ${BEATS.power.min}: at 0 the fall is flat and the peak leaves the onset.`);
 const shapeSliders = {
@@ -112,11 +112,11 @@ function drawShape(): void {
   const { X, Y } = frame(s, -1, 1, 0, 1, ticks, [0, 0.25, 0.5, 0.75, 1], 2);
   const n = samples(s.w);
   const L = VOICES.kick.length;
-  for (const I of [0, 1]) {
-    const r = rise(I, shape()), p = fallPower(I, shape());
+  for (const S of [0, 1]) {
+    const r = rise(S, shape()), p = fallPower(S, shape());
     plot(s.ctx, X, Y, -1, 1, n, (t) => windowEnvelope(t, L, r, p), colors.muted, 1, [4, 3]);
   }
-  const r = rise(P.I, shape()), p = fallPower(P.I, shape());
+  const r = rise(P.S, shape()), p = fallPower(P.S, shape());
   plot(s.ctx, X, Y, -1, 1, n, (t) => windowEnvelope(t, L, r, p), colors.total, 3);
   dot(s.ctx, X(0), Y(1), colors.total);
 }
@@ -127,7 +127,7 @@ const f2 = (v: number): string => v.toFixed(2);
 const f3 = (v: number): string => v.toFixed(3);
 
 function writeFormulas(): void {
-  const I = P.I, r = rise(I, shape()), p = fallPower(I, shape());
+  const S = P.S, r = rise(S, shape()), p = fallPower(S, shape());
   let peak = 0;
   for (let i = 0; i < 4096; i++) peak = Math.max(peak, at(i / 1024).total);
   const lines = [
@@ -136,9 +136,9 @@ function writeFormulas(): void {
     '  snare  beats 2 and 4',
     '  crash  beat 1',
     '',
-    'x0 is the value at intensity 0, x1 the value at intensity 1',
-    `r = a0 + (a1 − a0)·I       = ${f3(P.a0)} + (${f3(P.a1)} − ${f3(P.a0)})·${f2(I)} = ${f3(r)} beats`,
-    `p = p0 + (p1 − p0)·I       = ${P.p0.toFixed(1)} + (${P.p1.toFixed(1)} − ${P.p0.toFixed(1)})·${f2(I)} = ${f3(p)}`,
+    'S = the Strobe slider (the flash\'s size and shape); x0 is the value at S = 0, x1 the value at S = 1',
+    `r = a0 + (a1 − a0)·S       = ${f3(P.a0)} + (${f3(P.a1)} − ${f3(P.a0)})·${f2(S)} = ${f3(r)} beats`,
+    `p = p0 + (p1 − p0)·S       = ${P.p0.toFixed(1)} + (${P.p1.toFixed(1)} − ${P.p0.toFixed(1)})·${f2(S)} = ${f3(p)}`,
     '',
     't = beats from the onset (negative before it)',
     'e(t) = smoothstep(−r, 0, t)     for −r ≤ t < 0      rise, before the onset',
@@ -147,8 +147,8 @@ function writeFormulas(): void {
     `     = smoothstep(−${f3(r)}, 0, t)  then  (1 − t / ${f3(1 - r)})^${f3(p)}`,
     'the peak, e = 1, is on the onset beat; a fall ends where the next onset\'s rise begins',
     '',
-    'F = min(1, I·(A_kick·e_kick + A_snare·e_snare + A_crash·e_crash))',
-    `  = min(1, ${f2(I)}·(${f2(P.kick)}·e_kick + ${f2(P.snare)}·e_snare + ${f2(P.crash)}·e_crash))`,
+    'F = min(1, S·(A_kick·e_kick + A_snare·e_snare + A_crash·e_crash))',
+    `  = min(1, ${f2(S)}·(${f2(P.kick)}·e_kick + ${f2(P.snare)}·e_snare + ${f2(P.crash)}·e_crash))`,
     `light = 1 + G·F = 1 + ${f2(P.G)}·F`,
     '',
     `peak in this bar: F = ${f3(peak)}, light = ${f3(light(peak, P.G))}`,

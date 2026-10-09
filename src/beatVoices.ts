@@ -1,8 +1,8 @@
 /**
  * The beat as three voices, each a flash that peaks exactly on its onset beat.
  * A voice rises over the r beats before its onset and falls after it, so the
- * brightest moment is on the beat, never after it. The intensity makes the
- * rise short and the fall steep.
+ * brightest moment is on the beat, never after it. The strobe level S (the
+ * Strobe slider, never the intensity) makes the rise short and the fall steep.
  *
  * Positions are in beats from beat 1 of a bar: 0 is beat 1, 1 is beat 2.
  */
@@ -30,7 +30,7 @@ export const VOICES: Readonly<Record<VoiceName, Voice>> = {
 
 export const VOICE_NAMES: readonly VoiceName[] = ['kick', 'snare', 'crash'];
 
-/** Each pair is its value at intensity 0, then at 1. */
+/** Each pair is its value at strobe 0, then at 1. */
 export interface Shape {
   /** Rise, in beats. */
   a0: number;
@@ -83,14 +83,14 @@ export function relativeAmountsOf(v: Values): Amounts {
 
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
 
-/** The rise r, in beats: long and soft at intensity 0, short at 1. */
-export function rise(intensity: number, shape: Shape = DEFAULT_SHAPE): number {
-  return shape.a0 + (shape.a1 - shape.a0) * clamp01(intensity);
+/** The rise r, in beats: long and soft at strobe 0, short at 1. */
+export function rise(strobe: number, shape: Shape = DEFAULT_SHAPE): number {
+  return shape.a0 + (shape.a1 - shape.a0) * clamp01(strobe);
 }
 
-/** The fall power p: gentle at intensity 0, steep at 1. */
-export function fallPower(intensity: number, shape: Shape = DEFAULT_SHAPE): number {
-  return shape.p0 + (shape.p1 - shape.p0) * clamp01(intensity);
+/** The fall power p: gentle at strobe 0, steep at 1. */
+export function fallPower(strobe: number, shape: Shape = DEFAULT_SHAPE): number {
+  return shape.p0 + (shape.p1 - shape.p0) * clamp01(strobe);
 }
 
 /**
@@ -132,21 +132,21 @@ export const MIN_FLASH_GAP_S = 1 / 3;
 export const MAX_FLASHES_PER_S = 3;
 
 export interface Flash {
-  /** Each voice as intensity × amount × envelope. */
+  /** Each voice as strobe × amount × envelope. */
   voices: Amounts;
   /** Their sum, capped at 1. */
   total: number;
 }
 
-/** F = min(1, I·Σ A_v·e_v) at a position in beats. */
-export function flash(beats: number, intensity: number, amounts: Amounts, shape: Shape = DEFAULT_SHAPE): Flash {
-  const I = clamp01(intensity);
-  const r = rise(I, shape);
-  const p = fallPower(I, shape);
+/** F = min(1, S·Σ A_v·e_v) at a position in beats, S the strobe level (the Strobe slider; the intensity is not in it). */
+export function flash(beats: number, strobe: number, amounts: Amounts, shape: Shape = DEFAULT_SHAPE): Flash {
+  const S = clamp01(strobe);
+  const r = rise(S, shape);
+  const p = fallPower(S, shape);
   const voices = { kick: 0, snare: 0, crash: 0 };
   let sum = 0;
   for (const name of VOICE_NAMES) {
-    voices[name] = I * amounts[name] * voiceEnvelope(VOICES[name], beats, r, p);
+    voices[name] = S * amounts[name] * voiceEnvelope(VOICES[name], beats, r, p);
     sum += voices[name];
   }
   return { voices, total: Math.min(1, sum) };

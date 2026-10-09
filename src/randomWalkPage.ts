@@ -35,7 +35,7 @@ const controls = el('controls');
 const tempo = new PageTempo(performance.now(), 120);
 
 const live = controlGroup(controls, 'Live',
-  `Set by the user, with the slider and taps: I ${LIVE.intensity.min}-${LIVE.intensity.max}, BPM ${LIVE.bpm.min}-${LIVE.bpm.max} (the tap clock's limits).`);
+  `Set by the user: I ${LIVE.intensity.min}-${LIVE.intensity.max} with the slider. In the app the tempo comes from Tap (${LIVE.bpm.min}-${LIVE.bpm.max} BPM, the tap clock's limits) or from Detect (${LIVE.detectBpm.min}-${LIVE.detectBpm.max} BPM, the microphone); this page has the Tap button.`);
 slider(live, { label: 'I', ...LIVE.intensity, step: 0.01, value: P.intensity, digits: 2 }, (v) => { P.intensity = v; });
 const showTempo = tempoControls(live, el<HTMLButtonElement>('tap'), tempo);
 

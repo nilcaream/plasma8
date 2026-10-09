@@ -49,6 +49,12 @@ describe('the live sliders span exactly what the app accepts', () => {
     expect(LIVE.intensity).toEqual({ min: 0, max: 1 });
   });
 
+  it('BPM: what detection reads, inside what the tap clock can reach', () => {
+    expect(LIVE.detectBpm).toEqual({ min: 80, max: 158 });
+    expect(LIVE.detectBpm.min).toBeGreaterThanOrEqual(LIVE.bpm.min);
+    expect(LIVE.detectBpm.max).toBeLessThanOrEqual(LIVE.bpm.max);
+  });
+
   it('BPM: what the tap clock can reach', () => {
     expect(clampBpm(1)).toBe(LIVE.bpm.min);
     expect(clampBpm(10000)).toBe(LIVE.bpm.max);

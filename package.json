@@ -2,7 +2,7 @@
   "name": "plasma8",
   "version": "0.0.0",
   "private": true,
-  "description": "Generative visuals in the browser, driven by a tap-tempo clock",
+  "description": "Generative visuals in the browser, driven by a tempo you tap (Tap) or the microphone hears (Detect)",
   "type": "module",
   "scripts": {
     "dev": "vite",

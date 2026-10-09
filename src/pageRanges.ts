@@ -11,6 +11,7 @@ import { REACH_POWER_RANGE, TRAVEL_RANGE } from './crossfader';
 import { DAMPING_RANGE, FACTOR_RANGES, OFFSET_RANGE, WIDTH_SHARE_RANGE } from './harmonics';
 import { STEP_AT_1_RANGE } from './randomWalk';
 import { clamp01 } from './settings';
+import { MAX_BPM as DETECT_MAX_BPM, MIN_BPM as DETECT_MIN_BPM } from './tempoDetect';
 
 export interface Range { min: number; max: number }
 
@@ -21,6 +22,8 @@ export const LIVE = {
   intensity: { min: clamp01(-Infinity), max: clamp01(Infinity) },
   /** What the tap clock clamps its tempo to. */
   bpm: { min: MIN_BPM, max: MAX_BPM },
+  /** What the microphone's tempo detection reads: the app's other tempo source. */
+  detectBpm: { min: DETECT_MIN_BPM, max: DETECT_MAX_BPM },
 };
 
 export const BEATS = {

@@ -111,11 +111,11 @@
 <body>
 <main>
   <h1>Beat flash graphs</h1>
-  <p class="sub">One bar, beats 1&ndash;4. Kick on every beat (1 beat), snare on beats 2 and 4, crash on beat 1; each a 1-beat window. Every voice peaks exactly on its onset beat: it rises over the r beats before it. Beats only, no harmonics.</p>
+  <p class="sub">One bar, beats 1&ndash;4. Kick on every beat (1 beat), snare on beats 2 and 4, crash on beat 1; each a 1-beat window. Every voice peaks exactly on its onset beat: it rises over the r beats before it. Beats only, no harmonics. S is the app's Strobe slider, which sets the flash.</p>
 
   <div class="graphs">
     <section>
-      <h2>One bar: voices I&middot;A&middot;e and F</h2>
+      <h2>One bar: voices S&middot;A&middot;e and F</h2>
       <canvas id="barCanvas"></canvas>
       <div class="legend">
         <span style="--c: var(--kick)">kick</span>
@@ -131,11 +131,11 @@
       <canvas id="lightCanvas"></canvas>
     </section>
     <section>
-      <h2>Shape of one window: e(t) at the current I, t in beats from the onset</h2>
+      <h2>Shape of one window: e(t) at the current S, t in beats from the onset</h2>
       <canvas id="shapeCanvas"></canvas>
       <div class="legend">
-        <span class="thick" style="--c: var(--total)">e(t) at current I</span>
-        <span class="dashed" style="--c: var(--muted)">I = 0 and I = 1</span>
+        <span class="thick" style="--c: var(--total)">e(t) at current S</span>
+        <span class="dashed" style="--c: var(--muted)">S = 0 and S = 1</span>
       </div>
     </section>
   </div>
