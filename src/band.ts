@@ -1,21 +1,17 @@
 /**
- * The band across the top of the page: the one place for every control (src/ui.ts,
- * src/tapWidget.ts, src/tempoWheel.ts) and the only place where a tap is never a
- * tempo tap. A press anywhere in the band shows the whole panel (the metronome, the
- * tapping widget, the tempo wheel, the sliders) and each touch on it starts the
- * PANEL_MS again; then it fades. With ?debug the band is outlined and the panel,
- * the metronome included, is up from the load and never fades.
+ * The panel across the top of the page: the one place for every control (src/ui.ts,
+ * src/tapWidget.ts, src/tempoWheel.ts). A touch or a move of the mouse anywhere shows
+ * the whole panel (the metronome, the tapping widget, the tempo wheel, the sliders, the
+ * buttons) and each touch starts the PANEL_MS again; then it fades. The panel's
+ * controls are the only things on the page a press is not a press on: between them it
+ * is transparent and a press falls through to the page. With ?debug the band is
+ * outlined and the panel, the metronome included, is up from the load and never fades.
  */
 
-/** The panel stays this long after the last touch in the band, then fades. */
+/** The panel stays this long after the last touch, then fades. */
 export const PANEL_MS = 5000;
 
-/** Whether a point `y` pixels from the top of the page is in a band that ends at `bottom`; the bottom edge is outside. */
-export function inBand(y: number, bottom: number): boolean {
-  return y < bottom;
-}
-
-/** Whether the panel is up: a finger or a mouse button is down in the band, or the last touch was less than PANEL_MS ago; with ?debug (`pinned`) always. */
+/** Whether the panel is up: a finger or a mouse button is down on it, or the last touch was less than PANEL_MS ago; with ?debug (`pinned`) always. */
 export function panelShown(lastTouchAt: number, now: number, held: boolean, pinned = false): boolean {
   return pinned || held || now - lastTouchAt < PANEL_MS;
 }
@@ -65,9 +61,9 @@ export class Band {
     this.root.addEventListener('focusin', touch);
   }
 
-  /** Whether a tap at this height of the page falls in the band. */
-  contains(y: number): boolean {
-    return inBand(y, this.root.getBoundingClientRect().bottom);
+  /** The panel comes back, or stays, for PANEL_MS more: a touch or a move of the mouse anywhere on the page. */
+  touch(): void {
+    this.lastTouchAt = performance.now();
   }
 
   /** Whether the event target is one of the panel's controls: keys are taps unless the focus is in here. */

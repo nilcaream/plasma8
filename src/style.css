@@ -262,6 +262,56 @@ body {
   accent-color: var(--accent);
 }
 
+/* The panel's buttons: tempo source, continuous listen, min and max length, what plays. (look: next commit) */
+#bar {
+  pointer-events: none; /* between its parts the panel is transparent: a press there is a press on the page */
+}
+#switches {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--gap);
+}
+.group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+}
+.group-label {
+  opacity: 0.7;
+  white-space: nowrap;
+}
+.key {
+  font: inherit;
+  color: var(--fg);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  padding: 6px 10px;
+}
+.key[aria-pressed='true'] {
+  color: var(--accent);
+}
+.inactive {
+  opacity: 0.35;
+}
+#mic-note {
+  align-self: center;
+}
+#mic-dot {
+  position: fixed;
+  z-index: 2;
+  left: calc(env(safe-area-inset-left, 0px) + 14px);
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #ff2d2d;
+  box-shadow: 0 0 8px 2px rgba(255, 45, 45, 0.7);
+  pointer-events: none;
+}
+
 #debug {
   position: fixed;
   top: calc(var(--band-h) + 4px);

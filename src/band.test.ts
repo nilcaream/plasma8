@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PANEL_MS, inBand, metronomeShown, panelShown } from './band';
+import { PANEL_MS, metronomeShown, panelShown } from './band';
 
 describe('metronomeShown', () => {
   it('is up while the user taps, and also while the panel is up, whatever the taps', () => {
@@ -7,19 +7,6 @@ describe('metronomeShown', () => {
     expect(metronomeShown(false, true)).toBe(true);
     expect(metronomeShown(true, true)).toBe(true);
     expect(metronomeShown(false, false)).toBe(false);
-  });
-});
-
-describe('inBand', () => {
-  it('holds every height down to the bottom edge of the band, and not the edge itself', () => {
-    expect(inBand(0, 88)).toBe(true);
-    expect(inBand(87.9, 88)).toBe(true);
-    expect(inBand(88, 88)).toBe(false);
-    expect(inBand(400, 88)).toBe(false);
-  });
-
-  it('holds a point above the page, where a pointer dragged out of the window reports', () => {
-    expect(inBand(-5, 88)).toBe(true);
   });
 });
 

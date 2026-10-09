@@ -1,5 +1,5 @@
 import type { ClockReading } from './clock';
-import type { Settings } from './settings';
+import { settingPatch, type Settings } from './settings';
 
 function byId<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
@@ -34,6 +34,53 @@ export class Sliders {
     byId('intensity-value').textContent = this.intensity.valueAsNumber.toFixed(2);
     const strobe = this.strobe.valueAsNumber;
     byId('strobe-value').textContent = strobe === 0 ? 'off' : strobe.toFixed(2);
+  }
+}
+
+/**
+ * The panel's buttons: tempo source, continuous listen, the visual's min and max length, what plays. Each button names its
+ * setting and value in `data-setting` and `data-value`; the one whose value is the setting's is pressed (`aria-pressed`),
+ * which the look lights. A press changes the setting through `settingPatch` and tells `onChange`.
+ */
+export class Panel {
+  private readonly root = byId('switches');
+  private readonly buttons = [...this.root.querySelectorAll<HTMLButtonElement>('button[data-setting]')];
+  private readonly listen = byId('group-listen');
+  private readonly dot = byId('mic-dot');
+  private readonly note = byId('mic-note');
+
+  constructor(
+    private readonly current: () => Settings,
+    onChange: (patch: Partial<Settings>) => void,
+  ) {
+    this.root.addEventListener('click', (e) => {
+      const button = e.target instanceof Element ? e.target.closest<HTMLButtonElement>('button[data-setting]') : null;
+      if (!button || button.disabled) return;
+      const patch = settingPatch(this.current(), button.dataset.setting ?? '', button.dataset.value ?? '');
+      if (patch) onChange(patch);
+    });
+  }
+
+  /** Marks the pressed buttons; continuous listen is for the source Detect only. */
+  sync(s: Settings): void {
+    for (const b of this.buttons) {
+      const value = b.dataset.value;
+      const pressed =
+        b.dataset.setting === 'source' ? s.source === value
+        : b.dataset.setting === 'continuous' ? (s.continuous ? 'on' : 'off') === value
+        : b.dataset.setting === 'min' ? String(s.minBars) === value
+        : b.dataset.setting === 'max' ? String(s.maxBars) === value
+        : s.plays === value;
+      b.setAttribute('aria-pressed', String(pressed));
+      if (b.closest('#group-listen')) b.disabled = s.source !== 'detect';
+    }
+    this.listen.classList.toggle('inactive', s.source !== 'detect');
+  }
+
+  /** The red dot is on whenever the microphone listens, and stays when the panel has faded; the note says why it does not. */
+  showMic(listening: boolean, note: string): void {
+    this.dot.hidden = !listening;
+    if (this.note.textContent !== note) this.note.textContent = note;
   }
 }
 

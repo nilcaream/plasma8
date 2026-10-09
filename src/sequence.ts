@@ -2,23 +2,21 @@
  * When the running algorithm changes, and how. Pure: it reads the clock's beat
  * count and never a real clock.
  *
- * An algorithm runs for a phrase of 4, 8 or 16 bars, drawn at random, and the
- * change lands on beat 1 of the bar after the phrase. One bar before the change
- * the next algorithm is prepared and the change is decided: an abrupt cut on
- * beat 1, or a smooth fade that ends exactly on beat 1. At intensity 0 every
- * change fades over the whole last bar; the higher the intensity, the shorter
- * the fades (down to the last one or two beats) and the more cuts.
+ * A visual runs for a length of bars drawn from the range of the panel's min and
+ * max (src/visualLength.ts), and the change lands on beat 1 of the bar after it.
+ * One bar before the change the next visual is prepared and the change is decided:
+ * an abrupt cut on beat 1, or a smooth fade that ends exactly on beat 1. At
+ * intensity 0 every change fades over the whole last bar; the higher the
+ * intensity, the shorter the fades (down to the last one or two beats) and the
+ * more cuts.
  *
- * When the tap clock starts a fresh count, the phrase is re-counted from the new
- * bar 1 with the bars it had left, rounded up to a phrase, so changes follow the
- * music the user taps to; a fade under way when that happens lands at once.
+ * When the clock starts a fresh count (a press that is beat 1 of bar 1), the next
+ * visual starts at once, a cut on that beat, and its length is counted from there.
  */
 
 import { BEATS_PER_BAR } from './clock';
 import type { Rng } from './rng';
-
-export const PHRASES = [4, 8, 16] as const;
-export type Phrase = (typeof PHRASES)[number];
+import { DEFAULT_RANGE, drawLength, type BarLength, type LengthRange } from './visualLength';
 
 /** Share of changes that cut rather than fade, at intensity 0 and at 1: none at 0. */
 export const CUT_SHARE_SOFT = 0;
@@ -35,7 +33,7 @@ export interface Change {
 export interface Segment {
   /** The bar the phrase started on (0 is bar 1). */
   startBar: number;
-  bars: Phrase;
+  bars: BarLength;
 }
 
 export interface SequenceStep {
@@ -59,24 +57,24 @@ export function drawChange(rng: Rng, intensity: number): Change {
   return { kind: 'fade', beats: FADE_BEATS_SOFT + (hard - FADE_BEATS_SOFT) * i };
 }
 
-/** The shortest phrase that holds `bars`. */
-export function phraseFor(bars: number): Phrase {
-  return PHRASES.find((p) => p >= bars) ?? 16;
-}
-
 export class Sequencer {
   private seg: Segment;
   private next: Change | undefined;
   private run: number | undefined;
-  private lastBeats = 0;
 
   /** `hold`: never change; the algorithm that runs keeps running (an algorithm forced by name, for setting it up). */
   constructor(
     private readonly rng: Rng,
     startBar = 0,
     private held = false,
+    private range: LengthRange = DEFAULT_RANGE,
   ) {
-    this.seg = { startBar, bars: rng.pick(PHRASES) };
+    this.seg = { startBar, bars: drawLength(rng, range) };
+  }
+
+  /** The range the next lengths are drawn from; the visual that runs keeps the length it drew. */
+  setRange(range: LengthRange): void {
+    this.range = range;
   }
 
   get hold(): boolean {
@@ -94,8 +92,7 @@ export class Sequencer {
     this.held = false;
     this.next = undefined;
     this.run = undefined;
-    this.lastBeats = beats;
-    this.seg = { startBar: Math.floor(beats / BEATS_PER_BAR), bars: this.rng.pick(PHRASES) };
+    this.seg = { startBar: Math.floor(beats / BEATS_PER_BAR), bars: drawLength(this.rng, this.range) };
   }
 
   get segment(): Segment {
@@ -122,14 +119,9 @@ export class Sequencer {
     if (this.held) return { prepare: false, change: false, fade: 0 };
     const bar = Math.floor(beats / BEATS_PER_BAR);
     const fresh = this.run !== undefined && run !== this.run;
-    const before = this.lastBeats;
     this.run = run;
-    this.lastBeats = beats;
-    if (fresh) {
-      if (this.fadeAt(before) > 0) return this.land(bar, false);
-      const left = Math.max(1, this.changeBar - Math.floor(before / BEATS_PER_BAR));
-      this.seg = { startBar: bar, bars: phraseFor(left) };
-    }
+    // a press that is beat 1 of bar 1: the next visual starts now, made in this very frame unless it was prepared already
+    if (fresh) return this.land(bar, this.next === undefined);
 
     let prepare = false;
     if (this.next === undefined && bar >= this.changeBar - 1) {
@@ -147,7 +139,7 @@ export class Sequencer {
   }
 
   private land(bar: number, prepare: boolean): SequenceStep {
-    this.seg = { startBar: bar, bars: this.rng.pick(PHRASES) };
+    this.seg = { startBar: bar, bars: drawLength(this.rng, this.range) };
     this.next = undefined;
     return { prepare, change: true, fade: 0 };
   }

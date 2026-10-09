@@ -38,7 +38,47 @@
           </label>
         </div>
       </div>
+
+      <div id="switches" role="group" aria-label="Settings">
+        <div class="group part" role="group" aria-label="Tempo source">
+          <span class="group-label">Tempo</span>
+          <button type="button" class="key" data-setting="source" data-value="tap">Tap</button>
+          <button type="button" class="key" data-setting="source" data-value="detect">Detect</button>
+        </div>
+        <div class="group part" id="group-listen" role="group" aria-label="Continuous listen">
+          <span class="group-label">Continuous listen</span>
+          <button type="button" class="key" data-setting="continuous" data-value="on">On</button>
+          <button type="button" class="key" data-setting="continuous" data-value="off">Off</button>
+        </div>
+        <div class="group part" role="group" aria-label="Shortest visual, in bars">
+          <span class="group-label">Min bars</span>
+          <button type="button" class="key" data-setting="min" data-value="1">1</button>
+          <button type="button" class="key" data-setting="min" data-value="2">2</button>
+          <button type="button" class="key" data-setting="min" data-value="4">4</button>
+          <button type="button" class="key" data-setting="min" data-value="8">8</button>
+          <button type="button" class="key" data-setting="min" data-value="16">16</button>
+        </div>
+        <div class="group part" role="group" aria-label="Longest visual, in bars">
+          <span class="group-label">Max bars</span>
+          <button type="button" class="key" data-setting="max" data-value="1">1</button>
+          <button type="button" class="key" data-setting="max" data-value="2">2</button>
+          <button type="button" class="key" data-setting="max" data-value="4">4</button>
+          <button type="button" class="key" data-setting="max" data-value="8">8</button>
+          <button type="button" class="key" data-setting="max" data-value="16">16</button>
+        </div>
+        <div class="group part" role="group" aria-label="What plays">
+          <span class="group-label">What plays</span>
+          <button type="button" class="key" data-setting="plays" data-value="changes">Changes</button>
+          <button type="button" class="key" data-setting="plays" data-value="plasma">Plasma</button>
+          <button type="button" class="key" data-setting="plays" data-value="tunnel">Tunnel</button>
+          <button type="button" class="key" data-setting="plays" data-value="domain-warped-noise">Noise</button>
+          <button type="button" class="key" data-setting="plays" data-value="julia-kaleidoscope">Julia</button>
+        </div>
+        <span id="mic-note" aria-live="polite"></span>
+      </div>
     </div>
+
+    <div id="mic-dot" role="img" aria-label="The microphone is listening" hidden></div>
 
     <div id="debug"></div>
     <div id="knobs" role="group" aria-label="Random values"></div>
