@@ -10,6 +10,7 @@
 
 import { describe, it } from 'vitest';
 import { BeatClock } from './beatClock';
+import { Sureness } from './sure';
 import { combBpm, METHODS, type Method, TempoDetector, wideBpm, type Analysis } from './tempoDetect';
 
 // the project has no node types; the bench needs only these
@@ -61,14 +62,17 @@ describe.skipIf(!process.env.BPM_REAL)('real-music bench', () => {
     const { readFileSync, writeFileSync } = await import(/* @vite-ignore */ FS);
     const dir = process.env.BPM_REAL!;
     const list: Recording[] = JSON.parse(readFileSync(`${dir}/${process.env.BPM_REAL_INDEX ?? 'index.json'}`, 'utf8'));
-    const rows = ['| recording | web | ' + METHODS.map((m) => `${m} last 10 s (share right)`).join(' | ') + ' | confidence | beat | clock bpm / anchors / changes | comb tops | wide tops |'];
-    rows.push('|---|---|' + METHODS.map(() => '---').join('|') + '|---|---|---|---|---|');
+    const rows = ['| recording | web | ' + METHODS.map((m) => `${m} last 10 s (share right)`).join(' | ') + ' | confidence | beat | clock bpm / anchors / changes | sure at s / bpm | comb tops | wide tops |'];
+    rows.push('|---|---|' + METHODS.map(() => '---').join('|') + '|---|---|---|---|---|---|');
     const detail: Record<string, unknown> = {};
     const tally = Object.fromEntries(METHODS.map((m) => [m, {} as Record<string, number>]));
     for (const r of list.filter((r) => r.webBpm)) {
       const { fs, samples } = decode(readFileSync(`${dir}/${r.file}`));
       const det = new TempoDetector(fs);
       const clock = new BeatClock();
+      const sure = new Sureness();
+      let sureAt: number | null = null;
+      let sureBpm = 0;
       const seen: { t: number; readings: Record<Method, number | null>; confidence: number; beat: boolean }[] = [];
       let last: Analysis | null = null;
       let next = 0.25;
@@ -78,6 +82,7 @@ describe.skipIf(!process.env.BPM_REAL)('real-music bench', () => {
           next += 0.25;
           const a = det.analyse();
           if (a) { seen.push({ t: a.time, readings: a.readings, confidence: a.confidence, beat: a.beat }); last = a; clock.update(a); }
+          if (sureAt === null && sure.update(a, clock.beat === null ? null : clock.bpm)) { sureAt = a?.time ?? null; sureBpm = clock.bpm; }
         }
       }
       const end = seen[seen.length - 1]?.t ?? 0;
@@ -93,7 +98,7 @@ describe.skipIf(!process.env.BPM_REAL)('real-music bench', () => {
       const conf = median(tail.map((s) => s.confidence));
       const late = seen.filter((s) => s.t > 10);
       const beat = late.filter((s) => s.beat).length / Math.max(1, late.length);
-      rows.push(`| ${r.file} | ${r.webBpm} | ${cells.join(' | ')} | ${conf.toFixed(2)} | ${Math.round(beat * 100)} % | ${clock.beat === null ? '—' : `${clock.bpm.toFixed(2)} / ${clock.anchors} / ${clock.changes}`} | ${last ? tops(last.combScore, combBpm, 4) : ''} | ${last ? tops(last.wide, wideBpm, 6) : ''} |`);
+      rows.push(`| ${r.file} | ${r.webBpm} | ${cells.join(' | ')} | ${conf.toFixed(2)} | ${Math.round(beat * 100)} % | ${clock.beat === null ? '—' : `${clock.bpm.toFixed(2)} / ${clock.anchors} / ${clock.changes}`} | ${sureAt === null ? 'never' : `${sureAt.toFixed(1)} / ${sureBpm.toFixed(2)} ${relation(sureBpm, r.webBpm)}`} | ${last ? tops(last.combScore, combBpm, 4) : ''} | ${last ? tops(last.wide, wideBpm, 6) : ''} |`);
       detail[r.file] = last && {
         trace: seen.map((s) => [+s.t.toFixed(2), ...METHODS.map((m) => s.readings[m] && +s.readings[m]!.toFixed(2)), +s.confidence.toFixed(2)]),
         grid: last.grid, rate: last.rate, odfStart: last.odfStart, odf: Array.from(last.odf, (v) => +v.toFixed(3)),
