@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ANCHOR_PEAKS, BeatClock, CHANGE_SD } from './beatClock';
 import { CASES, scoreClock } from './tempoBench';
 import type { Analysis, GridFit, Peak } from './tempoDetect';
+import { PATTERNS } from './tempoSynth';
 
 /** An analysis at `time` whose grid has this tempo and a beat at `beat`, with on-grid peaks on every beat of the last 8 s. */
 function seen(time: number, bpm: number, beat: number, more: Partial<GridFit> = {}): Analysis {
@@ -146,6 +147,13 @@ describe('beat clock', () => {
     expect(s.maxErr).toBeLessThan(0.05);
     expect(s.changes).toBe(0);
   });
+
+  // a beatless stretch of pad and off-grid claps: the grid wanders at low confidence and must not move the clock
+  it.each([61, 65, 68, 81, 82])('holds 128 through 30 s of pad and wandering claps between two beat sections (seed %i)', (seed) => {
+    const s = scoreClock({ bpm: 128, seconds: 50, pattern: PATTERNS.fourFloorFull, pad: true, breakdown: [10, 40], babble: seed > 80 ? 1 : 2, velocityDb: 3, seed, offset: 0.37 });
+    expect(s.changes).toBe(0);
+    expect(s.maxErr).toBeLessThan(0.5);
+  }, 60000);
 
   it('keeps the beat of breakA on the beat, within 5 ms', () => {
     const s = on('breakA 130');
