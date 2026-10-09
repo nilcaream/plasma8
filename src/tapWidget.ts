@@ -6,6 +6,7 @@
  */
 
 import { formatTempo, TEMPO_TAPS, type ClockReading, type TapMark } from './clock';
+import { DETECT_DOTS, type DetectView } from './detectView';
 
 /** The widget stays this long after the last tap outside the band, then fades; the panel (src/band.ts) shows it too. */
 export const HOLD_MS = 3500;
@@ -33,6 +34,8 @@ export interface WidgetView {
   marks: StripMark[];
   text: string;
   green: boolean;
+  /** While the tempo is detected: the panel shows this (src/detectView.ts) instead of the dots and the strip. */
+  detect?: DetectView;
 }
 
 /** How a tap shows: a bright one is in the window and fades with age; an older one is faint and fades further. */
@@ -73,12 +76,18 @@ export class TapWidget {
   private readonly dots = [...byId('tap-dots').children] as HTMLElement[];
   private readonly strip = byId('tap-strip');
   private readonly number = byId('tap-number');
+  private readonly value = byId('tap-value');
+  private readonly label = byId('tap-label');
+  private readonly detectDots = byId('detect-dots');
+  private readonly fill = byId('detect-fill');
   private readonly ticks: HTMLElement[] = [];
   private visible: boolean | undefined;
   private filled: number | undefined = -1;
   private text = '';
   private green: boolean | undefined;
   private marksKey = '';
+  private detecting: boolean | undefined;
+  private detect: DetectView | undefined;
 
   constructor() {
     for (let i = 0; i < STRIP_TAPS; i++) {
@@ -87,9 +96,32 @@ export class TapWidget {
       this.strip.appendChild(tick);
       this.ticks.push(tick);
     }
+    for (let i = 0; i < DETECT_DOTS; i++) this.detectDots.appendChild(document.createElement('i'));
+  }
+
+  private updateDetect(d: DetectView | undefined): void {
+    if ((d !== undefined) !== this.detecting) {
+      this.detecting = d !== undefined;
+      this.root.classList.toggle('detect', this.detecting);
+    }
+    const last = this.detect;
+    if (!d || (last && last.tempo === d.tempo && last.label === d.label && last.dim === d.dim && last.fill === d.fill && last.dots === d.dots)) {
+      if (!d && last) {
+        this.detect = undefined;
+        this.root.classList.remove('dim');
+        this.label.textContent = '';
+      }
+      return;
+    }
+    this.detect = d;
+    this.root.classList.toggle('dim', d.dim);
+    this.label.textContent = d.label;
+    this.fill.style.width = `${(d.fill * 100).toFixed(1)}%`;
+    [...this.detectDots.children].forEach((dot, i) => dot.classList.toggle('on', i < d.dots));
   }
 
   update(view: WidgetView): void {
+    this.updateDetect(view.detect);
     if (view.visible !== this.visible) {
       this.visible = view.visible;
       this.root.classList.toggle('shown', view.visible);
@@ -101,7 +133,7 @@ export class TapWidget {
     }
     if (view.text !== this.text) {
       this.text = view.text;
-      this.number.textContent = view.text;
+      this.value.textContent = view.text;
     }
     if (view.green !== this.green) {
       this.green = view.green;

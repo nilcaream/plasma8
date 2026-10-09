@@ -22,6 +22,21 @@ export class Sureness {
 
   get sure(): boolean { return this.sureNow; }
 
+  /**
+   * How many of the fits in the last SURE_SECONDS agree (lie within SURE_SPREAD BPM of each other, the biggest such group), for
+   * a display that fills up to SURE_FITS: the last step is sureness itself, so it reads SURE_FITS - 1 at most until sure.
+   */
+  get agreeing(): number {
+    if (this.sureNow) return SURE_FITS;
+    const bpms = this.fits.map((f) => f.bpm).sort((a, b) => a - b);
+    let best = 0;
+    for (let lo = 0, hi = 0; hi < bpms.length; hi++) {
+      while (bpms[hi]! - bpms[lo]! > SURE_SPREAD) lo++;
+      best = Math.max(best, hi - lo + 1);
+    }
+    return Math.min(SURE_FITS - 1, best);
+  }
+
   reset(): void {
     this.fits = [];
     this.sureNow = false;

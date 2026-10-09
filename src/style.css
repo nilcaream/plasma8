@@ -190,6 +190,76 @@ body.idle * {
   white-space: nowrap;
   transition: color 0.3s ease;
 }
+#tap-value {
+  transition: opacity 0.3s ease;
+}
+#tap-label:not(:empty) {
+  margin-left: var(--gap);
+}
+
+/* While the tempo is detected: ten dots, one lit per agreeing fit; an amber bar filled to the confidence, ticked at the half; the tempo dim with "listening" until it is sure. */
+#detect-dots,
+#detect-bar {
+  display: none;
+}
+#tap-widget.detect #tap-dots,
+#tap-widget.detect #tap-strip {
+  display: none;
+}
+#tap-widget.detect #detect-dots {
+  display: flex;
+  width: 100%;
+  height: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+#detect-dots i {
+  width: 10px;
+  height: 10px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.35);
+  background: transparent;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+#detect-dots i.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: var(--accent-glow);
+}
+#tap-widget.detect #detect-bar {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 12px;
+  box-sizing: border-box;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+#detect-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: var(--accent);
+  transition: width 0.25s ease;
+}
+#detect-bar::after {
+  /* the tick at 0.5: the confidence the tempo needs to be sure */
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  margin-left: -1px;
+  background: rgba(255, 255, 255, 0.92);
+}
+#tap-widget.dim #tap-value {
+  opacity: 0.45;
+}
 #tap-number.green {
   color: #5fe08a;
 }

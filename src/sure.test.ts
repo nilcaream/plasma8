@@ -77,6 +77,29 @@ describe('Sureness', () => {
     expect(feed(new Sureness(), 3, 10, 128.5)).toBe(true);
   });
 
+  it('counts the fits that agree, one more per fit, and reads SURE_FITS only once sure', () => {
+    const sure = new Sureness();
+    expect(sure.agreeing).toBe(0);
+    for (let i = 0; i < SURE_FITS - 1; i++) {
+      sure.update(analysis(3 + i * 0.25), null); // no beat clock yet: the fits count, sureness waits
+      expect(sure.agreeing).toBe(i + 1);
+    }
+    sure.update(analysis(3 + (SURE_FITS - 1) * 0.25), null);
+    expect(sure.sure).toBe(false);
+    expect(sure.agreeing).toBe(SURE_FITS - 1); // ten agree, but the tenth dot is sureness
+    expect(sure.update(analysis(3 + SURE_FITS * 0.25), 128)).toBe(true);
+    expect(sure.agreeing).toBe(SURE_FITS);
+    sure.reset();
+    expect(sure.agreeing).toBe(0);
+  });
+
+  it('counts only the biggest group of fits within SURE_SPREAD of each other', () => {
+    const sure = new Sureness();
+    const bpms = [128, 130, 128.02, 130.02, 128.04, 140, 128.06];
+    bpms.forEach((bpm, i) => sure.update(analysis(3 + i * 0.25, { bpm }), null));
+    expect(sure.agreeing).toBe(4); // 128, 128.02, 128.04, 128.06
+  });
+
   it('forgets fits older than SURE_SECONDS', () => {
     const sure = new Sureness();
     feed(sure, 3, 1); // 5 fits...

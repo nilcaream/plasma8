@@ -3,7 +3,7 @@ import { ALGORITHMS, chooseAlgorithm } from './algorithms';
 import type { Algorithm, AlgorithmDef, FrameInputs } from './algorithm';
 import { Band, metronomeShown } from './band';
 import { DEFAULT_SHAPE, flash } from './beatVoices';
-import { TapClock, clampBpm, formatTempo, type ClockReading } from './clock';
+import { TapClock, clampBpm, type ClockReading } from './clock';
 import { DetectClock } from './detectClock';
 import { beatInputs } from './drive';
 import { FlashPeaks, amountsText, formatDump, movingText } from './dump';
@@ -21,6 +21,7 @@ import { loadSettings, saveSettings, type Settings } from './settings';
 import { MotionClock, motionRate, motionTimeFor, steadyRate } from './motion';
 import { movingAt } from './moving';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
+import { detectView } from './detectView';
 import { Sureness } from './sure';
 import { TapWidget, widgetView, type WidgetView } from './tapWidget';
 import { DebugOverlay, Metronome, Panel, Sliders, showFatal } from './ui';
@@ -186,6 +187,8 @@ function main(): void {
   // clock and the page-clock strobe are the /tempo/ page's (src/micTempo.ts); the detect clock reads the beat clock's wall.
   const mic = new MicTempo();
   const sure = new Sureness();
+  // the last analysis that heard a beat, for the tempo panel's bar and dots
+  let heard: { at: number; confidence: number } | null = null;
   const panel = new Panel(() => live, (patch) => apply(patch));
   const listen = (ctx?: AudioContext): void => {
     if (mic.listening || mic.arming) {
@@ -193,12 +196,14 @@ function main(): void {
       return;
     }
     sure.reset();
+    heard = null;
     void mic.arm(ctx).then((ok) => {
       if (!ok) console.warn(`[plasma8] the microphone could not be opened: ${mic.error}`);
       else console.info(`[plasma8] listening: ${mic.facts.replace(/\n/g, '; ')}`);
     });
   };
   mic.onAnalysis = (a) => {
+    if (a?.beat) heard = { at: performance.now(), confidence: a.confidence };
     // an analysis without a beat comes with nothing new: the clock and the sureness skip it
     if (!sure.update(a, mic.clock.beat === null ? null : mic.clock.bpm)) return;
     if (live.source === 'detect' && !live.continuous && mic.listening) {
@@ -220,6 +225,8 @@ function main(): void {
         if (live.continuous) listen();
       } else {
         mic.disarm();
+        sure.reset();
+        heard = null;
         tapClock = new TapClock(now - (r.beats * 60000) / r.bpm, clampBpm(r.bpm));
       }
     }
@@ -383,8 +390,23 @@ function main(): void {
     const widget: WidgetView =
       live.source === 'tap'
         ? widgetView(r, tapClock.tapMarks(), now)
-        : { visible: false, dots: undefined, marks: [], text: formatTempo(r.bpm, undefined), green: false };
-    tapWidget.update({ ...widget, visible: widget.visible || panelUp });
+        : {
+            visible: false,
+            dots: undefined,
+            marks: [],
+            text: '',
+            green: false,
+            detect: detectView({
+              listening: mic.listening || mic.arming,
+              sure: sure.sure,
+              agreeing: sure.agreeing,
+              confidence: heard?.confidence ?? 0,
+              sinceBeat: heard ? (now - heard.at) / 1000 : null,
+              // before the microphone's beat clock has a tempo the clock runs free at its starting tempo: no number yet
+              bpm: (mic.listening || mic.arming) && !sure.sure && mic.clock.beat === null ? null : r.bpm,
+            }),
+          };
+    tapWidget.update({ ...widget, text: widget.detect ? widget.detect.tempo : widget.text, visible: widget.visible || panelUp });
     metronome.show(metronomeShown(widget.visible, panelUp));
     panel.showMic(mic.listening, mic.error ? `The microphone could not be opened (${mic.error}).` : '');
     metronome.update(r);
