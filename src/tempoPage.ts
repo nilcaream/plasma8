@@ -1,23 +1,18 @@
 /**
- * The /tempo/ page: arms the microphone (no echo cancellation, noise
- * suppression or gain control), feeds it to the tempo detector through an
- * AudioWorklet, analyses every quarter second of audio, and draws what the
- * detector sees: the onset envelope with its peaks and fitted beat grid, the
- * comb over the candidates, the periodicity over a wide range, and every
- * method's reading over time.
+ * The /tempo/ page: arms the microphone (src/micTempo.ts), analyses every quarter second of audio, and draws what the
+ * detector sees: the onset envelope with its peaks and fitted beat grid, the comb over the candidates, the periodicity
+ * over a wide range, and every method's reading over time.
  */
 
-import { BeatClock } from './beatClock';
 import { DEFAULT_SHAPE, flash, type Amounts } from './beatVoices';
 import { FlashLimiter } from './flashLimit';
+import { EVERY, MicTempo } from './micTempo';
 import { colors, dot, el, frame, setup, type Tick } from './pageGraphs';
 import {
-  COMB_POINTS, MAX_BPM, METHODS, MIN_BPM, SEARCH_HI, SEARCH_LO, TempoDetector, WIDE_HI, WIDE_LO, combBpm, wideBpm,
+  COMB_POINTS, MAX_BPM, METHODS, MIN_BPM, SEARCH_HI, SEARCH_LO, WIDE_HI, WIDE_LO, combBpm, wideBpm,
   type Analysis, type Method,
 } from './tempoDetect';
 
-/** Seconds of audio between analyses. */
-const EVERY = 0.25;
 /** The reading counts as settled when it moved less than this over SETTLE_SECONDS. */
 const SETTLE_BPM = 0.05;
 const SETTLE_SECONDS = 4;
@@ -26,88 +21,36 @@ const HISTORY_VIEW = 30;
 /** The beat strobe: the main page's flash at strobe 1, the kick voice alone, so one flash on every beat. */
 const STROBE = 1;
 const STROBE_AMOUNTS: Amounts = { kick: 1, snare: 0, crash: 0 };
-/** The arrival floor may rise this many ms per second of audio, to follow a drift between the audio clock and the page's. */
-const FLOOR_LEAK = 0.5;
-/**
- * A refit that moves the strobe's beats back by less than this many beats is held still until the clock catches up:
- * the limiter takes any step back for a fresh count and would mute the flash under way.
- */
-const STROBE_HOLD = 0.1;
-/** The strobe's clock takes the grid's latest beat only between these fractions of a beat, where the flash is dark. */
-const RETUNE_FROM = 0.4;
-const RETUNE_TO = 0.8;
 const ONSET_VIEW = 8;
-/** The input level meter falls this many dB a second. */
-const LEVEL_FALL = 20;
 
-// The worklet only gathers the microphone's samples into blocks and posts them.
-const WORKLET = `
-class TempoTap extends AudioWorkletProcessor {
-  constructor() { super(); this.buf = new Float32Array(2048); this.n = 0; }
-  process(inputs) {
-    const chans = inputs[0];
-    if (chans && chans.length) {
-      const len = chans[0].length, k = chans.length;
-      for (let i = 0; i < len; i++) {
-        let v = 0;
-        for (let c = 0; c < k; c++) v += chans[c][i];
-        this.buf[this.n++] = v / k;
-        if (this.n === this.buf.length) {
-          this.port.postMessage(this.buf, [this.buf.buffer]);
-          this.buf = new Float32Array(2048);
-          this.n = 0;
-        }
-      }
-    }
-    return true;
-  }
-}
-registerProcessor('tempo-tap', TempoTap);
-`;
-
-interface Mic { ctx: AudioContext; stream: MediaStream; node: AudioWorkletNode }
 interface Point { t: number; readings: Record<Method, number | null>; beat: boolean }
 
-let mic: Mic | null = null;
-let arming = false;
-let det: TempoDetector | null = null;
-/** The strobe's tempo and offset, the detector's final outcome (src/beatClock.ts). */
-let clock = new BeatClock();
+const mic = new MicTempo();
 let last: Analysis | null = null;
 let history: Point[] = [];
-let nextAt = EVERY;
-let level = -Infinity;
 let method: Method = 'grid';
 let drawQueued = false;
-let error = '';
-// The page clock against the audio: samples given to the detector since the last reset, and the smallest
-// (performance.now() at a block's arrival - its last sample's time) seen, in ms: the audio's time 0 on the page
-// clock plus the shortest way from the microphone to the page.
-let pushed = 0;
-let floor = Infinity;
-/** Seconds from the sound at the microphone to the samples in the audio graph, when the browser reports it. */
-let inputLatency = 0;
 let limiter = new FlashLimiter();
-let strobeBeats = -Infinity;
-/**
- * The beat clock on the page clock: a beat's performance.now() and the beat's length, in ms. Held steady between
- * retunes, since the limiter takes any move of a flash's peak while it rises for a tap moving the grid.
- */
-let wallClock: { at: number; ms: number } | null = null;
-let retunedAt = -Infinity;
 const strobeLight = el('strobeLight');
 
 const armButton = el<HTMLButtonElement>('arm');
 const facts = el('facts');
 
-armButton.addEventListener('click', () => { if (mic) disarm(); else void arm(); });
+mic.onAnalysis = (a) => {
+  if (a) {
+    last = a;
+    history.push({ t: a.time, readings: { ...a.readings }, beat: a.beat });
+    while (history.length && history[0]!.t < a.time - HISTORY_VIEW - EVERY) history.shift();
+  }
+  update();
+};
+
+armButton.addEventListener('click', () => { if (mic.listening) disarm(); else void arm(); });
 el<HTMLButtonElement>('reset').addEventListener('click', () => {
-  det?.reset();
-  clock = new BeatClock();
+  mic.reset();
+  limiter = new FlashLimiter();
   last = null;
   history = [];
-  nextAt = EVERY;
-  restartClock();
   update();
 });
 for (const input of el('methods').querySelectorAll<HTMLInputElement>('input[name=method]')) {
@@ -115,121 +58,39 @@ for (const input of el('methods').querySelectorAll<HTMLInputElement>('input[name
 }
 
 async function arm(): Promise<void> {
-  if (arming) return;
-  arming = true;
-  error = '';
-  // made inside the click, so Safari lets it run
+  if (mic.arming) return;
+  // the context is made inside the click, so Safari lets it run
   const ctx = new AudioContext();
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
-    });
-    await ctx.resume();
-    const url = URL.createObjectURL(new Blob([WORKLET], { type: 'application/javascript' }));
-    await ctx.audioWorklet.addModule(url);
-    URL.revokeObjectURL(url);
-    const source = ctx.createMediaStreamSource(stream);
-    const node = new AudioWorkletNode(ctx, 'tempo-tap', { numberOfInputs: 1, numberOfOutputs: 1, outputChannelCount: [1] });
-    // silent, but connected, so every browser keeps pulling the worklet
-    const mute = ctx.createGain();
-    mute.gain.value = 0;
-    source.connect(node).connect(mute).connect(ctx.destination);
-    det = new TempoDetector(ctx.sampleRate);
-    clock = new BeatClock();
+  const opening = mic.arm(ctx);
+  update();
+  if (await opening) {
+    limiter = new FlashLimiter();
     last = null;
     history = [];
-    nextAt = EVERY;
-    restartClock();
-    node.port.onmessage = (e: MessageEvent<Float32Array>) => hear(e.data);
-    mic = { ctx, stream, node };
-    const track = stream.getAudioTracks()[0];
-    const s = track?.getSettings() ?? {};
-    const latency = (s as { latency?: unknown }).latency;
-    inputLatency = typeof latency === 'number' && Number.isFinite(latency) ? latency : 0;
     requestAnimationFrame(strobe);
-    const onOff = (v: unknown): string => (v === undefined ? 'not reported' : v ? 'on' : 'off');
-    facts.textContent = `${track?.label || 'microphone'}\nsample rate ${ctx.sampleRate} Hz\n`
-      + `echo cancellation ${onOff(s.echoCancellation)}, noise suppression ${onOff(s.noiseSuppression)}, auto gain ${onOff(s.autoGainControl)}`;
-  } catch (e) {
-    void ctx.close();
-    error = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
-  } finally {
-    arming = false;
-    update();
+    facts.textContent = mic.facts;
   }
+  update();
 }
 
 /** Releases the microphone; the graphs keep what they showed. Arming again starts from scratch. */
 function disarm(): void {
-  if (!mic) return;
-  mic.node.port.onmessage = null;
-  for (const t of mic.stream.getTracks()) t.stop();
-  void mic.ctx.close();
-  mic = null;
-  level = -Infinity;
-  facts.textContent = 'Not open.';
+  if (!mic.listening) return;
+  mic.disarm();
+  facts.textContent = mic.facts;
   update();
 }
 
 /** The strobe, once a frame while armed: the beat clock carried forward to the sound reaching the microphone now. */
 function strobe(): void {
-  if (!mic) { strobeLight.style.opacity = '0'; return; }
+  if (!mic.listening) { strobeLight.style.opacity = '0'; return; }
   const now = performance.now();
   let f = 0;
-  if (clock.beat === null || !Number.isFinite(floor)) wallClock = null;
-  else {
-    // the clock's beat on the page clock: the sound of it reaches the microphone at this performance.now()
-    const ms = clock.period * 1000;
-    let at = floor + (clock.beat - inputLatency) * 1000;
-    if (!wallClock) wallClock = { at, ms };
-    const old = (now - wallClock.at) / wallClock.ms;
-    const whole = Math.floor(old);
-    // retuned once a beat, in its dark middle, so no flash sees its clock move; the count carries on from the old one
-    if (old - whole >= RETUNE_FROM && old - whole < RETUNE_TO && whole !== retunedAt) {
-      at += Math.round((now - at) / ms - old) * ms;
-      wallClock = { at, ms };
-      retunedAt = whole;    }
-    let beats = (now - wallClock.at) / wallClock.ms;
-    if (beats < strobeBeats && strobeBeats - beats < STROBE_HOLD) beats = strobeBeats;
-    strobeBeats = beats;
-    // a flash the limiter holds dark stays dark, as on the main page (src/flashLimit.ts)
-    if (limiter.allow(beats, 60000 / wallClock.ms, now)) f = flash(limiter.flashBeats, STROBE, STROBE_AMOUNTS, DEFAULT_SHAPE).total;
-  }
+  const b = mic.beatsAt(now);
+  // a flash the limiter holds dark stays dark, as on the main page (src/flashLimit.ts)
+  if (b && limiter.allow(b.beats, b.bpm, now)) f = flash(limiter.flashBeats, STROBE, STROBE_AMOUNTS, DEFAULT_SHAPE).total;
   strobeLight.style.opacity = f.toFixed(3);
   requestAnimationFrame(strobe);
-}
-
-function restartClock(): void {
-  pushed = 0;
-  floor = Infinity;
-  limiter = new FlashLimiter();
-  strobeBeats = -Infinity;
-  wallClock = null;
-  retunedAt = -Infinity;
-}
-
-function hear(block: Float32Array): void {
-  if (!det) return;
-  const fs = det.env.fs;
-  pushed += block.length;
-  floor = Math.min(performance.now() - (pushed / fs) * 1000, floor + (FLOOR_LEAK * block.length) / fs);
-  let sq = 0;
-  for (let i = 0; i < block.length; i++) sq += block[i]! * block[i]!;
-  // a peak meter: it jumps up to a loud block and falls LEVEL_FALL dB a second, so the gaps between hits do not empty it
-  const db = 10 * Math.log10(sq / block.length + 1e-12);
-  level = Math.max(db, level - (LEVEL_FALL * block.length) / det.env.fs);
-  det.push(block);
-  if (det.seconds >= nextAt) {
-    nextAt = det.seconds + EVERY;
-    const a = det.analyse();
-    if (a) {
-      last = a;
-      clock.update(a);
-      history.push({ t: a.time, readings: { ...a.readings }, beat: a.beat });
-      while (history.length && history[0]!.t < a.time - HISTORY_VIEW - EVERY) history.shift();
-    }
-    update();
-  }
 }
 
 /** The reading of the chosen method, and whether it has settled. */
@@ -250,18 +111,20 @@ function update(): void {
   const sd = method === 'grid' ? last?.grid?.sd : undefined;
   el('plusminus').textContent = bpm !== null && sd !== undefined && last?.beat ? `± ${Math.max(0.01, sd).toFixed(2)} BPM (standard error of the fit)` : '';
   el('status').textContent = statusText(bpm, settled);
-  armButton.setAttribute('aria-pressed', String(!!mic));
-  armButton.textContent = mic ? 'Disarm' : arming ? 'Arming…' : 'Arm';
+  const listening = mic.listening;
+  armButton.setAttribute('aria-pressed', String(listening));
+  armButton.textContent = listening ? 'Disarm' : mic.arming ? 'Arming…' : 'Arm';
   const conf = last?.confidence ?? 0;
   el('confidence').style.width = `${Math.round(conf * 100)}%`;
   el('confidenceText').textContent = last ? `${Math.round(conf * 100)}%` : '';
+  const { level, clock } = mic;
   const db = Math.max(-60, Math.min(0, level));
-  el('level').style.width = mic ? `${((db + 60) / 60) * 100}%` : '0';
-  el('levelText').textContent = mic && Number.isFinite(level) ? `${level.toFixed(0)} dB` : '';
+  el('level').style.width = listening ? `${((db + 60) / 60) * 100}%` : '0';
+  el('levelText').textContent = listening && Number.isFinite(level) ? `${level.toFixed(0)} dB` : '';
   (window as unknown as { __tempo: unknown }).__tempo = {
-    armed: !!mic, error, seconds: det?.seconds ?? 0, method, bpm, settled, beat: last?.beat ?? false,
+    armed: listening, error: mic.error, seconds: mic.det?.seconds ?? 0, method, bpm, settled, beat: last?.beat ?? false,
     readings: last?.readings ?? null, sd: last?.grid?.sd ?? null, confidence: conf,
-    floor, inputLatency, gridBeat: last?.grid?.beat ?? null, gridPeriod: last?.grid?.period ?? null, beatShare: last?.grid?.beatShare ?? null,
+    floor: mic.floor, inputLatency: mic.inputLatency, gridBeat: last?.grid?.beat ?? null, gridPeriod: last?.grid?.period ?? null, beatShare: last?.grid?.beatShare ?? null,
     clockBeat: clock.beat, clockPeriod: clock.period, clockChanges: clock.changes, clockAnchors: clock.anchors,
   };
   el('strobeText').textContent = clock.beat === null ? 'Waiting for a first reading.' : `Beat clock at ${clock.bpm.toFixed(2)} BPM.`;
@@ -272,9 +135,9 @@ function update(): void {
 }
 
 function statusText(bpm: number | null, settled: boolean): string {
-  if (error) return `The microphone could not be opened (${error}).`;
-  if (arming) return 'Opening the microphone…';
-  if (!mic) return last ? 'Off. The graphs show the last listening; arming again starts from scratch.' : 'Off. Arm to open the microphone.';
+  if (mic.error) return `The microphone could not be opened (${mic.error}).`;
+  if (mic.arming) return 'Opening the microphone…';
+  if (!mic.listening) return last ? 'Off. The graphs show the last listening; arming again starts from scratch.' : 'Off. Arm to open the microphone.';
   if (!last) return `Listening… the first reading comes after about 2.5 s of sound.`;
   if (!last.beat) return bpm === null ? 'Listening… no beat heard yet.' : 'No beat in the last 6 s: holding the last reading.';
   return settled ? `Settled: the reading moved less than ${SETTLE_BPM} BPM over the last ${SETTLE_SECONDS} s.` : 'Settling…';
