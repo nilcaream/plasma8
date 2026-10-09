@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  DEFAULT_SHAPE, MAX_FLASHES_PER_S, VOICES, VOICE_NAMES, fallPower, flash, light, rise, voiceEnvelope, windowEnvelope,
+  DEFAULT_SHAPE, MAX_FLASHES_PER_S, VOICES, VOICE_NAMES, fallPower, flash, light, relativeAmounts, relativeAmountsOf, rise, voiceEnvelope,
+  windowEnvelope,
 } from './beatVoices';
 
 const INTENSITIES = [0, 0.25, 0.5, 0.75, 1];
@@ -147,6 +148,15 @@ describe('flash and light', () => {
     for (const name of VOICE_NAMES) expect(VOICES[name].length).toBe(1);
     expect(flash(0, 1, { kick: 1, snare: 1, crash: 1 }).total).toBe(1);
     for (const b of grid()) expect(flash(b, 0, amounts).total).toBe(0);
+  });
+
+  it('flashes the strongest voice at exactly the strobe level once the strengths are divided by the largest', () => {
+    const relative = relativeAmounts({ kick: 0.3, snare: 0.1, crash: 0.6 });
+    expect(relative).toEqual({ kick: 0.5, snare: 0.1 / 0.6, crash: 1 });
+    expect(flash(0, 0.4, relative).voices.crash).toBeCloseTo(0.4, 12);
+    expect(flash(0, 0.4, { kick: 0.3, snare: 0.1, crash: 0.6 }).voices.crash).toBeCloseTo(0.24, 12);
+    expect(relativeAmounts({ kick: 0, snare: 0, crash: 0 })).toEqual({ kick: 0, snare: 0, crash: 0 });
+    expect(relativeAmounts({ kick: 0.2, snare: 0.1, crash: 0.05 })).toEqual(relativeAmountsOf({ 'A.kick': 0.2, 'A.snare': 0.1, 'A.crash': 0.05 }));
   });
 
   it('lights 1 + G·F', () => {

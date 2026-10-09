@@ -4,7 +4,7 @@
  * in time so the sharpness can be felt.
  */
 import {
-  DEFAULT_GAIN, DEFAULT_SHAPE, VOICES, VOICE_NAMES, drawAmounts, fallPower, flash, light, rise, windowEnvelope,
+  DEFAULT_GAIN, DEFAULT_SHAPE, VOICES, VOICE_NAMES, drawAmounts, fallPower, flash, light, relativeAmounts, rise, windowEnvelope,
   type Amounts, type Shape, type VoiceName,
 } from './beatVoices';
 import { BEATS, LIVE } from './pageRanges';
@@ -17,7 +17,8 @@ import { PageTempo } from './pageTempo';
 type Key = 'S' | 'kick' | 'snare' | 'crash' | 'G' | keyof Shape;
 const P: Record<Key, number> = { S: 0.5, kick: 0.3, snare: 0.1, crash: 0.8, G: DEFAULT_GAIN, ...DEFAULT_SHAPE };
 const shape = (): Shape => ({ a0: P.a0, a1: P.a1, p0: P.p0, p1: P.p1 });
-const amounts = (): Amounts => ({ kick: P.kick, snare: P.snare, crash: P.crash });
+/** What the flash uses, as in the app: the sliders' a divided by the largest. */
+const amounts = (): Amounts => relativeAmounts({ kick: P.kick, snare: P.snare, crash: P.crash });
 
 function at(beats: number) {
   const f = flash(beats, P.S, amounts(), shape());
@@ -36,9 +37,9 @@ slider(live, { label: 'S', ...LIVE.intensity, step: 0.01, value: P.S, digits: 2 
 const showTempo = tempoControls(live, el<HTMLButtonElement>('tap'), tempo);
 
 const random = controlGroup(controls, 'Random per instance',
-  `Drawn when an instance starts: each A from U(${BEATS.amount.min}, ${BEATS.amount.max}). The app then divides the three by the largest (relativeAmountsOf), so its strongest voice flashes at exactly S. The sliders span the drawn range and are used as they are here, undivided: set the largest to ${BEATS.amount.max} to see what the app flashes.`);
+  `Drawn when an instance starts: each a from U(${BEATS.amount.min}, ${BEATS.amount.max}). The flash then uses each a divided by the largest of the three (relativeAmountsOf, as in the app), so the strongest voice flashes at exactly S. The sliders span exactly that draw.`);
 const amountSliders = Object.fromEntries(VOICE_NAMES.map((name) => [name,
-  slider(random, { label: 'A_' + name, ...BEATS.amount, step: 0.01, value: P[name], digits: 2 }, set(name))])) as Record<VoiceName, (v: number) => void>;
+  slider(random, { label: 'a_' + name, ...BEATS.amount, step: 0.01, value: P[name], digits: 2 }, set(name))])) as Record<VoiceName, (v: number) => void>;
 button(random, 'Draw again', 'redraw').addEventListener('click', () => {
   const drawn = drawAmounts(createRng(freshSeed()));
   for (const name of VOICE_NAMES) {
@@ -128,6 +129,7 @@ const f3 = (v: number): string => v.toFixed(3);
 
 function writeFormulas(): void {
   const S = P.S, r = rise(S, shape()), p = fallPower(S, shape());
+  const A = amounts(), top = Math.max(P.kick, P.snare, P.crash);
   let peak = 0;
   for (let i = 0; i < 4096; i++) peak = Math.max(peak, at(i / 1024).total);
   const lines = [
@@ -147,8 +149,10 @@ function writeFormulas(): void {
     `     = smoothstep(−${f3(r)}, 0, t)  then  (1 − t / ${f3(1 - r)})^${f3(p)}`,
     'the peak, e = 1, is on the onset beat; a fall ends where the next onset\'s rise begins',
     '',
+    'A_v = a_v / max(a_kick, a_snare, a_crash)   (all 0 stays 0), as in the app',
+    `  A_kick = ${f2(P.kick)} / ${f2(top)} = ${f2(A.kick)}    A_snare = ${f2(P.snare)} / ${f2(top)} = ${f2(A.snare)}    A_crash = ${f2(P.crash)} / ${f2(top)} = ${f2(A.crash)}`,
     'F = min(1, S·(A_kick·e_kick + A_snare·e_snare + A_crash·e_crash))',
-    `  = min(1, ${f2(S)}·(${f2(P.kick)}·e_kick + ${f2(P.snare)}·e_snare + ${f2(P.crash)}·e_crash))`,
+    `  = min(1, ${f2(S)}·(${f2(A.kick)}·e_kick + ${f2(A.snare)}·e_snare + ${f2(A.crash)}·e_crash))`,
     `light = 1 + G·F = 1 + ${f2(P.G)}·F`,
     '',
     `peak in this bar: F = ${f3(peak)}, light = ${f3(light(peak, P.G))}`,
