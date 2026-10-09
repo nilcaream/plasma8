@@ -1,34 +1,35 @@
 /**
  * The /tempo/ page: arms the microphone (src/micTempo.ts), analyses every quarter second of audio, and draws what the
  * detector sees: the onset envelope with its peaks and fitted beat grid, the comb over the candidates, the periodicity
- * over a wide range, and every method's reading over time.
+ * over a wide range, and the detection and the beat clock's tempo over time.
  */
 
 import { DEFAULT_SHAPE, flash, type Amounts } from './beatVoices';
 import { FlashLimiter } from './flashLimit';
 import { EVERY, MicTempo } from './micTempo';
 import { colors, dot, el, frame, setup, type Tick } from './pageGraphs';
+import { historyAxis } from './tempoHistory';
 import {
-  COMB_POINTS, MAX_BPM, METHODS, MIN_BPM, SEARCH_HI, SEARCH_LO, WIDE_HI, WIDE_LO, combBpm, wideBpm,
-  type Analysis, type Method,
+  COMB_POINTS, MAX_BPM, MIN_BPM, SEARCH_HI, SEARCH_LO, WIDE_HI, WIDE_LO, combBpm, wideBpm,
+  type Analysis,
 } from './tempoDetect';
 
 /** The reading counts as settled when it moved less than this over SETTLE_SECONDS. */
 const SETTLE_BPM = 0.05;
 const SETTLE_SECONDS = 4;
 /** The reading over time shows the last this many seconds. */
-const HISTORY_VIEW = 30;
+const HISTORY_VIEW = 15;
 /** The beat strobe: the main page's flash at strobe 1, the kick voice alone, so one flash on every beat. */
 const STROBE = 1;
 const STROBE_AMOUNTS: Amounts = { kick: 1, snare: 0, crash: 0 };
 const ONSET_VIEW = 8;
 
-interface Point { t: number; readings: Record<Method, number | null>; beat: boolean }
+/** One analysis: the detection (what Listen shows) and the tempo the beat clock runs at, null until it has one. */
+interface Point { t: number; detection: number | null; beat: number | null }
 
 const mic = new MicTempo();
 let last: Analysis | null = null;
 let history: Point[] = [];
-let method: Method = 'grid';
 let drawQueued = false;
 let limiter = new FlashLimiter();
 const strobeLight = el('strobeLight');
@@ -39,7 +40,7 @@ const facts = el('facts');
 mic.onAnalysis = (a) => {
   if (a) {
     last = a;
-    history.push({ t: a.time, readings: { ...a.readings }, beat: a.beat });
+    history.push({ t: a.time, detection: a.readings.grid, beat: mic.clock.beat === null ? null : mic.clock.bpm });
     while (history.length && history[0]!.t < a.time - HISTORY_VIEW - EVERY) history.shift();
   }
   update();
@@ -53,9 +54,6 @@ el<HTMLButtonElement>('reset').addEventListener('click', () => {
   history = [];
   update();
 });
-for (const input of el('methods').querySelectorAll<HTMLInputElement>('input[name=method]')) {
-  input.addEventListener('change', () => { if (input.checked) { method = input.value as Method; update(); } });
-}
 
 async function arm(): Promise<void> {
   if (mic.arming) return;
@@ -93,12 +91,12 @@ function strobe(): void {
   requestAnimationFrame(strobe);
 }
 
-/** The reading of the chosen method, and whether it has settled. */
+/** The detection, and whether it has settled. */
 function reading(): { bpm: number | null; settled: boolean } {
-  const bpm = last?.readings[method] ?? null;
+  const bpm = last?.readings.grid ?? null;
   if (bpm === null || !last) return { bpm, settled: false };
   const since = history.filter((p) => p.t >= last!.time - SETTLE_SECONDS);
-  const vs = since.map((p) => p.readings[method]).filter((v): v is number => v !== null);
+  const vs = since.map((p) => p.detection).filter((v): v is number => v !== null);
   const settled = last.time >= SETTLE_SECONDS + 2.5 && vs.length > 0 && Math.max(...vs) - Math.min(...vs) < SETTLE_BPM;
   return { bpm, settled };
 }
@@ -108,7 +106,7 @@ function update(): void {
   const big = el('bpm');
   big.textContent = bpm === null ? '–––.––' : bpm.toFixed(2);
   big.className = bpm === null ? 'none' : last && !last.beat ? 'held' : '';
-  const sd = method === 'grid' ? last?.grid?.sd : undefined;
+  const sd = last?.grid?.sd;
   el('plusminus').textContent = bpm !== null && sd !== undefined && last?.beat ? `± ${Math.max(0.01, sd).toFixed(2)} BPM (standard error of the fit)` : '';
   el('status').textContent = statusText(bpm, settled);
   const listening = mic.listening;
@@ -122,7 +120,7 @@ function update(): void {
   el('level').style.width = listening ? `${((db + 60) / 60) * 100}%` : '0';
   el('levelText').textContent = listening && Number.isFinite(level) ? `${level.toFixed(0)} dB` : '';
   (window as unknown as { __tempo: unknown }).__tempo = {
-    armed: listening, error: mic.error, seconds: mic.det?.seconds ?? 0, method, bpm, settled, beat: last?.beat ?? false,
+    armed: listening, error: mic.error, seconds: mic.det?.seconds ?? 0, bpm, settled, beat: last?.beat ?? false,
     readings: last?.readings ?? null, sd: last?.grid?.sd ?? null, confidence: conf,
     floor: mic.floor, inputLatency: mic.inputLatency, gridBeat: last?.grid?.beat ?? null, gridPeriod: last?.grid?.period ?? null, beatShare: last?.grid?.beatShare ?? null,
     clockBeat: clock.beat, clockPeriod: clock.period, clockChanges: clock.changes, clockAnchors: clock.anchors,
@@ -232,7 +230,7 @@ function drawComb(): void {
     if (c === 0) s.ctx.moveTo(X(combBpm(c)), Y(a.combScore[c]!)); else s.ctx.lineTo(X(combBpm(c)), Y(a.combScore[c]!));
   }
   s.ctx.stroke();
-  const r = a.readings[method];
+  const r = a.readings.grid;
   if (r !== null) vline(s, X(r), Y(hi * 1.05), Y(lo), colors.play);
 }
 
@@ -255,7 +253,7 @@ function drawWide(): void {
     if (i === 0) s.ctx.moveTo(x, y); else s.ctx.lineTo(x, y);
   }
   s.ctx.stroke();
-  const r = a.readings[method];
+  const r = a.readings.grid;
   if (r !== null) {
     vline(s, X(L(r)), Y(hi * 1.05), Y(lo), colors.play);
     s.ctx.setLineDash([4, 4]);
@@ -264,38 +262,31 @@ function drawWide(): void {
   }
 }
 
-const METHOD_COLOR: Record<Method, () => string> = { grid: () => colors.kick, comb: () => colors.snare, ioi: () => colors.crash };
-
+/** The detection (a thin line) over the beat clock's tempo (a wide soft band), the last HISTORY_VIEW seconds. */
 function drawHistory(): void {
   const s = setup(el<HTMLCanvasElement>('historyCanvas'));
   const now = last?.time ?? 0;
-  const { bpm } = reading();
-  const mid = bpm ?? 130;
-  const half = bpm === null ? 20 : 2;
-  const y0 = Math.max(SEARCH_LO, mid - half), y1 = Math.min(SEARCH_HI, mid + half);
+  const axis = historyAxis(history.map((p) => p.detection), history.map((p) => p.beat));
   const xTicks: Tick[] = [];
   for (let x = -HISTORY_VIEW; x <= 0; x += 5) xTicks.push({ x, label: x === 0 ? 'now' : `${x} s` });
-  const span = y1 - y0;
-  const yStep = span > 10 ? 10 : span > 2 ? 1 : 0.5;
-  const yTicks: number[] = [];
-  for (let y = Math.ceil(y0 / yStep) * yStep; y <= y1 + 1e-9; y += yStep) yTicks.push(y);
-  const { X: Xago, Y } = frame(s, -HISTORY_VIEW, 0, y0, y1, xTicks, yTicks, yStep < 1 ? 1 : 0);
+  const { X: Xago, Y } = frame(s, -HISTORY_VIEW, 0, axis?.lo ?? 0, axis?.hi ?? 1, xTicks, axis?.ticks ?? [], 0);
+  if (!axis) return;
   // a reading's time against the newest one
   const X = (t: number): number => Xago(t - now);
   const { ctx } = s;
   ctx.save();
   ctx.beginPath();
-  ctx.rect(Xago(-HISTORY_VIEW), Y(y1), Xago(0) - Xago(-HISTORY_VIEW), Y(y0) - Y(y1));
+  ctx.rect(Xago(-HISTORY_VIEW), Y(axis.hi), Xago(0) - Xago(-HISTORY_VIEW), Y(axis.lo) - Y(axis.hi));
   ctx.clip();
-  // the order puts the chosen method on top
-  for (const m of [...METHODS.filter((m) => m !== method), method]) {
-    ctx.strokeStyle = METHOD_COLOR[m]();
-    ctx.lineWidth = m === method ? 2.5 : 1.25;
-    ctx.globalAlpha = m === method ? 1 : 0.7;
+  ctx.lineJoin = 'round';
+  for (const [key, color, width, alpha] of [['beat', colors.play, 9, 0.35], ['detection', colors.total, 1.5, 1]] as const) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    ctx.globalAlpha = alpha;
     ctx.beginPath();
     let pen = false;
     for (const p of history) {
-      const v = p.readings[m];
+      const v = p[key];
       if (v === null) { pen = false; continue; }
       if (pen) ctx.lineTo(X(p.t), Y(v)); else ctx.moveTo(X(p.t), Y(v));
       pen = true;

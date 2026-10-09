@@ -84,6 +84,7 @@
   }
   .legend .thick::before { height: 5px; }
   .legend .dot::before { width: 9px; height: 9px; border-radius: 50%; }
+  .legend .band::before { height: 9px; opacity: 0.35; }
   .side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
   button { font: inherit; padding: 3px 10px; background: var(--bg); color: var(--fg); border: 1px solid var(--border); border-radius: 4px; cursor: pointer; }
   .buttons { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -102,9 +103,6 @@
   #strobe { position: relative; height: 72px; border-radius: 6px; background: #111113; overflow: hidden; }
   #strobe i { position: absolute; inset: 0; background: #ffffff; opacity: 0; }
   .side > section > .note { color: var(--muted); font-size: 12px; margin: 8px 0 0; }
-  fieldset { border: 0; margin: 0; padding: 0; }
-  fieldset label { display: block; margin: 4px 0; }
-  fieldset .note { color: var(--muted); font-size: 12px; margin: 0 0 4px 22px; }
   .facts { color: var(--muted); font-size: 12px; margin: 0; white-space: pre-wrap; font-variant-numeric: tabular-nums; }
 </style>
 </head>
@@ -125,7 +123,7 @@
       </div>
     </section>
     <section>
-      <h2>Tempo candidates: comb score, 106&ndash;154 BPM</h2>
+      <h2>Tempo candidates: comb score, 80&ndash;158 BPM</h2>
       <canvas id="combCanvas"></canvas>
       <div class="legend">
         <span class="thick" style="--c: var(--snare)">comb score</span>
@@ -141,12 +139,11 @@
       </div>
     </section>
     <section>
-      <h2>The reading over time: the last 30 seconds</h2>
+      <h2>The reading over time: the last 15 seconds</h2>
       <canvas id="historyCanvas"></canvas>
       <div class="legend">
-        <span class="thick" style="--c: var(--kick)">grid fit</span>
-        <span class="thick" style="--c: var(--snare)">comb</span>
-        <span class="thick" style="--c: var(--crash)">interval histogram</span>
+        <span style="--c: var(--total)">detection</span>
+        <span class="band" style="--c: var(--play)">beat</span>
       </div>
     </section>
   </div>
@@ -168,18 +165,7 @@
       <h2>Beat</h2>
       <div id="strobe"><i id="strobeLight"></i></div>
       <p class="note" id="strobeText"></p>
-      <p class="note">A beat clock that runs on by itself, timed to the sound as it reaches the microphone. It keeps going through breakdowns and silence; it takes a new tempo only after 2 s of precise fits, and re-anchors on the music every 4 hits.</p>
-    </section>
-    <section>
-      <h2>Method</h2>
-      <fieldset id="methods">
-        <label><input type="radio" name="method" value="grid" checked> Grid fit</label>
-        <p class="note">The comb's tempo, refined by a straight line through the onsets on the beat grid, over up to 32 s. The most precise.</p>
-        <label><input type="radio" name="method" value="comb"> Comb</label>
-        <p class="note">The best candidate of the comb above, from the last 12 s.</p>
-        <label><input type="radio" name="method" value="ioi"> Interval histogram</label>
-        <p class="note">The most common time between onsets, folded into the range. Simple; slow to follow a tempo change.</p>
-      </fieldset>
+      <p class="note">A beat clock that runs on by itself, timed to the sound as it reaches the microphone. It starts when 3 readings in a row agree, and then never stops: through a breakdown or silence it keeps the last tempo and beat. A reading within 1 BPM of its tempo is the same tempo: after every 4 new hits on the grid the clock takes that reading's beat, and its tempo when the reading is precise. A reading further away is a new tempo, taken only when it is sure: precise readings (to 0.1 BPM) that agree with each other for 2 s in a row, or for 6 s when the beat behind them is weak, as in a stretch with no beat.</p>
     </section>
     <section>
       <h2>Microphone</h2>
