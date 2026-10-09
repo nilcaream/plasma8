@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, PLAYABLE, STORAGE_KEY, SYNC_MAX, loadSettings, sanitizeSettings, saveSettings, settingPatch, type Settings } from './settings';
+import { DEFAULT_SETTINGS, PLAYABLE, STORAGE_KEY, SYNC_LIMIT, loadSettings, sanitizeSettings, saveSettings, settingPatch, syncLabel, type Settings } from './settings';
 
 function fakeStorage(initial?: string) {
   const data = new Map<string, string>();
@@ -51,11 +51,20 @@ describe('sanitizeSettings', () => {
     expect(sanitizeSettings({ plays: ['nope'] }).plays).toEqual(PLAYABLE);
   });
 
-  it('keeps the sync a whole number of milliseconds from 0 to SYNC_MAX', () => {
+  it('keeps the sync a whole number of milliseconds from -SYNC_LIMIT to SYNC_LIMIT, an older value in range as it was', () => {
     expect(sanitizeSettings({ sync: 20.4 }).sync).toBe(20);
-    expect(sanitizeSettings({ sync: 400 }).sync).toBe(SYNC_MAX);
-    expect(sanitizeSettings({ sync: -5 }).sync).toBe(0);
+    expect(sanitizeSettings({ sync: 50 }).sync).toBe(50);
+    expect(sanitizeSettings({ sync: -15 }).sync).toBe(-15);
+    expect(sanitizeSettings({ sync: 400 }).sync).toBe(SYNC_LIMIT);
+    expect(sanitizeSettings({ sync: -400 }).sync).toBe(-SYNC_LIMIT);
     expect(sanitizeSettings({ sync: 'late' }).sync).toBe(0);
+  });
+
+  it('writes the sync with its sign: + earlier, − later, none for 0', () => {
+    expect(syncLabel(20)).toBe('Sync +20 ms');
+    expect(syncLabel(-15)).toBe('Sync −15 ms');
+    expect(syncLabel(0)).toBe('Sync 0 ms');
+    expect(syncLabel(-100)).toBe('Sync −100 ms');
   });
 
   it('replaces wrong types and non-objects with defaults', () => {

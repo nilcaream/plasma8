@@ -121,6 +121,16 @@ describe('DetectClock with the detector', () => {
     expect(clock.read(1480).bpm).toBeCloseTo(120, 9);
   });
 
+  it('with a negative lead, every detected beat falls that many milliseconds later', () => {
+    const clock = new DetectClock(0);
+    clock.lead = -20;
+    clock.setWall(wall(1000, 500), 1000);
+    clock.press(1000);
+    expect(Math.floor(clock.read(1519).beats)).toBe(0);
+    expect(Math.floor(clock.read(1520).beats)).toBe(1);
+    expect(clock.read(1520).beats).toBeCloseTo(1, 9);
+  });
+
   it('takes a lead given later at once, also after the microphone is closed', () => {
     const clock = new DetectClock(0);
     clock.setWall(wall(1000, 500), 1000);

@@ -1,15 +1,10 @@
 import type { ClockReading } from './clock';
-import { settingPatch, type Settings } from './settings';
+import { settingPatch, syncLabel, type Settings } from './settings';
 
 function byId<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
   if (!el) throw new Error(`missing element #${id}`);
   return el as T;
-}
-
-/** The text under the sync slider: its name and the value, which is how a sync is tuned by ear. */
-export function syncLabel(ms: number): string {
-  return `Sync ${ms} ms`;
 }
 
 /** The intensity and strobe sliders and the sync slider, parts of the panel in the band (src/band.ts). */

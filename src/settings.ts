@@ -8,8 +8,13 @@ export type TempoSource = 'tap' | 'detect';
 /** The algorithms the panel's toggles switch, in the order of the buttons. */
 export const PLAYABLE: readonly string[] = ['plasma', 'tunnel', 'domain-warped-noise', 'julia-kaleidoscope'];
 
-/** The detect sync, in milliseconds: the most the visuals' beat may fall earlier than the detected one. */
-export const SYNC_MAX = 50;
+/** The detect sync, in milliseconds, either way: the most the visuals' beat may fall earlier (+) or later (-) than the detected one. */
+export const SYNC_LIMIT = 100;
+
+/** The text under the sync slider: its name and the signed value (+ earlier, − later), which is how a sync is tuned by ear. */
+export function syncLabel(ms: number): string {
+  return `Sync ${ms > 0 ? '+' : ms < 0 ? '−' : ''}${Math.abs(ms)} ms`;
+}
 
 export interface Settings {
   /** 0 soft … 1 hard. */
@@ -22,7 +27,7 @@ export interface Settings {
   /** The range a visual's length in bars is drawn from; max is never below min. */
   minBars: BarLength;
   maxBars: BarLength;
-  /** Detect only: the visuals' beat falls this many milliseconds earlier than the detected one, for the time it takes to hear, record and process the sound and to show the picture. */
+  /** Detect only: the visuals' beat falls this many milliseconds earlier (negative: later) than the detected one, for the time it takes to hear, record and process the sound and to show the picture. */
   sync: number;
   /** The algorithms that may play, never none: one lit plays alone, in a new variant of itself at every change; several, a random one of them. */
   plays: readonly string[];
@@ -57,7 +62,7 @@ export function sanitizeSettings(raw: unknown): Settings {
   if (isBarLength(o.minBars)) out.minBars = o.minBars;
   if (isBarLength(o.maxBars)) out.maxBars = o.maxBars;
   if (out.maxBars < out.minBars) out.maxBars = out.minBars;
-  if (typeof o.sync === 'number' && Number.isFinite(o.sync)) out.sync = Math.min(SYNC_MAX, Math.max(0, Math.round(o.sync)));
+  if (typeof o.sync === 'number' && Number.isFinite(o.sync)) out.sync = Math.min(SYNC_LIMIT, Math.max(-SYNC_LIMIT, Math.round(o.sync)));
   if (Array.isArray(o.plays)) {
     const lit = PLAYABLE.filter((name) => (o.plays as unknown[]).includes(name));
     if (lit.length > 0) out.plays = lit;

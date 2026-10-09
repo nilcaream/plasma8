@@ -20,6 +20,7 @@
   --key-h: 32px;
   --key-radius: 4px;
   --slider-w: 68px;
+  --sync-w: 140px;
   --dot-size: 14px;
   --band-h: calc(env(safe-area-inset-top, 0px) + var(--gap) + var(--part-h) + var(--gap));
 }
@@ -283,6 +284,11 @@ body.idle * {
   height: 20px;
   margin: 0;
   accent-color: var(--accent);
+}
+
+/* The sync slider spans -100..+100 ms: wider than the others, for a finer hand. */
+.part #sync {
+  width: var(--sync-w);
 }
 
 /* The buttons: tempo source, continuous listen, min and max length, what plays. The keys of one panel are as wide as its widest, the name is under them. */

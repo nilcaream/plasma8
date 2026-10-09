@@ -294,7 +294,12 @@ function main(): void {
   window.addEventListener('pointerup', (e) => release(`pointer ${e.pointerId}`));
   window.addEventListener('pointercancel', (e) => release(`pointer ${e.pointerId}`));
   window.addEventListener('pointermove', (e) => {
-    if (e.pointerType === 'mouse') band.touch();
+    if (e.pointerType !== 'mouse') return;
+    band.touch();
+    band.pointerAt(e.clientY);
+  });
+  document.documentElement.addEventListener('pointerleave', (e) => {
+    if (e.pointerType === 'mouse') band.pointerAt(null);
   });
   window.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') band.hide();
@@ -385,7 +390,7 @@ function main(): void {
     });
 
     // the panel up (a press in the band) shows the widget as it was last seen and the metronome, whatever the taps; taps alone show the widget and the metronome
-    const panelUp = band.update(now);
+    const panelUp = band.update(now, mic.listening || mic.arming);
     // the tapping widget is the tap clock's; while the tempo is detected it only shows the tempo, when the panel is up
     const widget: WidgetView =
       live.source === 'tap'
