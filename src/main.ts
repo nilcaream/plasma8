@@ -90,10 +90,9 @@ function main(): void {
     }
     return { def, values, algorithm };
   };
-  // the panel's "What plays": one algorithm, in a new variant of itself at every change, or undefined: the changes pick
-  const playing = (): string | undefined => (ALGORITHMS.some((a) => a.name === live.plays) ? live.plays : undefined);
+  // the panel's "What plays": the lit algorithms are the pool, a random one at each change (one lit: a new variant of it)
   const make = (intensity: number, running?: AlgorithmDef): Running => {
-    const { def, unknown } = chooseAlgorithm(playing() ?? forced, intensity, rng, running);
+    const { def, unknown } = chooseAlgorithm(forced, intensity, rng, running, live.plays);
     if (unknown && !warned) {
       warned = true;
       console.warn(`[plasma8] unknown algorithm "${params.algo}", picking at random`);
@@ -230,19 +229,16 @@ function main(): void {
       if (!live.continuous && before.continuous && sure.sure) mic.disarm();
     }
     if (live.minBars !== before.minBars || live.maxBars !== before.maxBars) sequencer.setRange({ min: live.minBars, max: live.maxBars });
-    if (live.plays !== before.plays) {
-      const name = playing();
-      if (name !== undefined && name !== current.def.name) {
-        // the one algorithm is on at once, in a variant of its own, and its first length is counted from here
-        incoming?.algorithm.dispose();
-        incoming = undefined;
-        look = undefined;
-        current.algorithm.dispose();
-        current = create(ALGORITHMS.find((a) => a.name === name)!);
-        knobPanel.show(current);
-        sequencer.release(reading(now).beats);
-        announce(current, sequencer.segment.bars, 'playing alone');
-      }
+    if (live.plays !== before.plays && !live.plays.includes(current.def.name)) {
+      // the algorithm on screen was switched off: another of the lit ones is on at once, and its first length is counted from here
+      incoming?.algorithm.dispose();
+      incoming = undefined;
+      look = undefined;
+      current.algorithm.dispose();
+      current = make(live.intensity);
+      knobPanel.show(current);
+      sequencer.release(reading(now).beats);
+      announce(current, sequencer.segment.bars, 'switched on in place of the one switched off');
     }
     panel.sync(live);
   };
@@ -319,6 +315,7 @@ function main(): void {
     }
     // the microphone's beat clock, carried to now, keeps the detect clock's wall; the clock runs on by itself once the microphone is closed
     if (mic.listening) mic.beatsAt(now);
+    detectClock.lead = live.sync;
     detectClock.setWall(mic.beatWall, now);
 
     const r = reading(now);

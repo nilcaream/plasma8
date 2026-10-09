@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CHANGES, DEFAULT_SETTINGS, STORAGE_KEY, loadSettings, sanitizeSettings, saveSettings, settingPatch, type Settings } from './settings';
+import { DEFAULT_SETTINGS, PLAYABLE, STORAGE_KEY, SYNC_MAX, loadSettings, sanitizeSettings, saveSettings, settingPatch, type Settings } from './settings';
 
 function fakeStorage(initial?: string) {
   const data = new Map<string, string>();
@@ -18,11 +18,12 @@ const FIRST_VISIT: Settings = {
   continuous: false,
   minBars: 2,
   maxBars: 4,
-  plays: CHANGES,
+  sync: 0,
+  plays: PLAYABLE,
 };
 
 describe('DEFAULT_SETTINGS', () => {
-  it('is what a first visit starts with: tap, continuous off, 2 to 4 bars, the changes pick', () => {
+  it('is what a first visit starts with: tap, continuous off, 2 to 4 bars, sync 0, every algorithm lit', () => {
     expect(DEFAULT_SETTINGS).toEqual(FIRST_VISIT);
     expect(loadSettings(() => fakeStorage())).toEqual(FIRST_VISIT);
   });
@@ -40,14 +41,27 @@ describe('sanitizeSettings', () => {
   });
 
   it('keeps the tempo source, continuous listen, the range of lengths and what plays', () => {
-    const saved = { source: 'detect', continuous: true, minBars: 1, maxBars: 16, plays: 'tunnel' };
+    const saved = { source: 'detect', continuous: true, minBars: 1, maxBars: 16, sync: 23, plays: ['tunnel'] };
     expect(sanitizeSettings(saved)).toMatchObject(saved);
+  });
+
+  it('keeps the lit algorithms in the order of the buttons, drops unknown names, and lights all when none is left', () => {
+    expect(sanitizeSettings({ plays: ['julia-kaleidoscope', 'plasma', 'plasma', 'nope'] }).plays).toEqual(['plasma', 'julia-kaleidoscope']);
+    expect(sanitizeSettings({ plays: [] }).plays).toEqual(PLAYABLE);
+    expect(sanitizeSettings({ plays: ['nope'] }).plays).toEqual(PLAYABLE);
+  });
+
+  it('keeps the sync a whole number of milliseconds from 0 to SYNC_MAX', () => {
+    expect(sanitizeSettings({ sync: 20.4 }).sync).toBe(20);
+    expect(sanitizeSettings({ sync: 400 }).sync).toBe(SYNC_MAX);
+    expect(sanitizeSettings({ sync: -5 }).sync).toBe(0);
+    expect(sanitizeSettings({ sync: 'late' }).sync).toBe(0);
   });
 
   it('replaces wrong types and non-objects with defaults', () => {
     expect(sanitizeSettings({ intensity: 'loud', strobe: NaN })).toEqual(DEFAULT_SETTINGS);
     expect(sanitizeSettings({ source: 'clap', continuous: 'yes', minBars: 3, maxBars: '4', plays: 7 })).toEqual(DEFAULT_SETTINGS);
-    expect(sanitizeSettings({ plays: '' })).toEqual(DEFAULT_SETTINGS);
+    expect(sanitizeSettings({ plays: 'tunnel' })).toEqual(DEFAULT_SETTINGS);
     expect(sanitizeSettings(null)).toEqual(DEFAULT_SETTINGS);
     expect(sanitizeSettings(5)).toEqual(DEFAULT_SETTINGS);
   });
@@ -59,18 +73,29 @@ describe('sanitizeSettings', () => {
 
   it('has no place for a tempo or for the metronome setting an older version saved', () => {
     expect(Object.keys(sanitizeSettings({ bpm: 90, metronome: true })).sort()).toEqual(
-      ['continuous', 'intensity', 'maxBars', 'minBars', 'plays', 'source', 'strobe'],
+      ['continuous', 'intensity', 'maxBars', 'minBars', 'plays', 'source', 'strobe', 'sync'],
     );
   });
 });
 
 describe('settingPatch', () => {
-  it('sets the tempo source, continuous listen and what plays from a button', () => {
+  it('sets the tempo source and continuous listen from a button', () => {
     expect(settingPatch(DEFAULT_SETTINGS, 'source', 'detect')).toEqual({ source: 'detect' });
     expect(settingPatch(DEFAULT_SETTINGS, 'continuous', 'on')).toEqual({ continuous: true });
     expect(settingPatch(DEFAULT_SETTINGS, 'continuous', 'off')).toEqual({ continuous: false });
-    expect(settingPatch(DEFAULT_SETTINGS, 'plays', 'julia-kaleidoscope')).toEqual({ plays: 'julia-kaleidoscope' });
-    expect(settingPatch(DEFAULT_SETTINGS, 'plays', CHANGES)).toEqual({ plays: CHANGES });
+  });
+
+  it('switches an algorithm off and on again, and keeps the lit ones in the order of the buttons', () => {
+    const off = settingPatch(DEFAULT_SETTINGS, 'plays', 'plasma');
+    expect(off).toEqual({ plays: ['tunnel', 'domain-warped-noise', 'julia-kaleidoscope'] });
+    const again = settingPatch({ ...DEFAULT_SETTINGS, ...off }, 'plays', 'plasma');
+    expect(again).toEqual({ plays: PLAYABLE });
+  });
+
+  it('does nothing when the last lit algorithm is pressed, so one always plays', () => {
+    const one = { ...DEFAULT_SETTINGS, plays: ['tunnel'] };
+    expect(settingPatch(one, 'plays', 'tunnel')).toBeUndefined();
+    expect(settingPatch(one, 'plays', 'julia-kaleidoscope')).toEqual({ plays: ['tunnel', 'julia-kaleidoscope'] });
   });
 
   it('moves max along when min is pressed above it, and min when max is pressed below it', () => {
@@ -87,12 +112,13 @@ describe('settingPatch', () => {
     expect(settingPatch(DEFAULT_SETTINGS, 'min', '3')).toBeUndefined();
     expect(settingPatch(DEFAULT_SETTINGS, 'max', 'x')).toBeUndefined();
     expect(settingPatch(DEFAULT_SETTINGS, 'plays', '')).toBeUndefined();
+    expect(settingPatch(DEFAULT_SETTINGS, 'plays', 'changes')).toBeUndefined();
     expect(settingPatch(DEFAULT_SETTINGS, 'volume', '11')).toBeUndefined();
   });
 });
 
 describe('loadSettings and saveSettings', () => {
-  const everything: Settings = { intensity: 0.9, strobe: 0.2, source: 'detect', continuous: true, minBars: 4, maxBars: 8, plays: 'plasma' };
+  const everything: Settings = { intensity: 0.9, strobe: 0.2, source: 'detect', continuous: true, minBars: 4, maxBars: 8, sync: 20, plays: ['plasma'] };
 
   it('round-trips through storage', () => {
     const storage = fakeStorage();
@@ -105,7 +131,7 @@ describe('loadSettings and saveSettings', () => {
     const first = loadSettings(() => storage);
     Object.assign(first, settingPatch(first, 'source', 'detect'), settingPatch(first, 'min', '8'), settingPatch(first, 'plays', 'tunnel'));
     saveSettings(first, () => storage);
-    expect(loadSettings(() => storage)).toMatchObject({ source: 'detect', minBars: 8, maxBars: 8, plays: 'tunnel' });
+    expect(loadSettings(() => storage)).toMatchObject({ source: 'detect', minBars: 8, maxBars: 8, plays: ['plasma', 'domain-warped-noise', 'julia-kaleidoscope'] });
   });
 
   it('reads a store an older version wrote with the metronome in it, and leaves the metronome out', () => {

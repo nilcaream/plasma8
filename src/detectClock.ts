@@ -22,6 +22,11 @@ export class DetectClock {
   private synced = false;
   private run = 0;
   private lastPress = -Infinity;
+  /**
+   * Milliseconds the detected beats fall earlier than the detector puts them: the clock reads `now + lead`. It stands for the
+   * time it takes to hear, record and process the sound and to show the picture (src/settings.ts `sync`).
+   */
+  lead = 0;
 
   constructor(start = 0, private readonly bpm = DEFAULT_BPM) {
     this.anchor = start;
@@ -34,7 +39,7 @@ export class DetectClock {
       // the beats start counting again: the whole beat the clock is on goes on as the beat of the bar it was, on the detector's phase
       const whole = Math.floor(this.read(now).beats);
       this.wall = wall;
-      this.offset = Math.floor((now - wall.at) / wall.ms) - whole;
+      this.offset = Math.floor((now + this.lead - wall.at) / wall.ms) - whole;
     } else this.wall = wall;
   }
 
@@ -45,14 +50,14 @@ export class DetectClock {
     if (this.synced && gap >= 0 && gap <= RESET_GAP_MS) return false;
     this.synced = true;
     this.run += 1;
-    if (this.wall) this.offset = Math.round((now - this.wall.at) / this.wall.ms);
+    if (this.wall) this.offset = Math.round((now + this.lead - this.wall.at) / this.wall.ms);
     else this.anchor = now;
     return true;
   }
 
   read(now: number): ClockReading {
     const bpm = this.wall ? 60000 / this.wall.ms : this.bpm;
-    const raw = this.wall ? (now - this.wall.at) / this.wall.ms - this.offset : ((now - this.anchor) * bpm) / 60000;
+    const raw = this.wall ? (now + this.lead - this.wall.at) / this.wall.ms - this.offset : ((now - this.anchor) * bpm) / 60000;
     const beats = Math.max(0, raw);
     const wholeBeat = Math.floor(beats);
     const beatInBar = wholeBeat % BEATS_PER_BAR;

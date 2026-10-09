@@ -110,6 +110,39 @@ describe('DetectClock with the detector', () => {
     expect(r.beats).toBeCloseTo(40, 9);
   });
 
+  it('with a lead, every detected beat falls that many milliseconds earlier, and the tempo is the same', () => {
+    const clock = new DetectClock(0);
+    clock.lead = 20;
+    clock.setWall(wall(1000, 500), 1000);
+    clock.press(1000);
+    expect(Math.floor(clock.read(1479).beats)).toBe(0);
+    expect(Math.floor(clock.read(1480).beats)).toBe(1);
+    expect(clock.read(1480).beats).toBeCloseTo(1, 9);
+    expect(clock.read(1480).bpm).toBeCloseTo(120, 9);
+  });
+
+  it('takes a lead given later at once, also after the microphone is closed', () => {
+    const clock = new DetectClock(0);
+    clock.setWall(wall(1000, 500), 1000);
+    clock.press(1000);
+    clock.setWall(null, 20_000);
+    const before = clock.read(21_000).beats;
+    clock.lead = 25;
+    expect(clock.read(21_000).beats - before).toBeCloseTo(25 / 500, 9);
+  });
+
+  it('snaps a press to the nearest beat as the clock reads them, lead included', () => {
+    const plain = new DetectClock(0);
+    plain.setWall(wall(1000, 500), 1000);
+    plain.press(1230);
+    const led = new DetectClock(0);
+    led.lead = 50;
+    led.setWall(wall(1000, 500), 1000);
+    led.press(1230);
+    expect(plain.read(1700).beats).toBeCloseTo(1.4, 9); // the nearest beat to 1230 is the one at 1000: beat 1 of bar 1
+    expect(led.read(1700).beats).toBeCloseTo(0.5, 9); // with the lead the beat at 1500 falls at 1450, nearest: it is beat 1 of bar 1
+  });
+
   it('can start at the beat another clock was at, so a switch of source does not jump', () => {
     const clock = new DetectClock(10_000 - (6.5 * 60000) / 128, 128);
     const r = clock.read(10_000);

@@ -5,8 +5,11 @@ import { DEFAULT_RANGE, isBarLength, pushRange, type BarLength } from './visualL
 /** Where the tempo comes from: the user's taps, or the microphone's detection. */
 export type TempoSource = 'tap' | 'detect';
 
-/** What `plays` holds when the changes pick the algorithm. */
-export const CHANGES = 'changes';
+/** The algorithms the panel's toggles switch, in the order of the buttons. */
+export const PLAYABLE: readonly string[] = ['plasma', 'tunnel', 'domain-warped-noise', 'julia-kaleidoscope'];
+
+/** The detect sync, in milliseconds: the most the visuals' beat may fall earlier than the detected one. */
+export const SYNC_MAX = 50;
 
 export interface Settings {
   /** 0 soft … 1 hard. */
@@ -19,8 +22,10 @@ export interface Settings {
   /** The range a visual's length in bars is drawn from; max is never below min. */
   minBars: BarLength;
   maxBars: BarLength;
-  /** CHANGES, or the name of the one algorithm that plays, in a new variant of itself at every change. */
-  plays: string;
+  /** Detect only: the visuals' beat falls this many milliseconds earlier than the detected one, for the time it takes to hear, record and process the sound and to show the picture. */
+  sync: number;
+  /** The algorithms that may play, never none: one lit plays alone, in a new variant of itself at every change; several, a random one of them. */
+  plays: readonly string[];
 }
 
 export const DEFAULT_SETTINGS: Readonly<Settings> = {
@@ -30,7 +35,8 @@ export const DEFAULT_SETTINGS: Readonly<Settings> = {
   continuous: false,
   minBars: DEFAULT_RANGE.min,
   maxBars: DEFAULT_RANGE.max,
-  plays: CHANGES,
+  sync: 0,
+  plays: PLAYABLE,
 };
 
 export const STORAGE_KEY = 'plasma8.settings';
@@ -51,13 +57,18 @@ export function sanitizeSettings(raw: unknown): Settings {
   if (isBarLength(o.minBars)) out.minBars = o.minBars;
   if (isBarLength(o.maxBars)) out.maxBars = o.maxBars;
   if (out.maxBars < out.minBars) out.maxBars = out.minBars;
-  if (typeof o.plays === 'string' && o.plays !== '') out.plays = o.plays;
+  if (typeof o.sync === 'number' && Number.isFinite(o.sync)) out.sync = Math.min(SYNC_MAX, Math.max(0, Math.round(o.sync)));
+  if (Array.isArray(o.plays)) {
+    const lit = PLAYABLE.filter((name) => (o.plays as unknown[]).includes(name));
+    if (lit.length > 0) out.plays = lit;
+  }
   return out;
 }
 
 /**
  * What pressing a panel button changes. A button carries the name of its setting and its value (`source` `tap`, `continuous`
  * `on`, `min` `4`, `plays` `tunnel`); undefined for one this does not know. Min and max push each other (src/visualLength.ts).
+ * A `plays` button toggles its algorithm; the last one lit does nothing.
  */
 export function settingPatch(s: Settings, setting: string, value: string): Partial<Settings> | undefined {
   switch (setting) {
@@ -72,8 +83,11 @@ export function settingPatch(s: Settings, setting: string, value: string): Parti
       const range = pushRange({ min: s.minBars, max: s.maxBars }, setting, bars);
       return { minBars: range.min, maxBars: range.max };
     }
-    case 'plays':
-      return value === '' ? undefined : { plays: value };
+    case 'plays': {
+      if (!PLAYABLE.includes(value)) return undefined;
+      const lit = s.plays.includes(value) ? s.plays.filter((name) => name !== value) : PLAYABLE.filter((name) => name === value || s.plays.includes(name));
+      return lit.length === 0 ? undefined : { plays: lit };
+    }
     default:
       return undefined;
   }

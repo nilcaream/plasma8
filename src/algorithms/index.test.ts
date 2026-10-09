@@ -31,6 +31,39 @@ describe('chooseAlgorithm', () => {
   });
 });
 
+describe('chooseAlgorithm among the lit ones', () => {
+  it('picks the one lit every time, even while it runs', () => {
+    const rng = createRng(3);
+    const tunnel = ALGORITHMS.find((a) => a.name === 'tunnel')!;
+    for (let i = 0; i < 20; i++) expect(chooseAlgorithm(undefined, i / 20, rng, tunnel, ['tunnel']).def).toBe(tunnel);
+  });
+
+  it('picks only lit ones when several are, and each of them in time', () => {
+    const rng = createRng(4);
+    const seen = new Set<string>();
+    for (let i = 0; i < 400; i++) seen.add(chooseAlgorithm(undefined, 0.5, rng, undefined, ['plasma', 'julia-kaleidoscope']).def.name);
+    expect([...seen].sort()).toEqual(['julia-kaleidoscope', 'plasma']);
+  });
+
+  it('takes all of them when the lit names are none the page knows', () => {
+    const rng = createRng(5);
+    const seen = new Set<string>();
+    for (let i = 0; i < 600; i++) seen.add(chooseAlgorithm(undefined, 0.5, rng, undefined, ['no-such']).def.name);
+    expect(seen.size).toBe(ALGORITHMS.length);
+  });
+
+  it('still honours a name asked for', () => {
+    expect(chooseAlgorithm('plasma', 0.5, createRng(6), undefined, ['tunnel']).def.name).toBe('plasma');
+  });
+});
+
+describe('the panel names', () => {
+  it('are the algorithms the page has', async () => {
+    const { PLAYABLE } = await import('../settings');
+    expect([...PLAYABLE].sort()).toEqual(ALGORITHMS.map((a) => a.name).sort());
+  });
+});
+
 describe('the algorithms', () => {
   it('have distinct names and homes from soft to hard', () => {
     expect(new Set(ALGORITHMS.map((a) => a.name)).size).toBe(ALGORITHMS.length);

@@ -19,6 +19,7 @@
   --radius: 10px;
   --key-h: 32px;
   --key-radius: 4px;
+  --slider-w: 68px;
   --dot-size: 14px;
   --band-h: calc(env(safe-area-inset-top, 0px) + var(--gap) + var(--part-h) + var(--gap));
 }
@@ -193,9 +194,8 @@ body.idle * {
   color: #5fe08a;
 }
 
-/* The intensity and strobe sliders. */
+/* The intensity and strobe sliders, and the sync slider: sliders only, all of one width. */
 #menu {
-  width: 200px;
   padding: 0 var(--gap);
   display: flex;
   flex-direction: column;
@@ -204,17 +204,12 @@ body.idle * {
 }
 #menu label {
   display: grid;
-  grid-template-columns: 58px 1fr 34px;
+  grid-template-columns: 58px var(--slider-w);
   align-items: center;
   gap: var(--gap);
 }
-#menu output {
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-#menu input[type='range'] {
-  width: 100%;
-  min-width: 0;
+.part input[type='range'] {
+  width: var(--slider-w);
   height: 20px;
   margin: 0;
   accent-color: var(--accent);
@@ -268,6 +263,7 @@ body.idle * {
   cursor: default;
 }
 .group.inactive .keys,
+.group.inactive input,
 .group.inactive .group-label {
   opacity: 0.35;
 }

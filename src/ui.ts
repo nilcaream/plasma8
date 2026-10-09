@@ -7,10 +7,16 @@ function byId<T extends HTMLElement>(id: string): T {
   return el as T;
 }
 
-/** The intensity and strobe sliders, a part of the panel in the band (src/band.ts). */
+/** The text under the sync slider: its name and the value, which is how a sync is tuned by ear. */
+export function syncLabel(ms: number): string {
+  return `Sync ${ms} ms`;
+}
+
+/** The intensity and strobe sliders and the sync slider, parts of the panel in the band (src/band.ts). */
 export class Sliders {
   private readonly intensity = byId<HTMLInputElement>('intensity');
   private readonly strobe = byId<HTMLInputElement>('strobe');
+  private readonly sync = byId<HTMLInputElement>('sync');
 
   constructor(
     settings: Settings,
@@ -18,22 +24,19 @@ export class Sliders {
   ) {
     this.intensity.value = String(settings.intensity);
     this.strobe.value = String(settings.strobe);
-    this.showValues();
+    this.sync.value = String(settings.sync);
+    this.showSync();
 
-    this.intensity.addEventListener('input', () => {
-      this.showValues();
-      this.onChange('intensity', this.intensity.valueAsNumber);
-    });
-    this.strobe.addEventListener('input', () => {
-      this.showValues();
-      this.onChange('strobe', this.strobe.valueAsNumber);
+    this.intensity.addEventListener('input', () => this.onChange('intensity', this.intensity.valueAsNumber));
+    this.strobe.addEventListener('input', () => this.onChange('strobe', this.strobe.valueAsNumber));
+    this.sync.addEventListener('input', () => {
+      this.showSync();
+      this.onChange('sync', this.sync.valueAsNumber);
     });
   }
 
-  private showValues(): void {
-    byId('intensity-value').textContent = this.intensity.valueAsNumber.toFixed(2);
-    const strobe = this.strobe.valueAsNumber;
-    byId('strobe-value').textContent = strobe === 0 ? 'off' : strobe.toFixed(2);
+  private showSync(): void {
+    byId('sync-label').textContent = syncLabel(this.sync.valueAsNumber);
   }
 }
 
@@ -45,7 +48,8 @@ export class Sliders {
 export class Panel {
   private readonly root = byId('bar');
   private readonly buttons = [...this.root.querySelectorAll<HTMLButtonElement>('button[data-setting]')];
-  private readonly listen = byId('group-listen');
+  /** The panels that are for the source Detect only. */
+  private readonly detectOnly = [byId('group-listen'), byId('group-sync')];
   private readonly dot = byId('mic-dot');
   private readonly note = byId('mic-note');
 
@@ -61,20 +65,22 @@ export class Panel {
     });
   }
 
-  /** Marks the pressed buttons; continuous listen is for the source Detect only. */
+  /** Marks the pressed buttons; continuous listen and the sync are for the source Detect only. */
   sync(s: Settings): void {
     for (const b of this.buttons) {
-      const value = b.dataset.value;
+      const value = b.dataset.value ?? '';
       const pressed =
         b.dataset.setting === 'source' ? s.source === value
         : b.dataset.setting === 'continuous' ? (s.continuous ? 'on' : 'off') === value
         : b.dataset.setting === 'min' ? String(s.minBars) === value
         : b.dataset.setting === 'max' ? String(s.maxBars) === value
-        : s.plays === value;
+        : s.plays.includes(value);
       b.setAttribute('aria-pressed', String(pressed));
-      if (b.closest('#group-listen')) b.disabled = s.source !== 'detect';
     }
-    this.listen.classList.toggle('inactive', s.source !== 'detect');
+    for (const group of this.detectOnly) {
+      group.classList.toggle('inactive', s.source !== 'detect');
+      for (const control of group.querySelectorAll<HTMLButtonElement | HTMLInputElement>('button, input')) control.disabled = s.source !== 'detect';
+    }
   }
 
   /** The red dot is on whenever the microphone listens, and stays when the panel has faded; the note says why it does not. */

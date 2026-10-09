@@ -30,6 +30,11 @@
         <span class="group-label">Continuous</span>
       </div>
 
+      <div class="group part" id="group-sync" role="group" aria-label="Sync in milliseconds">
+        <input id="sync" type="range" min="0" max="50" step="1" aria-label="Sync in milliseconds" />
+        <span id="sync-label" class="group-label">Sync 0 ms</span>
+      </div>
+
       <div class="group part" role="group" aria-label="Shortest visual, in bars">
         <div class="keys">
           <button type="button" class="key" data-setting="min" data-value="1">1</button>
@@ -60,7 +65,6 @@
 
       <div class="group part" role="group" aria-label="What plays">
         <div class="keys">
-          <button type="button" class="key" data-setting="plays" data-value="changes">Changes</button>
           <button type="button" class="key" data-setting="plays" data-value="plasma">Plasma</button>
           <button type="button" class="key" data-setting="plays" data-value="tunnel">Tunnel</button>
           <button type="button" class="key" data-setting="plays" data-value="domain-warped-noise">Noise</button>
@@ -73,12 +77,10 @@
         <label for="intensity">
           <span>Intensity</span>
           <input id="intensity" type="range" min="0" max="1" step="0.01" />
-          <output id="intensity-value"></output>
         </label>
         <label for="strobe">
           <span>Strobe</span>
           <input id="strobe" type="range" min="0" max="1" step="0.01" />
-          <output id="strobe-value"></output>
         </label>
       </div>
     </div>
