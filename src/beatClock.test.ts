@@ -133,6 +133,18 @@ describe('beat clock', () => {
     expect(clock.changes).toBe(1);
   });
 
+  it('takes a new tempo on hits far weaker than the old ones within 8 s', () => {
+    const clock = new BeatClock();
+    feed(clock, 5, 15, (t) => seen(t, 128, 4.9));
+    // a sparse section: the same fits, each hit a fifth as strong as the old beat's
+    feed(clock, 15.25, 23, (t) => {
+      const a = seen(t, 135, 15.1);
+      return { ...a, peaks: a.peaks.map((p) => ({ ...p, strength: p.t > 15 ? 0.2 : 0 })) };
+    });
+    expect(clock.bpm).toBeCloseTo(135, 6);
+    expect(clock.changes).toBe(1);
+  });
+
   // on the synthetic tracks (offset 0.37 s, so the true beats are known)
   const on = (name: string) => scoreClock({ ...CASES.find((c) => c.name === name)!.spec, offset: 0.37 });
 

@@ -35,15 +35,21 @@ export const CHANGE_FITS = 4;
  */
 export const CHANGE_GAP = 2;
 /**
- * A fit counts toward a new tempo only when its grid holds at least this share of the evidence of the tempo the clock
- * holds; one below it is taken as no beat heard. Evidence is the onset strength on a grid's half beats over the last
- * EVIDENCE_SECONDS. Through a beatless stretch of pad and claps the grid wanders over a few weak hits that any tempo
- * fits; their evidence stays a fraction of the beat's, while a real new tempo is about as strong as the old one.
+ * A run of fits makes a new tempo in CHANGE_SECONDS only when CHANGE_FITS of them are strong: their grid holds at least
+ * this share of the evidence of the tempo the clock holds. Evidence is the onset strength on a grid's half beats over
+ * the last EVIDENCE_SECONDS. Through a beatless stretch of pad and claps the grid wanders over a few weak hits that any
+ * tempo fits; their evidence stays a fraction of the beat's, while a real new tempo is about as strong as the old one.
  */
 export const EVIDENCE_SHARE = 0.5;
 export const EVIDENCE_SECONDS = 4;
-/** The held tempo's evidence is the most it had, halving every this many seconds, so a quieter new tempo is taken in the end. */
+/** The held tempo's evidence is the most it had, halving every this many seconds. */
 export const EVIDENCE_HALF_LIFE = 30;
+/**
+ * A run with fewer strong fits makes a new tempo when it agrees for this many seconds in a row. A new section's evidence
+ * builds up over about 8 s after a cut, and a relative the clock locked on first can keep a bar the true tempo never
+ * reaches on a quiet take; the claps' wandering grid does not agree this long.
+ */
+export const WEAK_SECONDS = 6;
 /** The clock takes the grid's beat every this many new on-grid peaks. */
 export const ANCHOR_PEAKS = 4;
 /** A re-anchor moves the offset by at most this share of a beat at once; a bigger step needs two re-anchors in a row that agree. */
@@ -68,7 +74,7 @@ export class BeatClock {
   anchors = 0;
   private lastPeak = -Infinity;
   private count = 0;
-  private candidate: { bpm: number; since: number; last: number; fits: number } | null = null;
+  private candidate: { bpm: number; since: number; last: number; fits: number; strong: number } | null = null;
   /** A big offset step seen at the last re-anchor and not yet taken, seconds. */
   private step: number | null = null;
   /** The held tempo's evidence at its most, and when. */
@@ -93,17 +99,19 @@ export class BeatClock {
       if (this.count >= ANCHOR_PEAKS) this.anchor(g);
       return;
     }
-    if (e < EVIDENCE_SHARE * this.heldNow(a.time)) return;
+    const strong = e >= EVIDENCE_SHARE * this.heldNow(a.time) ? 1 : 0;
     if (g.sd > CHANGE_SD) { this.candidate = null; return; }
     const c = this.candidate;
     if (!c || Math.abs(g.bpm - c.bpm) > SAME_BPM || a.time - c.last > CHANGE_GAP) {
-      this.candidate = { bpm: g.bpm, since: a.time, last: a.time, fits: 1 };
+      this.candidate = { bpm: g.bpm, since: a.time, last: a.time, fits: 1, strong };
       return;
     }
     c.bpm = g.bpm;
     c.last = a.time;
     c.fits++;
-    if (a.time - c.since >= CHANGE_SECONDS && c.fits >= CHANGE_FITS) { this.take(g, a); this.changes++; }
+    c.strong += strong;
+    const run = a.time - c.since;
+    if (c.fits >= CHANGE_FITS && run >= (c.strong >= CHANGE_FITS ? CHANGE_SECONDS : WEAK_SECONDS)) { this.take(g, a); this.changes++; }
   }
 
   private heldNow(time: number): number { return this.held * 0.5 ** ((time - this.heldAt) / EVIDENCE_HALF_LIFE); }
