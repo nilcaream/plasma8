@@ -70,11 +70,21 @@ describe.skipIf(!process.env.BPM_BENCH)('tempo bench', () => {
 describe.skipIf(!process.env.BPM_CLOCK)('beat clock bench', () => {
   it('prints the table', async () => {
     const { writeFileSync } = await import(/* @vite-ignore */ FS);
-    const rows = ['| case | start s | bpm err / max | phase ms median / max | half | changes | anchors | took s | confidence p10 / p50 |', '|---|---|---|---|---|---|---|---|---|'];
+    const rows = ['| case | start s | bpm err / max | phase ms median / max | half | changes | anchors | took s | confidence p10 / p50 | lock s / relock s | off s | steps / false |', '|---|---|---|---|---|---|---|---|---|---|---|---|'];
+    const locks: number[] = [], phases: number[] = [];
+    let steps = 0, falseSteps = 0, off = 0;
     for (const c of CASES) {
       const s = scoreClock({ ...c.spec, offset: 0.37 });
-      rows.push(`| ${c.name} | ${fmt(s.start, 2)} | ${fmt(s.err, 3)} / ${fmt(s.maxErr, 2)} | ${fmt(s.phaseMs, 1)} / ${fmt(s.maxPhaseMs, 1)} | ${fmt(s.half, 2)} | ${s.changes} | ${s.anchors} | ${c.spec.change ? fmt(s.took, 1) : ''} | ${fmt(s.conf10, 2)} / ${fmt(s.conf50, 2)} |`);
+      locks.push(s.lock, ...(Number.isNaN(s.relock) ? [] : [s.relock]));
+      phases.push(s.phaseMs);
+      steps += s.steps;
+      falseSteps += s.falseSteps;
+      off += s.off;
+      rows.push(`| ${c.name} | ${fmt(s.start, 2)} | ${fmt(s.err, 3)} / ${fmt(s.maxErr, 2)} | ${fmt(s.phaseMs, 1)} / ${fmt(s.maxPhaseMs, 1)} | ${fmt(s.half, 2)} | ${s.changes} | ${s.anchors} | ${c.spec.change ? fmt(s.took, 1) : ''} | ${fmt(s.conf10, 2)} / ${fmt(s.conf50, 2)} | ${fmt(s.lock, 2)}${c.spec.change ? ` / ${fmt(s.relock, 2)}` : ''} | ${fmt(s.off, 2)} | ${s.steps} / ${s.falseSteps} |`);
     }
+    const q = (xs: number[], f: number): number => [...xs].sort((x, y) => x - y)[Math.min(xs.length - 1, Math.floor(f * xs.length))]!;
+    const lockSum = locks.reduce((a, l) => a + (Number.isFinite(l) ? l : 0), 0);
+    rows.push('', `lock s (first take and relock): median ${fmt(q(locks, 0.5), 2)}, p90 ${fmt(q(locks, 0.9), 2)}, sum of finite ${fmt(lockSum, 1)}, never ${locks.filter((l) => !Number.isFinite(l)).length} of ${locks.length}; off after the lock ${fmt(off, 2)} s; steps ${steps}, false ${falseSteps}; phase median of medians ${fmt(q(phases.filter(Number.isFinite), 0.5), 1)} ms`);
     writeFileSync(process.env.BPM_CLOCK!, rows.join('\n') + '\n');
   }, 600_000);
 });

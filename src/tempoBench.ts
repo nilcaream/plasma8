@@ -160,10 +160,24 @@ export interface ClockScore {
   anchors: number;
   /** For a tempo change: the seconds after it at which the clock took the new tempo (Infinity: never). */
   took: number;
+  /**
+   * Seconds from the clock's first beat until its beat is first within LOCK_MS of a true beat, and from the new tempo's
+   * take until it is first there again (Infinity: never; NaN: no change taken).
+   */
+  lock: number;
+  relock: number;
+  /** Seconds the beat is further than LOCK_MS from a true beat once it was locked (the tempo change until the relock left out). */
+  off: number;
+  /** Offset steps of more than an eighth of a beat on the same tempo, and those that left the beat further from a true beat. */
+  steps: number;
+  falseSteps: number;
   /** The detector's confidence from the start on: 10th percentile and median. */
   conf10: number;
   conf50: number;
 }
+
+/** A clock beat within this many ms of a true beat is locked. */
+export const LOCK_MS = 20;
 
 /** Runs a track (which needs `offset`) through the detector and a beat clock, read every quarter second. */
 export function scoreClock(spec: TrackSpec): ClockScore {
@@ -175,6 +189,9 @@ export function scoreClock(spec: TrackSpec): ClockScore {
   let start = Infinity, took = Infinity;
   const errs: number[] = [], phases: number[] = [], conf: number[] = [];
   let halves = 0;
+  let lockedAt = Infinity, relockedAt = Infinity, off = 0;
+  let steps = 0, falseSteps = 0;
+  let prev: { version: number; changes: number; e: number } | null = null;
   run(spec, 0.25, (a, t) => {
     if (!a) return;
     clock.update(a);
@@ -183,12 +200,28 @@ export function scoreClock(spec: TrackSpec): ClockScore {
     conf.push(a.confidence);
     const truth = tempoAt(spec, t);
     if (c && t >= c.at && took === Infinity && Math.abs(clock.bpm - c.bpm) < 1) took = t - c.at;
-    if (t < start + 5 || changing(t)) return;
-    errs.push(clock.bpm - truth);
     const pred = clock.beat + Math.round((t - clock.beat) / clock.period) * clock.period;
     let near = beats[0]!;
     for (const b of beats) if (Math.abs(b - pred) < Math.abs(near - pred)) near = b;
     const e = (pred - near) * 1000;
+    const locked = Math.abs(e) < LOCK_MS;
+    // past the track's last beat there is no true beat to be near
+    const scored = pred <= beats[beats.length - 1]! + clock.period / 2;
+    if (scored && (!c || t < c.at)) {
+      if (locked && lockedAt === Infinity) lockedAt = t;
+      else if (!locked && lockedAt !== Infinity) off += 0.25;
+    } else if (scored && took !== Infinity) {
+      if (locked && relockedAt === Infinity) relockedAt = t;
+      else if (!locked && relockedAt !== Infinity) off += 0.25;
+    }
+    if (prev && clock.version !== prev.version && clock.changes === prev.changes) {
+      const beatMs = 60000 / truth;
+      const d = e - prev.e - Math.round((e - prev.e) / beatMs) * beatMs;
+      if (Math.abs(d) > beatMs / 8) { steps++; if (Math.abs(e) > Math.abs(prev.e)) falseSteps++; }
+    }
+    prev = { version: clock.version, changes: clock.changes, e };
+    if (t < start + 5 || changing(t)) return;
+    errs.push(clock.bpm - truth);
     if (Math.abs(e) > (60000 / truth) / 4) halves++;
     else phases.push(Math.abs(e));
   });
@@ -200,5 +233,6 @@ export function scoreClock(spec: TrackSpec): ClockScore {
     start, err: errs.length ? errs[errs.length - 1]! : NaN, maxErr: Math.max(...errs.map(Math.abs)),
     phaseMs: q(phases, 0.5), maxPhaseMs: Math.max(...phases), half: halves / Math.max(1, halves + phases.length),
     changes: clock.changes, anchors: clock.anchors, took, conf10: q(conf, 0.1), conf50: q(conf, 0.5),
+    lock: lockedAt - start, relock: !c || took === Infinity ? NaN : relockedAt - (c.at + took), off, steps, falseSteps,
   };
 }
