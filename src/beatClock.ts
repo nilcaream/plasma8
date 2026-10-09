@@ -1,7 +1,7 @@
 /**
  * The beat clock behind the /tempo/ strobe: the detector's final outcome, a tempo and a beat time that run on by
- * themselves. It starts at the first grid fit and then never stops: through a breakdown, a dropout or silence it
- * keeps the last tempo and offset.
+ * themselves. It starts once FIRST_FITS grid fits agree and then never stops: through a breakdown, a dropout or
+ * silence it keeps the last tempo and offset.
  *
  * Its tempo moves in two ways only. A grid within SAME_BPM of it is the same tempo, measured more precisely, and is
  * taken at the next re-anchor. A grid further away is a new tempo, taken only when it is sure: the fits must stay
@@ -50,6 +50,11 @@ export const EVIDENCE_HALF_LIFE = 30;
  * reaches on a quiet take; the claps' wandering grid does not agree this long.
  */
 export const WEAK_SECONDS = 6;
+/**
+ * The clock starts only when this many fits in a row agree within SAME_BPM, none more than CHANGE_GAP after the one
+ * before: a lone first fit is often a relative of the tempo, and the evidence it leaves keeps the true tempo out.
+ */
+export const FIRST_FITS = 3;
 /** The clock takes the grid's beat every this many new on-grid peaks. */
 export const ANCHOR_PEAKS = 4;
 /** A re-anchor moves the offset by at most this share of a beat at once; a bigger step needs two re-anchors in a row that agree. */
@@ -80,6 +85,9 @@ export class BeatClock {
   /** The held tempo's evidence at its most, and when. */
   private held = 0;
   private heldAt = 0;
+  /** Before the first tempo: the fits that agree so far, and when the last came. */
+  private firstFits: GridFit[] = [];
+  private firstAt = 0;
 
   get bpm(): number { return 60 / this.period; }
 
@@ -88,7 +96,7 @@ export class BeatClock {
     const g = a.grid;
     // no beat heard says nothing about a new tempo either way: the candidate waits for the next beat
     if (!a.beat || !g) return;
-    if (this.beat === null) { this.take(g, a); return; }
+    if (this.beat === null) { this.start(g, a); return; }
     const e = evidence(a, g);
     if (Math.abs(g.bpm - this.bpm) <= SAME_BPM) {
       this.candidate = null;
@@ -112,6 +120,25 @@ export class BeatClock {
     c.strong += strong;
     const run = a.time - c.since;
     if (c.fits >= CHANGE_FITS && run >= (c.strong >= CHANGE_FITS ? CHANGE_SECONDS : WEAK_SECONDS)) { this.take(g, a); this.changes++; }
+  }
+
+  /** The first tempo: taken once FIRST_FITS fits agree, on the beat most of them put it on. */
+  private start(g: GridFit, a: Analysis): void {
+    const f = this.firstFits;
+    const last = f[f.length - 1];
+    if (!last || Math.abs(g.bpm - last.bpm) > SAME_BPM || a.time - this.firstAt > CHANGE_GAP) f.length = 0;
+    f.push(g);
+    this.firstAt = a.time;
+    if (f.length < FIRST_FITS) return;
+    // now and then a fit puts the beat off it: take the latest fit whose beat the most others share, within STEP_BEATS
+    const shared = (x: GridFit): number => f.filter((y) => {
+      const d = (((y.beat - x.beat) / x.period) % 1 + 1) % 1;
+      return Math.min(d, 1 - d) <= STEP_BEATS;
+    }).length;
+    let best = g;
+    for (const x of f) if (shared(x) > shared(best)) best = x;
+    this.take(best, a);
+    f.length = 0;
   }
 
   private heldNow(time: number): number { return this.held * 0.5 ** ((time - this.heldAt) / EVIDENCE_HALF_LIFE); }
