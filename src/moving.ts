@@ -106,11 +106,9 @@ export const movingAt = (m: MovingValue, intensity: number, beats: number): numb
  * The stroke a moving value is in now, in its own units: it rested at `from` since its voice's last hit and lands on `to` at
  * the next; `done` is the eased share of the way, so the value now is from + (to - from) · done. Before the walk has taken a
  * hit it stands still at its start. For an algorithm that draws a change as a whole stroke (the maze turns its tiles by it).
- * `travel`, when given, is the stroke's length in beats at every intensity, in place of the one the intensity sets.
  */
-export function movingStroke(m: MovingValue, intensity: number, beats: number, travel?: number): { from: number; to: number; done: number } {
-  const own = walkParams(m, intensity);
-  const p = travel === undefined ? own : { ...own, travel0: travel, travel1: travel };
+export function movingStroke(m: MovingValue, intensity: number, beats: number): { from: number; to: number; done: number } {
+  const p = walkParams(m, intensity);
   const value = m.walk.at(beats, p);
   const s = m.walk.strokeAt(beats, p);
   if (!s) return { from: value, to: value, done: 0 };

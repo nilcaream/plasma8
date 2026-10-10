@@ -72,6 +72,12 @@ function programFor(gl: WebGL2RenderingContext, shaderBody: string): WebGLProgra
   return program;
 }
 
+/** What an algorithm adds to its draw beyond uniforms: a texture of its own (the maze's tiles), bound after the uniforms are set. */
+export interface DrawHook {
+  bind(gl: WebGL2RenderingContext, program: WebGLProgram): void;
+  dispose(): void;
+}
+
 /** One full-screen fragment shader plus a set of random parameters; `shaderAlgorithm` makes an Algorithm of it. */
 export class ShaderAlgorithm {
   private readonly program: WebGLProgram;
@@ -91,6 +97,7 @@ export class ShaderAlgorithm {
     shaderBody: string,
     params: ShaderParams,
     private readonly perFrame?: (inputs: FrameInputs) => ShaderParams,
+    private readonly hook?: DrawHook,
   ) {
     this.program = programFor(gl, shaderBody);
     for (const u of COMMON_UNIFORMS) {
@@ -136,11 +143,14 @@ export class ShaderAlgorithm {
         if (location) setUniform(gl, location, value);
       }
     }
+    this.hook?.bind(gl, this.program);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   }
 
-  /** The program is shared with later instances of the same algorithm, so there is nothing to free. */
-  dispose(): void {}
+  /** The program is shared with later instances of the same algorithm, so only the hook's own things are freed. */
+  dispose(): void {
+    this.hook?.dispose();
+  }
 }
 
 /** A shader algorithm whose uniforms come from its knobs' values, and follow them when tuned. */
@@ -152,10 +162,12 @@ export function shaderAlgorithm(
   values: Values,
   amounts?: (values: Values) => Amounts,
   moving: readonly MovingValue[] = [],
-  phases?: (values: Values, inputs: FrameInputs, moving: readonly MovingValue[]) => ShaderParams,
+  phases?: (values: Values, inputs: FrameInputs, moving: readonly MovingValue[], held: boolean) => ShaderParams,
+  hook?: DrawHook,
 ): Algorithm {
   // the moving values are worked out again every frame, over the latest values of the rest; `phases`, when given,
-  // is called once a frame with them and the values moving now, and adds the uniforms of its own (an algorithm's running sums)
+  // is called once a frame with them, the values moving now and whether the moves are held, and adds the uniforms of its
+  // own (an algorithm's running sums, the maze's flips)
   let latest = values;
   let held = false;
   // while held, these move in place of the instance's own (the debug panel's boxes)
@@ -164,9 +176,9 @@ export function shaderAlgorithm(
     const active = held ? whileHeld : moving;
     const moves = active.length > 0;
     const now = moves ? { ...latest, ...movingValues(active, inputs.intensity, inputs.beats) } : latest;
-    return { ...(moves ? params(now) : {}), ...phases?.(now, inputs, active) };
+    return { ...(moves ? params(now) : {}), ...phases?.(now, inputs, active, held) };
   };
-  const shader = new ShaderAlgorithm(gl, name, shaderBody, params(values), perFrame);
+  const shader = new ShaderAlgorithm(gl, name, shaderBody, params(values), perFrame, hook);
   shader.steps.shape = stepShape(values);
   shader.amounts = amounts?.(values);
   return {

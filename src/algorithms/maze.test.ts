@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { FrameInputs } from '../algorithm';
-import { hitTime } from '../crossfader';
 import { drawKnobs } from '../knobs';
-import { movingStroke } from '../moving';
+import { MazeFlips, STATE_SIZE } from '../mazeFlips';
 import { createRng } from '../rng';
-import { GROUP_SHAPES, MAZE_KNOBS, MAZE_MOVING, TURN_BEATS, drawMazeMoving, drawMazeParams, groupShare, mazeTurns } from './maze';
+import { MAZE_KNOBS, MAZE_MOVING, drawMazeMoving, drawMazeParams, mazeFlipping } from './maze';
+import source from './maze.frag?raw';
 
 const frame = (intensity: number, beats: number): FrameInputs =>
   ({ time: 0, beatPhase: 0, barPhase: 0, beatPulse: 0, barPulse: 0, beats, intensity, strobe: 0, bpm: 120, width: 320, height: 180, view: 1 });
@@ -30,13 +30,11 @@ describe('drawMazeParams', () => {
 });
 
 describe('the maze\'s moving values', () => {
-  it('always move flip, and one of palD and the line width', () => {
+  it('move one of palD and the line width, and never flip: the flips are events of their own', () => {
     const rng = createRng(12);
     for (let i = 0; i < 100; i++) {
       const keys = drawMazeMoving(rng).map((m) => m.key);
-      expect(keys).toContain('flip');
-      const other = keys.filter((k) => k !== 'flip');
-      expect([['palD.0', 'palD.1', 'palD.2'], ['width']]).toContainEqual(other.sort());
+      expect([['palD.0', 'palD.1', 'palD.2'], ['width']]).toContainEqual(keys.sort());
     }
   });
 
@@ -46,65 +44,48 @@ describe('the maze\'s moving values', () => {
   });
 });
 
-describe('groupShare', () => {
-  it('groups no tile up to its start, then more in a straight line, and every tile at intensity 1', () => {
-    expect(groupShare(0, 0.25)).toBe(0);
-    expect(groupShare(0.25, 0.25)).toBe(0);
-    expect(groupShare(0.5, 0.25)).toBeCloseTo(1 / 3, 9);
-    expect(groupShare(1, 0.25)).toBe(1);
-    expect(groupShare(1, 1)).toBe(0);
+describe('mazeFlipping', () => {
+  it('starts the turn on the beat and lands it half a beat later, at every intensity', () => {
+    const v = drawKnobs(MAZE_KNOBS, createRng(3));
+    for (const intensity of [0.2, 1]) {
+      const step = mazeFlipping(new MazeFlips(createRng(3)));
+      step(v, frame(intensity, 4.9), [], false);
+      expect(step(v, frame(intensity, 5), [], false).u_turn).toBe(0);
+      expect(step(v, frame(intensity, 5.25), [], false).u_turn).toBeCloseTo(0.5, 9);
+      expect(step(v, frame(intensity, 5.5), [], false).u_turn).toBe(1);
+      expect(step(v, frame(intensity, 5.9), [], false).u_turn).toBe(1);
+    }
   });
 
-  it('has a group shape for every whole value of its knob, 2x2 by default', () => {
-    const knob = MAZE_KNOBS.find((k) => k.key === 'groupShape')!;
-    expect(knob.wide).toEqual([0, GROUP_SHAPES.length - 1]);
-    expect(GROUP_SHAPES[drawKnobs(MAZE_KNOBS, createRng(1)).groupShape!]).toBe('2x2');
+  it('flips nothing new while the moves are held', () => {
+    const v = drawKnobs(MAZE_KNOBS, createRng(4));
+    const flips = new MazeFlips(createRng(4));
+    const step = mazeFlipping(flips);
+    step(v, frame(1, 0.5), [], true);
+    for (let b = 1; b < 8; b++) {
+      step(v, frame(1, b), [], true);
+      expect(flips.turning).toEqual([]);
+    }
+  });
+
+  it('flips about clustersAt1 clusters a beat at intensity 1, over the tiles on screen', () => {
+    const v = drawKnobs(MAZE_KNOBS, createRng(6));
+    const flips = new MazeFlips(createRng(6));
+    const step = mazeFlipping(flips);
+    step(v, frame(1, 0.5), [], false);
+    let tiles = 0;
+    for (let b = 1; b <= 50; b++) {
+      step(v, frame(1, b), [], false);
+      tiles += flips.turning.length;
+    }
+    // ten clusters of 1 to 9 tiles (5 on average), fewer where two overlap
+    expect(tiles / 50).toBeGreaterThan(20);
+    expect(tiles / 50).toBeLessThan(60);
   });
 });
 
-describe('mazeTurns', () => {
-  it('turns no tile while flip does not move: it rests where its value is', () => {
-    const v = drawKnobs(MAZE_KNOBS, createRng(3));
-    const turns = mazeTurns();
-    for (const beats of [0, 1.5, 7.25]) expect(turns(v, frame(1, beats), [])).toMatchObject({ u_flipFrom: v.flip, u_flipTo: v.flip, u_turn: 0 });
-  });
-
-  it('gives the stroke flip is in while it moves, so the tiles it crosses land whole on the hit', () => {
-    const v = drawKnobs(MAZE_KNOBS, createRng(4));
-    const moving = drawMazeMoving(createRng(4));
-    const flip = moving.find((m) => m.key === 'flip')!;
-    const twin = drawMazeMoving(createRng(4)).find((m) => m.key === 'flip')!;
-    const turns = mazeTurns();
-    for (let n = 1; n < 12; n++) {
-      const beats = hitTime(flip.voice, n) - 0.05;
-      const s = movingStroke(twin, 1, beats, TURN_BEATS);
-      expect(turns(v, frame(1, beats), moving)).toMatchObject({ u_flipFrom: s.from, u_flipTo: s.to, u_turn: s.done });
-    }
-  });
-
-  it('turns a tile in the same beats at every intensity: half a beat, not faster when the intensity is up', () => {
-    const v = drawKnobs(MAZE_KNOBS, createRng(4));
-    for (const intensity of [0, 0.5, 1]) {
-      const moving = drawMazeMoving(createRng(4));
-      const flip = moving.find((m) => m.key === 'flip')!;
-      const turns = mazeTurns();
-      // a quarter of a beat before the hit the turn is half done, whatever the intensity
-      const at = (n: number) => turns(v, frame(intensity, hitTime(flip.voice, n) - TURN_BEATS / 2), moving).u_turn;
-      for (let n = 1; n < 6; n++) expect(at(n)).toBeCloseTo(0.5, 6);
-    }
-  });
-
-  it('takes the share in groups when a stroke begins and holds it until it lands, so moving the slider never snaps a tile', () => {
-    const v = drawKnobs(MAZE_KNOBS, createRng(5));
-    const moving = drawMazeMoving(createRng(5));
-    const flip = moving.find((m) => m.key === 'flip')!;
-    const turns = mazeTurns();
-    const hit = (n: number) => hitTime(flip.voice, n);
-    expect(turns(v, frame(0, hit(2) + 0.01), moving)).toMatchObject({ u_groupFrom: 0, u_groupTo: 0 });
-    // the slider goes to the top mid-stroke: this stroke keeps its share
-    expect(turns(v, frame(1, hit(3) - 0.1), moving)).toMatchObject({ u_groupFrom: 0, u_groupTo: 0 });
-    // the next stroke turns the tiles the new share groups otherwise
-    expect(turns(v, frame(1, hit(3) + 0.01), moving)).toMatchObject({ u_groupFrom: 0, u_groupTo: 1 });
-    expect(turns(v, frame(1, hit(4) + 0.01), moving)).toMatchObject({ u_groupFrom: 1, u_groupTo: 1 });
+describe('maze.frag', () => {
+  it('wraps the flips\' grid at the size the flips keep it', () => {
+    expect(source).toContain(`mod(cell, ${STATE_SIZE}.0)`);
   });
 });

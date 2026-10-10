@@ -1,45 +1,34 @@
 import type { AlgorithmDef, FrameInputs } from '../algorithm';
-import { GAIN_RANGE, VOICES, amountKnobs, relativeAmountsOf } from '../beatVoices';
-import { TRAVEL_AT_0 } from '../crossfader';
+import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
 import { drawBounds, drawKnobs, fixed, int, range, triple, unit, vec, type Knob, type Values } from '../knobs';
-import { drawLists, listLabels, movingStroke, type MovingList, type MovingValue } from '../moving';
+import { CLUSTER_SHAPES, MazeFlips, STATE_SIZE, tileWindow } from '../mazeFlips';
+import { drawLists, listLabels, type MovingList, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
-import { shaderAlgorithm, type ShaderParams } from '../shaderAlgorithm';
+import { shaderAlgorithm, type DrawHook, type ShaderParams } from '../shaderAlgorithm';
 import source from './maze.frag?raw';
 
 export const MAZE_NAME = 'maze';
 
-/** The groups of neighbouring tiles that turn as one, by the groupShape knob; maze.frag's groupOf draws them in this order. */
-export const GROUP_SHAPES = ['single', '2x2', 'domino', 'L and single', 'plus', '3x3'] as const;
-const TOGETHER = 'how tiles turn together';
+const FLIPS = 'how tiles flip on the beat';
 
-/** How long a tile's quarter turn takes, in beats, at every intensity: the stroke a moving value takes at intensity 0. */
-export const TURN_BEATS = TRAVEL_AT_0;
-
-/**
- * The share of the tiles that turn in groups at an intensity: none up to `from`, then more in a straight line, all at 1.
- * Below it every tile turns on its own, as single tiles.
- */
-export function groupShare(intensity: number, from: number): number {
-  if (from >= 1) return 0;
-  return Math.min(1, Math.max(0, (intensity - from) / (1 - from)));
-}
+/** The texture unit the flips' grid is bound to: units 0 and 1 hold the pictures a morph blends (src/stage.ts). */
+const STATE_UNIT = 2;
 
 /**
  * This run's own look: palette, tile drawing, tile size, line width, the pan and
  * where in the endless grid it starts. The beat flashes the picture, by the beat
- * voices, and turns tiles by the moving value flip.
+ * voices, and flips clusters of tiles on every beat (src/mazeFlips.ts).
  * Listed the way the debug panel shows them: the values that may move, list by
  * list in the order of MAZE_MOVING; then the values that never move; then the beat voices.
  */
 export const MAZE_KNOBS: readonly Knob[] = [
-  // may move: list 1; a tile is turned while its own random number (0..1) is under flip, so a step turns that share of the
-  // tiles. Near 0 or 1 nearly every tile lies the same way and the maze reads as a regular pattern, so the draw keeps to the middle.
-  range('flip', 0.2, 0.8, [0, 1]),
-  // may move: list 2
+  // may move: list 1
   ...triple('palD', 0, 1, [0, 1]),
   range('width', 0.05, 0.1, [0.01, 0.25]),
   // never move
+  // a tile starts turned while its own random number (0..1) is under flip. Near 0 or 1 nearly every tile lies the same way
+  // and the maze reads as a regular pattern, so the draw keeps to the middle.
+  range('flip', 0.2, 0.8, [0, 1]),
   ...triple('palA', 0.45, 0.6, [0, 1]),
   ...triple('palB', 0.35, 0.5, [0, 1]),
   ...triple('palC', 0.6, 1.2, [0, 3]),
@@ -53,16 +42,16 @@ export const MAZE_KNOBS: readonly Knob[] = [
   range('colourDrift', 0.01, 0.04, [0, 0.2]),
   range('offset.0', 0, 500, [0, 500]),
   range('offset.1', 0, 500, [0, 500]),
-  // how hard each beat voice flashes this run (the moving values follow the voices too)
+  // how hard each beat voice flashes this run (the moving values follow the voices too; the flips do not)
   ...amountKnobs(),
   // fixed in code: the flash gain
   fixed('flashGain', 1, GAIN_RANGE, 'follows the beat'),
-  // fixed in code: which tiles turn together (GROUP_SHAPES), and the intensity where they start to
-  { ...fixed('groupShape', 1, [0, GROUP_SHAPES.length - 1], TOGETHER), whole: true },
-  fixed('groupFrom', 0.25, [0, 1], TOGETHER),
+  // fixed in code: the clusters that flip on a beat at intensity 1, and the most tiles a cluster has at intensity 0
+  { ...fixed('clustersAt1', 10, [0, 40], FLIPS), whole: true },
+  { ...fixed('tilesAt0', 2, [1, CLUSTER_SHAPES[CLUSTER_SHAPES.length - 1]!.cells.length], FLIPS), whole: true },
 ];
 
-/** Every uniform but the turn of the tiles, which `mazeTurns` gives each frame. */
+/** Every uniform but the flips, which `mazeFlipping` gives each frame. */
 export function mazeParams(v: Values): ShaderParams {
   return {
     u_palA: vec(v, 'palA'),
@@ -77,48 +66,55 @@ export function mazeParams(v: Values): ShaderParams {
     u_cycles: v.cycles!,
     u_colourDrift: v.colourDrift!,
     u_flashGain: v.flashGain!,
-    u_groupShape: v.groupShape!,
+    u_flip: v.flip!,
   };
 }
 
 export const drawMazeParams = (rng: Rng): ShaderParams => mazeParams(drawKnobs(MAZE_KNOBS, rng));
 
 /**
- * The turn of the tiles, one instance's own each frame: the stroke flip is in, so the shader turns the tiles it crosses
- * together and each lands whole on the hit, in TURN_BEATS whatever the intensity. The intensity sets how many tiles turn in
- * groups instead (`groupShare`): the share is taken when a stroke begins and holds until it lands, and a tile the new share
- * groups otherwise turns in that stroke too, so moving the slider never snaps a tile. While flip does not move (Moves off, or
- * not ticked) it stands where its value is, and nothing turns.
+ * The flips each frame: they take the beat (none while the moves are held, Moves off) over the tiles on screen, and give
+ * the eased share of the turn done since it started on the beat.
  */
-export function mazeTurns(): (v: Values, inputs: FrameInputs, moving: readonly MovingValue[]) => ShaderParams {
-  let stroke: number | undefined;
-  let groupFrom = 0;
-  let groupTo = 0;
-  return (v, inputs, moving) => {
-    const flip = moving.find((m) => m.key === 'flip');
-    const share = groupShare(inputs.intensity, v.groupFrom!);
-    if (!flip) {
-      stroke = undefined;
-      return { u_flipFrom: v.flip!, u_flipTo: v.flip!, u_turn: 0, u_groupFrom: groupTo, u_groupTo: groupTo };
-    }
-    // the strokes are counted by flip's hits: stroke n lands on hit n + 1
-    const voice = VOICES[flip.voice];
-    const n = Math.floor((inputs.beats - voice.onset) / voice.period);
-    if (stroke === undefined) groupFrom = groupTo = share;
-    else if (n !== stroke) [groupFrom, groupTo] = [groupTo, share];
-    stroke = n;
-    const s = movingStroke(flip, inputs.intensity, inputs.beats, TURN_BEATS);
-    return { u_flipFrom: s.from, u_flipTo: s.to, u_turn: s.done, u_groupFrom: groupFrom, u_groupTo: groupTo };
+export function mazeFlipping(flips: MazeFlips): (v: Values, inputs: FrameInputs, moving: readonly MovingValue[], held: boolean) => ShaderParams {
+  return (v, inputs, _moving, held) => {
+    const p = mazeParams(v);
+    const window = tileWindow(v.cells!, p.u_pan as number[], p.u_offset as number[], inputs.time, inputs.width, inputs.height, inputs.view);
+    flips.update(inputs.beats, inputs.intensity, window, { clustersAt1: v.clustersAt1!, tilesAt0: v.tilesAt0! }, held);
+    return { u_turn: flips.done(inputs.beats) };
+  };
+}
+
+/** The flips' grid as a texture of the instance's own: uploaded when it changed, bound for every draw. */
+function flipsTexture(gl: WebGL2RenderingContext, flips: MazeFlips): DrawHook {
+  const texture = gl.createTexture();
+  const bytes = new Uint8Array(STATE_SIZE * STATE_SIZE * 2);
+  gl.bindTexture(gl.TEXTURE_2D, texture);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, STATE_SIZE, STATE_SIZE, 0, gl.RG, gl.UNSIGNED_BYTE, bytes);
+  const samplers = new Map<WebGLProgram, WebGLUniformLocation | null>();
+  return {
+    bind: (gl, program) => {
+      gl.activeTexture(gl.TEXTURE0 + STATE_UNIT);
+      gl.bindTexture(gl.TEXTURE_2D, texture);
+      if (flips.takeChanged()) {
+        flips.fill(bytes);
+        gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, STATE_SIZE, STATE_SIZE, gl.RG, gl.UNSIGNED_BYTE, bytes);
+      }
+      if (!samplers.has(program)) samplers.set(program, gl.getUniformLocation(program, 'u_state'));
+      gl.uniform1i(samplers.get(program)!, STATE_UNIT);
+    },
+    dispose: () => gl.deleteTexture(texture),
   };
 }
 
 /**
- * The values that may move: two lists, each drawn on its own. An instance always
- * moves flip, and one of palD (all three of its values) and the line width.
- * Nothing outside the lists moves.
+ * The values that may move: one list. An instance moves one of palD (all three of its values) and the line width.
+ * Nothing outside the list moves; the flips are events of their own, not moving values.
  */
 export const MAZE_MOVING: readonly MovingList[] = [
-  { pick: 1, entries: ['flip'] },
   { pick: 1, entries: ['palD', 'width'] },
 ];
 
@@ -134,6 +130,9 @@ export const maze: AlgorithmDef = {
   steadySpeed: true,
   knobs: MAZE_KNOBS,
   movable: listLabels(MAZE_MOVING, KEYS),
-  create: (gl, values, rng, options) =>
-    shaderAlgorithm(gl, MAZE_NAME, source, mazeParams, values, relativeAmountsOf, drawMazeMoving(rng, options?.bounds), mazeTurns()),
+  create: (gl, values, rng, options) => {
+    const moving = drawMazeMoving(rng, options?.bounds);
+    const flips = new MazeFlips(rng);
+    return shaderAlgorithm(gl, MAZE_NAME, source, mazeParams, values, relativeAmountsOf, moving, mazeFlipping(flips), flipsTexture(gl, flips));
+  },
 };
