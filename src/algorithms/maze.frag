@@ -34,6 +34,7 @@ const float WIPE_REACH = 1.1;
 const float WIPE_ARCS = 0.35;  // past this far from the middle a tile's two arc drawings lie within a line's width of each other
 const float WIPE_CROSS = 0.9;  // the share of the eased turn a wipe takes to cross the drawing; the rest sweeps the glow
 const float THINNEST = 0.02;  // the least a squashed or shrunk drawing is scaled by, so it never divides by 0
+const float SHRINK_FADE = 0.15; // the last share of a shrinking drawing's scale over which it fades out
 const float CARD_EDGE = 1.0;  // how bright a turning card's edge is when it stands edge-on, against a line
 const float CARD_DIM = 0.3;   // how bright a card's drawing is edge-on, turned away from the light
 
@@ -119,10 +120,13 @@ float tileGlow(vec2 p, vec2 c, float aa) {
   }
   if (kind == T_SHRINK) {
     // the old drawing shrinks into the middle while the new one grows out of it, both from the kick; the new one
-    // only appearing once the old was gone, at a fifth of the flip, read as a late start
+    // only appearing once the old was gone, at a fifth of the flip, read as a late start. A drawing scaled down keeps
+    // its line's width, so each fades over the last SHRINK_FADE of its scale: unfaded, the old one stayed a dot in the
+    // middle of the tile until the next kick
     float ko = max(1.0 - t, THINNEST);
     float kn = max(t, THINNEST);
-    return max(glow(tileLines(rot2(a) * (q / ko)) * ko, aa), glow(tileLines(rot2(a + QUARTER) * (q / kn)) * kn, aa));
+    float old = glow(tileLines(rot2(a) * (q / ko)) * ko, aa) * clamp((1.0 - t) / SHRINK_FADE, 0.0, 1.0);
+    return max(old, glow(tileLines(rot2(a + QUARTER) * (q / kn)) * kn, aa) * clamp(t / SHRINK_FADE, 0.0, 1.0));
   }
   vec2 was = rot2(a) * q;
   vec2 will = rot2(a + QUARTER) * q;

@@ -155,6 +155,13 @@ describe('maze.frag', () => {
     expect(shrink).not.toContain('rot2(b)');
   });
 
+  it('fades a shrinking drawing out before it is gone, so neither is left as a dot when the flip lands or starts', () => {
+    const shrink = /kind == T_SHRINK\) \{([\s\S]*?)\n  \}/.exec(source)![1]!;
+    // a drawing scaled down to THINNEST keeps its line's width: a dot that stayed until the next kick
+    expect(shrink).toContain('clamp((1.0 - t) / SHRINK_FADE, 0.0, 1.0)');
+    expect(shrink).toContain('clamp(t / SHRINK_FADE, 0.0, 1.0)');
+  });
+
   it('starts a wipe at the drawing, so it moves through the lines from the kick, and ends it past the farthest a tile\'s light reaches', () => {
     expect(source).toContain(`const float WIPE_REACH = ${WIPE_REACH};`);
     // from WIPE_REACH out it crossed 0.6 of a tile of nothing at its fastest, and only then the lines, all at once
