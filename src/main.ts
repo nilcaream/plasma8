@@ -86,7 +86,7 @@ function main(): void {
   // every value it draws at start: from the code's ranges, or from the debug panel's min..max once moved
   const create = (def: AlgorithmDef): Running => {
     const values = knobPanel.start(def, rng);
-    const algorithm = def.create(gl, values, rng, knobPanel.options(def));
+    const algorithm = def.create(gl, values, rng, { ...knobPanel.options(def), ...(params.transitions && { transitions: params.transitions }) });
     if (params.debug && algorithm.moving?.length) {
       const list = algorithm.moving.map((m) => `${m.key} ${m.min.toFixed(3)}..${m.max.toFixed(3)} by the ${m.voice}`);
       console.info(`[plasma8] ${def.name}: ${algorithm.moving.length} values move: ${list.join('; ')}`);

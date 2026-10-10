@@ -3,7 +3,7 @@ import type { FrameInputs } from '../algorithm';
 import { drawKnobs } from '../knobs';
 import { MazeFlips, RIPPLE_SPREAD, STATE_SIZE, TRANSITIONS } from '../mazeFlips';
 import { createRng } from '../rng';
-import { MAZE_KNOBS, MAZE_MOVING, drawMazeMoving, drawMazeParams, mazeFlipping } from './maze';
+import { MAZE_KNOBS, MAZE_MOVING, drawMazeMoving, drawMazeParams, mazeFlipping, transitionsOf } from './maze';
 import source from './maze.frag?raw';
 
 const frame = (intensity: number, beats: number): FrameInputs =>
@@ -85,6 +85,13 @@ describe('mazeFlipping', () => {
     }
     expect([...seen.keys()].sort()).toEqual(TRANSITIONS.map((_, i) => i));
     for (const count of seen.values()) expect(count / kicks).toBeCloseTo(1 / TRANSITIONS.length, 1);
+  });
+
+  it('draws only the kinds named, unknown names passed over, and every kind when none is known', () => {
+    expect(transitionsOf(['card'])).toEqual(['card']);
+    expect(transitionsOf(['ripple', 'nope', 'card'])).toEqual(['card', 'ripple']);
+    expect(transitionsOf(['nope'])).toEqual(TRANSITIONS);
+    expect(transitionsOf(undefined)).toEqual(TRANSITIONS);
   });
 
   it('has no instant change: every kind takes the time of a turn', () => {

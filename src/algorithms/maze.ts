@@ -1,7 +1,7 @@
 import type { AlgorithmDef, FrameInputs } from '../algorithm';
 import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
 import { drawBounds, drawKnobs, fixed, int, range, triple, unit, vec, type Knob, type Values } from '../knobs';
-import { CLUSTER_SHAPES, MazeFlips, STATE_SIZE, TRANSITIONS, tileWindow } from '../mazeFlips';
+import { CLUSTER_SHAPES, MazeFlips, STATE_SIZE, TRANSITIONS, tileWindow, type Transition } from '../mazeFlips';
 import { drawLists, listLabels, type MovingList, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type DrawHook, type ShaderParams } from '../shaderAlgorithm';
@@ -109,6 +109,12 @@ function flipsTexture(gl: WebGL2RenderingContext, flips: MazeFlips): DrawHook {
   };
 }
 
+/** The kinds of flip named (`?debug&transition=card,ripple`), unknown names passed over; every kind when none is known. */
+export function transitionsOf(names: readonly string[] | undefined): readonly Transition[] {
+  const known = TRANSITIONS.filter((t) => names?.includes(t));
+  return known.length > 0 ? known : TRANSITIONS;
+}
+
 /**
  * The values that may move: one list. An instance moves one of palD (all three of its values) and the line width.
  * Nothing outside the list moves; the flips are events of their own, not moving values.
@@ -131,7 +137,7 @@ export const maze: AlgorithmDef = {
   movable: listLabels(MAZE_MOVING, KEYS),
   create: (gl, values, rng, options) => {
     const moving = drawMazeMoving(rng, options?.bounds);
-    const flips = new MazeFlips(rng);
+    const flips = new MazeFlips(rng, transitionsOf(options?.transitions));
     return shaderAlgorithm(gl, MAZE_NAME, source, mazeParams, values, relativeAmountsOf, moving, mazeFlipping(flips), flipsTexture(gl, flips));
   },
 };

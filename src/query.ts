@@ -17,6 +17,8 @@ export interface DebugParams {
   bpm?: number;
   /** Show the overlay with the algorithm's name and the bar count. */
   debug: boolean;
+  /** With debug only: the kinds of the maze's flips to draw from, by name (`transition=card` or `card,ripple`); all of them when left out. */
+  transitions?: string[];
 }
 
 function number(value: string | null): number | undefined {
@@ -43,6 +45,9 @@ export function parseDebugParams(search: string): DebugParams {
 
   const debug = q.get('debug');
   out.debug = debug !== null && debug !== '0' && debug !== 'false';
+
+  const transitions = q.get('transition')?.split(',').map((t) => t.trim()).filter((t) => t !== '');
+  if (out.debug && transitions?.length) out.transitions = transitions;
 
   return out;
 }

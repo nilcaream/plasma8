@@ -37,6 +37,7 @@ Fullscreen generative visuals in the browser, driven by the tempo of the music, 
 | `strobe=0..1` | Start at this strobe instead of the remembered one |
 | `bpm=60..180` | Start the free-running Tap clock at this tempo (above 180 it is halved: 200 starts at 100) |
 | `debug` | Show an overlay, a panel with a slider for every random value of the running algorithm and an Algorithm dropdown to hold one, and the outline of the band where taps are ignored |
+| `transition=rotate`, `card`, `ripple`, `shrink`, `draw`, `wipe`, `fade`, or a comma list | With `debug` only: the maze's flips change their tiles only this way (or these ways) |
 
 There is no parameter for the random seed; the overlay shows the one in use.
 

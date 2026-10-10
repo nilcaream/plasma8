@@ -35,6 +35,13 @@ describe('parseDebugParams', () => {
     expect(parseDebugParams('?debug=1').debug).toBe(true);
   });
 
+  it('takes the maze\'s transitions, one or a comma list, only together with debug', () => {
+    expect(parseDebugParams('?debug&transition=card').transitions).toEqual(['card']);
+    expect(parseDebugParams('?debug&transition=card, ripple,').transitions).toEqual(['card', 'ripple']);
+    expect(parseDebugParams('?transition=card')).toEqual({ debug: false });
+    expect(parseDebugParams('?debug&transition=').transitions).toBeUndefined();
+  });
+
   it('has no seed parameter', () => {
     expect(parseDebugParams('?seed=5')).toEqual({ debug: false });
   });

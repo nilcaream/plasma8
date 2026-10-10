@@ -57,6 +57,8 @@ export interface Algorithm {
 export interface CreateOptions {
   /** The min and max a moving value walks between: the panel's min and max for the knob; the code's range when left out. */
   bounds?: (key: string) => readonly [number, number];
+  /** The kinds of the maze's flips to draw from, by name (`?debug&transition=`); all of them when left out, and unknown names are passed over. */
+  transitions?: readonly string[];
 }
 
 /** Makes an algorithm from values for its knobs; `rng` is for what it draws as it runs. */
