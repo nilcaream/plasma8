@@ -23,21 +23,25 @@ const STATE_UNIT = 2;
  */
 export const MAZE_KNOBS: readonly Knob[] = [
   // may move: list 1
-  ...triple('palD', 0, 1, [0, 1]),
-  range('width', 0.05, 0.1, [0.01, 0.25]),
+  range('width', 0.029, 0.097, [0.01, 0.25]),
+  // may move: list 2
+  ...triple('palA', 0, 1, [0, 1]),
+  // may move: list 3
+  ...triple('palB', 0, 1, [0, 1]),
   // never move
   // a tile starts turned while its own random number (0..1) is under flip. Near 0 or 1 nearly every tile lies the same way
   // and the maze reads as a regular pattern, so the draw keeps to the middle.
   range('flip', 0.2, 0.8, [0, 1]),
-  ...triple('palA', 0.45, 0.6, [0, 1]),
-  ...triple('palB', 0.35, 0.5, [0, 1]),
-  ...triple('palC', 0.6, 1.2, [0, 3]),
+  ...triple('palD', 0, 1, [0, 1]),
+  range('palC.0', 0.567, 1.2, [0, 3]),
+  range('palC.1', 0.6, 1.2, [0, 3]),
+  range('palC.2', 0.6, 1.2, [0, 3]),
   // 0 two quarter arcs per tile, 1 one diagonal
   int('style', 0, 1, [0, 1]),
-  range('cells', 8, 18, [3, 40]),
+  range('cells', 9.623, 13.693, [3, 40]),
   range('panAngle', 0, 2 * Math.PI, [0, 2 * Math.PI]),
   // tiles per second; it multiplies the running time, so it never moves
-  range('panSpeed', 0.15, 0.5, [0, 2]),
+  range('panSpeed', 0.252, 0.442, [0, 2]),
   range('cycles', 0.3, 1.2, [0, 4]),
   range('colourDrift', 0.01, 0.04, [0, 0.2]),
   range('offset.0', 0, 500, [0, 500]),
@@ -116,11 +120,14 @@ export function transitionsOf(names: readonly string[] | undefined): readonly Tr
 }
 
 /**
- * The values that may move: one list. An instance moves one of palD (all three of its values) and the line width.
- * Nothing outside the list moves; the flips are events of their own, not moving values.
+ * The values that may move: three lists, one value from each (decided 16 Oct 2026). An instance moves the line width,
+ * one of palA's three values and one of palB's. Nothing outside the lists moves; the flips are events of their own, not
+ * moving values.
  */
 export const MAZE_MOVING: readonly MovingList[] = [
-  { pick: 1, entries: ['palD', 'width'] },
+  { pick: 1, entries: ['width'] },
+  { pick: 1, entries: ['palA.0', 'palA.1', 'palA.2'] },
+  { pick: 1, entries: ['palB.0', 'palB.1', 'palB.2'] },
 ];
 
 const KEYS = MAZE_KNOBS.map((k) => k.key);

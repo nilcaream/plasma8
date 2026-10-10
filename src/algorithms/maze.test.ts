@@ -29,12 +29,53 @@ describe('drawMazeParams', () => {
   });
 });
 
+/** The chosen ranges of 16 Oct 2026, as the debug panel's Copy gave them: the draw min..max of every drawn knob. */
+const CHOSEN_RANGES: Record<string, readonly [number, number]> = {
+  'palD.0': [0, 1], 'palD.1': [0, 1], 'palD.2': [0, 1],
+  width: [0.029, 0.097],
+  flip: [0.2, 0.8],
+  'palA.0': [0, 1], 'palA.1': [0, 1], 'palA.2': [0, 1],
+  'palB.0': [0, 1], 'palB.1': [0, 1], 'palB.2': [0, 1],
+  'palC.0': [0.567, 1.2], 'palC.1': [0.6, 1.2], 'palC.2': [0.6, 1.2],
+  style: [0, 1],
+  cells: [9.623, 13.693],
+  panAngle: [0, 6.283],
+  panSpeed: [0.252, 0.442],
+  cycles: [0.3, 1.2],
+  colourDrift: [0.01, 0.04],
+  'offset.0': [0, 500], 'offset.1': [0, 500],
+  'A.kick': [0, 1], 'A.snare': [0, 1], 'A.crash': [0, 1],
+};
+
+describe('the maze\'s knobs', () => {
+  it('draw over the chosen ranges, and keep its fixed values', () => {
+    const drawn = Object.fromEntries(MAZE_KNOBS.filter((k) => k.draw.kind !== 'fixed').map((k) => [k.key, k.draw]));
+    expect(Object.keys(drawn).sort()).toEqual(Object.keys(CHOSEN_RANGES).sort());
+    for (const [key, [min, max]] of Object.entries(CHOSEN_RANGES)) {
+      const d = drawn[key] as { min: number; max: number };
+      // panAngle is 2π in code, which the panel prints as 6.283
+      expect(d.min, key).toBeCloseTo(min, 3);
+      expect(d.max, key).toBeCloseTo(max, 3);
+    }
+    const fixedValue = (key: string) => (MAZE_KNOBS.find((k) => k.key === key)!.draw as { value: number }).value;
+    expect([fixedValue('flashGain'), fixedValue('clustersAt1'), fixedValue('tilesAt0')]).toEqual([1, 16, 2]);
+  });
+});
+
 describe('the maze\'s moving values', () => {
-  it('move one of palD and the line width, and never flip: the flips are events of their own', () => {
+  it('are three lists, pick 1 each: the width, one of palA, one of palB', () => {
+    expect(MAZE_MOVING).toEqual([
+      { pick: 1, entries: ['width'] },
+      { pick: 1, entries: ['palA.0', 'palA.1', 'palA.2'] },
+      { pick: 1, entries: ['palB.0', 'palB.1', 'palB.2'] },
+    ]);
     const rng = createRng(12);
     for (let i = 0; i < 100; i++) {
       const keys = drawMazeMoving(rng).map((m) => m.key);
-      expect([['palD.0', 'palD.1', 'palD.2'], ['width']]).toContainEqual(keys.sort());
+      expect(keys).toHaveLength(3);
+      expect(keys[0]).toBe('width');
+      expect(keys[1]).toMatch(/^palA\.[012]$/);
+      expect(keys[2]).toMatch(/^palB\.[012]$/);
     }
   });
 
