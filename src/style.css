@@ -369,9 +369,10 @@ body.idle * {
   order: 3;
 }
 
+/* shut: the metronome on the left, the tapping widget in the middle (the two ends are as wide), the key on the right */
 html.compact #bar {
   height: auto;
-  justify-content: flex-start;
+  justify-content: space-between;
 }
 html.compact #tap-widget {
   order: 1;
@@ -383,7 +384,6 @@ html.compact #drawer-key {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: auto;
   width: var(--part-h);
   padding: 0;
   border: 0;
@@ -409,22 +409,29 @@ html.compact #drawer {
   order: 3;
   display: none;
 }
-/* open: the panels flow into rows below the first row; a drawer taller than the screen scrolls under it */
+/*
+ * open: the panels fill the top row between the tapping widget and the key, then the rows below it, each in the first row it
+ * fits in (src/drawer.ts gives each its row as its order: the top row 2, the key 3, the rows below 4 on); a band taller than
+ * the screen scrolls
+ */
 html.compact #bar.drawer-open {
   flex-wrap: wrap;
   align-content: flex-start;
-}
-html.compact #bar.drawer-open #drawer {
-  display: flex;
-  flex: 1 0 100%;
-  flex-wrap: wrap;
-  align-content: flex-start;
-  gap: var(--gap);
-  max-height: calc(100dvh - var(--band-h) - var(--gap) - env(safe-area-inset-bottom, 0px));
+  justify-content: flex-start;
+  max-height: 100dvh;
   overflow-y: auto;
   touch-action: pan-y;
-  pointer-events: none;
   scrollbar-width: none;
+}
+html.compact #bar.drawer-open #drawer {
+  display: contents;
+}
+html.compact #bar.drawer-open #drawer > * {
+  order: 4;
+}
+html.compact #bar.drawer-open #drawer-key {
+  order: 3;
+  margin-left: auto;
 }
 
 /* The microphone: a red dot bottom left, on while it listens, also when the panel has faded; a note beside it when it could not be opened. */

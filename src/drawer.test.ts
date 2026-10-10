@@ -1,5 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { ONE_ROW_WIDTH, drawerOpen, isCompact } from './drawer';
+import { ONE_ROW_WIDTH, drawerOpen, isCompact, packRows } from './drawer';
+
+describe('packRows', () => {
+  it('puts each panel in the first row it fits in, so narrow panels share a row a wide one left room in', () => {
+    // a 370 px row with 10 px gaps, the top row full: 150 goes up beside 160, and 120 beside 140 and 70
+    expect(packRows([140, 70, 160, 230, 230, 370, 150, 120], 370, 10, 344)).toEqual([1, 1, 2, 3, 4, 5, 2, 1]);
+  });
+
+  it('fills the top row after what it holds before starting the rows below', () => {
+    expect(packRows([100, 200, 50], 1000, 10, 700)).toEqual([0, 1, 0]);
+  });
+
+  it('gives a panel wider than a row a row of its own, and keeps half a pixel spare', () => {
+    expect(packRows([400, 30], 370, 10, 344)).toEqual([1, 2]);
+    expect(packRows([360], 370, 10, 0)).toEqual([1]);
+    expect(packRows([359.5], 370, 10, 0)).toEqual([0]);
+  });
+});
 
 describe('isCompact', () => {
   it('is every width the one-row panel does not fit in', () => {
