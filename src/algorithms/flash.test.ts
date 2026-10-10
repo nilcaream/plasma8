@@ -29,7 +29,7 @@ function mockGl(): { gl: WebGL2RenderingContext; floats: Map<string, number> } {
 }
 
 const frame = (beats: number, strobe: number, intensity: number, bpm: number): FrameInputs => ({
-  time: 1, beatPhase: 0, barPhase: 0, beatPulse: 0, barPulse: 0, beats, intensity, strobe, bpm, width: 64, height: 36,
+  time: 1, beatPhase: 0, barPhase: 0, beatPulse: 0, barPulse: 0, beats, intensity, strobe, bpm, width: 64, height: 36, view: 1,
 });
 
 /** The flash an algorithm sends to its shader at a position, with every voice at full strength. */

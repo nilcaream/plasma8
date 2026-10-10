@@ -28,6 +28,8 @@ export interface FrameInputs {
   /** Size of the drawing surface in pixels. */
   width: number;
   height: number;
+  /** How many picture heights the screen shows: 1, or more on a compact screen taller than wide (src/view.ts). */
+  view: number;
 }
 
 /**

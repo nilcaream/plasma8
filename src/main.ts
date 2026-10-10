@@ -5,7 +5,7 @@ import { Band, metronomeShown, micHoldsPanel } from './band';
 import { DEFAULT_SHAPE, flash } from './beatVoices';
 import { TapClock, clampBpm, type ClockReading } from './clock';
 import { DetectClock } from './detectClock';
-import { Drawer } from './drawer';
+import { Drawer, isCompact } from './drawer';
 import { beatInputs } from './drive';
 import { FlashPeaks, amountsText, formatDump, movingText } from './dump';
 import { FlashLimiter } from './flashLimit';
@@ -26,6 +26,7 @@ import { detectView } from './detectView';
 import { Sureness } from './sure';
 import { TapWidget, widgetView, type WidgetView } from './tapWidget';
 import { DebugOverlay, Metronome, Panel, Sliders, showFatal } from './ui';
+import { viewScale } from './view';
 
 interface Running {
   def: AlgorithmDef;
@@ -383,6 +384,7 @@ function main(): void {
       bpm: r.bpm,
       width,
       height,
+      view: viewScale(width, height, isCompact(window.innerWidth)),
     });
     const drawn = inputsFor(current.def);
     knobPanel.tick(drawn.intensity, drawn.beats);

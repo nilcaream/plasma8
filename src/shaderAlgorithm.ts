@@ -16,6 +16,7 @@ export type ShaderParams = Record<string, number | readonly number[]>;
 const HEADER = `#version 300 es
 precision highp float;
 uniform vec2 u_resolution;
+uniform float u_view;
 uniform float u_time;
 uniform float u_beatPhase;
 uniform float u_barPhase;
@@ -48,14 +49,14 @@ vec3 cosPalette(float t, vec3 a, vec3 b, vec3 c, vec3 d) { return a + b * cos(6.
 /** Adds a little noise so slow soft gradients do not band. */
 const FOOTER = `
 void main() {
-  vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution) / u_resolution.y;
+  vec2 uv = (gl_FragCoord.xy - 0.5 * u_resolution) / u_resolution.y * u_view;
   vec3 col = shade(uv);
   col += (hash12(gl_FragCoord.xy + fract(u_time) * 64.0) - 0.5) / 255.0;
   fragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }
 `;
 
-const COMMON_UNIFORMS = ['u_resolution', 'u_time', 'u_beatPhase', 'u_barPhase', 'u_beatPulse', 'u_barPulse', 'u_barSteps', 'u_intensity', 'u_flash'] as const;
+const COMMON_UNIFORMS = ['u_resolution', 'u_view', 'u_time', 'u_beatPhase', 'u_barPhase', 'u_beatPulse', 'u_barPulse', 'u_barSteps', 'u_intensity', 'u_flash'] as const;
 
 /**
  * Programs by shader body: every change makes a new instance with new
@@ -118,6 +119,7 @@ export class ShaderAlgorithm {
     gl.useProgram(this.program);
     const c = this.common;
     gl.uniform2f(c.get('u_resolution') ?? null, inputs.width, inputs.height);
+    gl.uniform1f(c.get('u_view') ?? null, inputs.view);
     gl.uniform1f(c.get('u_time') ?? null, inputs.time);
     gl.uniform1f(c.get('u_beatPhase') ?? null, inputs.beatPhase);
     gl.uniform1f(c.get('u_barPhase') ?? null, inputs.barPhase);

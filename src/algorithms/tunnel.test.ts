@@ -8,7 +8,7 @@ import { TUNNEL_KNOBS, TUNNEL_MOVING, divePhases, drawTunnelMoving, tunnel, tunn
 import tunnelSource from './tunnel.frag?raw';
 
 const at = (time: number): FrameInputs => ({
-  time, beatPhase: 0, barPhase: 0, beatPulse: 0, barPulse: 0, beats: 0, intensity: 0.5, strobe: 0, bpm: 120, width: 64, height: 36,
+  time, beatPhase: 0, barPhase: 0, beatPulse: 0, barPulse: 0, beats: 0, intensity: 0.5, strobe: 0, bpm: 120, width: 64, height: 36, view: 1,
 });
 
 describe('divePhases', () => {
