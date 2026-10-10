@@ -32,6 +32,8 @@ const float HALO_FALL = 9.0;  // how fast that light falls off, per tile
 const float RIPPLE_SPREAD = 0.6;
 const float WIPE_REACH = 1.1;
 const float THINNEST = 0.02;  // the least a squashed or shrunk drawing is scaled by, so it never divides by 0
+const float CARD_EDGE = 1.0;  // how bright a turning card's edge is when it stands edge-on, against a line
+const float CARD_DIM = 0.3;   // how bright a card's drawing is edge-on, turned away from the light
 
 const int T_ROTATE = 0;
 const int T_CARD = 1;
@@ -75,6 +77,12 @@ float tilePart(vec2 q, float a, float b) {
 
 float tileLines(vec2 q) { return tilePart(q, 0.0, 1.0); }
 
+// distance from q to the edge of the box of half sizes h round 0: below 0 inside
+float box(vec2 q, vec2 h) {
+  vec2 d = abs(q) - h;
+  return length(max(d, 0.0)) + min(max(d.x, d.y), 0.0);
+}
+
 // the light of a line at distance d, in tiles; aa is one pixel
 float glow(float d, float aa) {
   float core = 1.0 - smoothstep(u_width - aa, u_width + aa, d);
@@ -100,9 +108,12 @@ float tileGlow(vec2 p, vec2 c, float aa) {
   if (kind == T_ROTATE) return glow(tileLines(rot2(a + QUARTER * t) * q), aa);
   float b = t < 0.5 ? a : a + QUARTER;
   if (kind == T_CARD) {
-    // squashed across, to a line half way, as a card turned on its edge
-    float k = max(abs(cos(2.0 * QUARTER * t)), THINNEST);
-    return glow(tileLines(rot2(b) * vec2(q.x / k, q.y)) * k, aa);
+    // squashed across, to a line half way, as a card turned on its edge. Its width follows the turn, so it closes
+    // fastest on the kick and lands as slowly as a rotation. Squashed alone a diagonal only leans, the same picture
+    // as a rotation, so the card shows its own edge while it turns and its drawing dims as it turns away
+    float k = max(abs(1.0 - 2.0 * t), THINNEST);
+    float face = glow(tileLines(rot2(b) * vec2(q.x / k, q.y)) * k, aa) * mix(CARD_DIM, 1.0, k);
+    return max(face, glow(abs(box(q, vec2(0.5 * k, 0.5))), aa) * CARD_EDGE * (1.0 - k));
   }
   if (kind == T_SHRINK) {
     float k = max(abs(1.0 - 2.0 * t), THINNEST);
