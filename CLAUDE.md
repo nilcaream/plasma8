@@ -46,6 +46,6 @@ Fullscreen generative WebGL 2 visuals in the browser, driven by a tempo the user
 
 ## Commits
 
-- Conventional Commits: `type(scope): summary`, lower case, no final period. Types in use: `feat`, `fix`, `refactor`, `test`, `docs`, `style`, `chore`. Scopes in use: `tempo`, `page`, `plasma`, `tunnel`, `noise`, `julia`, `maze`, `crossfader`, `knobs`, `debug`, `ui`, `clock`, `beat-voices`, `strobe`, `pwa`, `icons`, `deploy`, `readme`; leave the scope out when a change spans several (`refactor: …`).
+- Conventional Commits: `type(scope): summary`, lower case, no final period. Types in use: `feat`, `fix`, `refactor`, `test`, `docs`, `style`, `chore`. Scopes in use: `tempo`, `page`, `plasma`, `tunnel`, `noise`, `julia`, `maze`, `crossfader`, `knobs`, `debug`, `query`, `ui`, `clock`, `beat-voices`, `strobe`, `pwa`, `icons`, `deploy`, `readme`; leave the scope out when a change spans several (`refactor: …`).
 - The summary says what now happens, with the numbers, not which file changed: `fix(tempo): a new tempo needs half the evidence of the tempo the beat clock holds`. Give a body when the reason or a measurement is not obvious from the subject.
 - No trailers. One behaviour per commit, with its tests; the build and the tests pass at every commit.
