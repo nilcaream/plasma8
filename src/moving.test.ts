@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { VOICE_NAMES } from './beatVoices';
 import { REACH_POWER, hitTime } from './crossfader';
 import {
-  drawLists, getReachPower, getStepAt1, listLabels, movingAt, movingValues, setReachPower, setStepAt1,
+  drawLists, getReachPower, getStepAt1, listLabels, movingAt, movingStroke, movingValues, setReachPower, setStepAt1,
   type MovingList, type MovingValue,
 } from './moving';
 import { STEP_AT_1, STEP_EXTRA } from './randomWalk';
@@ -133,6 +133,37 @@ describe('a moving value', () => {
   it('reads every moving value by its key', () => {
     const moving = drawSome(createRng(6));
     expect(Object.keys(movingValues(moving, 0.5, 3)).sort()).toEqual(moving.map((m) => m.key).sort());
+  });
+});
+
+describe('movingStroke', () => {
+  it('is the stroke the value is in: the value now is from + (to - from) · done', () => {
+    for (const m of drawSome(createRng(21))) {
+      for (let beats = 0; beats < 24; beats += 0.13) {
+        const s = movingStroke(m, 0.8, beats);
+        expect(movingAt(m, 0.8, beats)).toBeCloseTo(s.from + (s.to - s.from) * s.done, 9);
+        expect(s.done).toBeGreaterThanOrEqual(0);
+        expect(s.done).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('lands whole on every hit, and the next stroke starts where it landed', () => {
+    for (const m of drawSome(createRng(22))) {
+      for (let n = 1; n < 20; n++) {
+        const before = movingStroke(m, 1, hitTime(m.voice, n) - 1e-6);
+        expect(before.done).toBeCloseTo(1, 4);
+        expect(movingStroke(m, 1, hitTime(m.voice, n)).from).toBeCloseTo(before.to, 9);
+      }
+    }
+  });
+
+  it('stands still at its start, with nothing done, at intensity 0', () => {
+    const [m] = drawSome(createRng(23));
+    for (let beats = 0; beats < 12; beats += 0.5) {
+      const s = movingStroke(m!, 0, beats);
+      expect(s.to).toBe(s.from);
+    }
   });
 });
 

@@ -8,7 +8,7 @@
  */
 
 import { VOICE_NAMES, type VoiceName } from './beatVoices';
-import { REACH_POWER, TRAVEL_AT_0, TRAVEL_AT_1 } from './crossfader';
+import { REACH_POWER, TRAVEL_AT_0, TRAVEL_AT_1, stroke } from './crossfader';
 import { RandomWalk, STEP_AT_1 } from './randomWalk';
 import { createRng, type Rng } from './rng';
 
@@ -96,9 +96,25 @@ let stepAt1 = STEP_AT_1;
 export const getStepAt1 = (): number => stepAt1;
 export const setStepAt1 = (share: number): void => { stepAt1 = share; };
 
+const walkParams = (m: MovingValue, intensity: number) =>
+  ({ min: m.min, max: m.max, intensity, power: reachPower, voice: m.voice, travel0: TRAVEL_AT_0, travel1: TRAVEL_AT_1, stepAt1 });
+
 /** A moving value now. Call it with the beats going forward, once or more a frame: the walk takes the hits that passed since the last call. */
-export const movingAt = (m: MovingValue, intensity: number, beats: number): number =>
-  m.walk.at(beats, { min: m.min, max: m.max, intensity, power: reachPower, voice: m.voice, travel0: TRAVEL_AT_0, travel1: TRAVEL_AT_1, stepAt1 });
+export const movingAt = (m: MovingValue, intensity: number, beats: number): number => m.walk.at(beats, walkParams(m, intensity));
+
+/**
+ * The stroke a moving value is in now, in its own units: it rested at `from` since its voice's last hit and lands on `to` at
+ * the next; `done` is the eased share of the way, so the value now is from + (to - from) · done. Before the walk has taken a
+ * hit it stands still at its start. For an algorithm that draws a change as a whole stroke (the maze turns its tiles by it).
+ */
+export function movingStroke(m: MovingValue, intensity: number, beats: number): { from: number; to: number; done: number } {
+  const p = walkParams(m, intensity);
+  const value = m.walk.at(beats, p);
+  const s = m.walk.strokeAt(beats, p);
+  if (!s) return { from: value, to: value, done: 0 };
+  const unit = (u: number): number => m.min + u * (m.max - m.min);
+  return { from: unit(s.from), to: unit(s.to), done: stroke(s.x) };
+}
 
 /** Every moving value now, by key. */
 export function movingValues(moving: readonly MovingValue[], intensity: number, beats: number): Record<string, number> {

@@ -114,8 +114,11 @@ export class RandomWalk {
     while (this.history.length > 1 && this.history[0]!.time < beats - KEEP_BEATS) this.history.shift();
   }
 
-  /** The unit position at `beats`, from the hits taken: undefined before the first of them. Call `advance` first. */
-  read(beats: number, p: WalkParams): number | undefined {
+  /**
+   * The stroke the walk is in at `beats`, as unit positions: it rests at `from` after the last hit, travels to `to`, and lands
+   * there on the next hit; `x` is the share of the travel done, before easing. Undefined before the first hit taken. Call `advance` first.
+   */
+  strokeAt(beats: number, p: WalkParams): { from: number; to: number; x: number } | undefined {
     const first = this.history[0];
     if (!first || beats < first.time || this.voice !== p.voice) return undefined;
     const v = VOICES[p.voice];
@@ -127,7 +130,13 @@ export class RandomWalk {
     const length = next ? next.length : travelFor(p);
     const arrive = hitTime(p.voice, n + 1);
     const x = length > 0 ? Math.min(1, Math.max(0, (beats - (arrive - length)) / length)) : 0;
-    return at.u + (to - at.u) * stroke(x);
+    return { from: at.u, to, x };
+  }
+
+  /** The unit position at `beats`, from the hits taken: undefined before the first of them. Call `advance` first. */
+  read(beats: number, p: WalkParams): number | undefined {
+    const s = this.strokeAt(beats, p);
+    return s && s.from + (s.to - s.from) * stroke(s.x);
   }
 
   /** The parameter's value at `beats`, in min..max. */
