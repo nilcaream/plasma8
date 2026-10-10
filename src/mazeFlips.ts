@@ -56,8 +56,12 @@ export const CLUSTER_SHAPES: readonly { readonly name: string; readonly cells: r
 export const TRANSITIONS = ['rotate', 'card', 'ripple', 'shrink', 'draw', 'wipe', 'fade'] as const;
 export type Transition = (typeof TRANSITIONS)[number];
 
-/** The share of the turn a ripple's outermost tile waits before it starts. */
-export const RIPPLE_SPREAD = 0.6;
+/**
+ * The share of the turn a ripple's outermost tile waits before it starts. At 0.6 a beat's clusters had done 12% of their
+ * motion at 0.3 of the flip, against a rotation's 66%, and the ripple felt late on a steady kick; at 0.4, its nearest
+ * tiles starting on the kick, they have done 33%.
+ */
+export const RIPPLE_SPREAD = 0.4;
 
 /**
  * How far from a tile's middle, in tiles, a wipe's edge starts and ends: past the farthest the tile's light reaches (half
@@ -113,13 +117,18 @@ export function pickShape(shapes: typeof CLUSTER_SHAPES, rng: Rng): (typeof CLUS
   return shapes[shapes.length - 1]!;
 }
 
-/** How far each tile of a shape lies from the shape's middle: 0 there, 1 at its farthest tile, 0 for a single tile. */
+/**
+ * How far each tile of a shape lies from the shape's middle: 0 at its nearest tiles, 1 at its farthest, 0 for a single
+ * tile. Counted from the nearest tiles, not from the middle itself: a domino, an L, a 2x2 and a 4x4 have no tile there,
+ * and counted from it a domino's and a 2x2's tiles all lay at 1, so none of them turned before RIPPLE_SPREAD of the flip.
+ */
 export function rippleDelays(cells: readonly Cell[]): number[] {
   const mx = cells.reduce((s, [x]) => s + x, 0) / cells.length;
   const my = cells.reduce((s, [, y]) => s + y, 0) / cells.length;
   const far = cells.map(([x, y]) => Math.hypot(x - mx, y - my));
+  const least = Math.min(...far);
   const most = Math.max(...far);
-  return far.map((d) => (most > 0 ? d / most : 0));
+  return far.map((d) => (most - least > 1e-9 ? (d - least) / (most - least) : 0));
 }
 
 /** Where a tile lies in the grid that wraps. */

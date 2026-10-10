@@ -106,11 +106,17 @@ describe('MazeFlips', () => {
 });
 
 describe('rippleDelays and attack', () => {
-  it('puts the middle of a shape at 0 and its farthest tiles at 1', () => {
+  it('puts the tiles nearest a shape\'s middle at 0 and its farthest tiles at 1', () => {
     expect(rippleDelays([[0, 0]])).toEqual([0]);
     const plus = rippleDelays(CLUSTER_SHAPES.find((s) => s.name === 'plus')!.cells);
     expect(Math.min(...plus)).toBe(0);
     expect(Math.max(...plus)).toBe(1);
+  });
+
+  it('starts every shape\'s nearest tiles on the kick, also where no tile lies on the middle', () => {
+    // measured from the middle, a domino's and a 2x2's tiles all lay at 1 and none turned before 0.6 of the flip
+    for (const s of CLUSTER_SHAPES) expect(Math.min(...rippleDelays(s.cells)), s.name).toBe(0);
+    expect(rippleDelays(CLUSTER_SHAPES.find((s) => s.name === '2x2')!.cells)).toEqual([0, 0, 0, 0]);
   });
 
   it('is fastest at the start and whole at the end', () => {
