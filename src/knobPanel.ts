@@ -115,6 +115,11 @@ export class KnobPanel {
     onDrawAgain: () => void,
   ) {
     this.root.classList.toggle('on', enabled);
+    // the panel starts under the band, whatever its height: one row, or the drawer's rows open below it
+    if (enabled) {
+      const bar = document.getElementById('bar')!;
+      new ResizeObserver(() => this.root.style.setProperty('--bar-bottom', `${bar.getBoundingClientRect().bottom}px`)).observe(bar);
+    }
     this.root.innerHTML = `
       <div class="body">
         <div class="buttons">

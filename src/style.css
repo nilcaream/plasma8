@@ -449,13 +449,13 @@ html.compact #bar.drawer-open #drawer {
   pointer-events: none;
 }
 
-/* ?debug only: the running algorithm's random values, on the left under the overlay; a panel like the band's, with its keys. */
+/* ?debug only: the running algorithm's random values, on the left under the band (--bar-bottom, set by src/knobPanel.ts); a panel like the band's, with its keys. */
 #knobs {
   position: fixed;
-  top: calc(var(--band-h) + 110px);
-  left: calc(env(safe-area-inset-left, 0px) + 12px);
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
-  width: min(340px, calc(100vw - 24px));
+  top: var(--bar-bottom, var(--band-h));
+  left: calc(env(safe-area-inset-left, 0px) + var(--gap));
+  bottom: calc(env(safe-area-inset-bottom, 0px) + var(--gap));
+  width: min(340px, calc(100vw - 2 * var(--gap)));
   display: none;
   flex-direction: column;
   border-radius: var(--radius);
