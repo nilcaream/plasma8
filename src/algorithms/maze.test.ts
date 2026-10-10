@@ -162,6 +162,14 @@ describe('maze.frag', () => {
     expect(shrink).toContain('clamp(t / SHRINK_FADE, 0.0, 1.0)');
   });
 
+  it('lights a fade\'s new drawing twice as steeply as the turn, so it shows from the kick', () => {
+    const fade = source.slice(source.indexOf('// T_FADE'));
+    // on the turn's own curve (mix by t) it was 14% lit 0.05 into the flip and read as late
+    expect(fade).toContain('r = r * r * r;');
+    expect(fade).toContain('glow(tileLines(will), aa) * (1.0 - r * r)');
+    expect(fade).toContain('glow(tileLines(was), aa) * (1.0 - t)');
+  });
+
   it('starts a wipe at the drawing, so it moves through the lines from the kick, and ends it past the farthest a tile\'s light reaches', () => {
     expect(source).toContain(`const float WIPE_REACH = ${WIPE_REACH};`);
     // from WIPE_REACH out it crossed 0.6 of a tile of nothing at its fastest, and only then the lines, all at once

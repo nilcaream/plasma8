@@ -142,8 +142,11 @@ float tileGlow(vec2 p, vec2 c, float aa) {
     float e = dot(q, dir) - at;
     return glow(min(max(tileLines(will), e), max(tileLines(was), -e)), aa);
   }
-  // T_FADE
-  return mix(glow(tileLines(was), aa), glow(tileLines(will), aa), t);
+  // T_FADE: the old drawing fades on the turn's curve, the new one comes in twice as steeply, 1 - (1 - x)^6, so it is a
+  // quarter lit 0.05 into the flip and half lit at 0.1; on the turn's curve it was 14% and 27% lit then, and read as late
+  float r = 1.0 - clamp(u_progress, 0.0, 1.0);
+  r = r * r * r;
+  return glow(tileLines(was), aa) * (1.0 - t) + glow(tileLines(will), aa) * (1.0 - r * r);
 }
 
 // the light of this tile and its eight neighbours: a neighbour's glow, or a tile half way through its change, reaches
