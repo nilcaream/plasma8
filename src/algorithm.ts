@@ -46,7 +46,7 @@ export interface Algorithm {
   draw(target: WebGLFramebuffer | null, inputs: FrameInputs): void;
   /** Takes new values for its knobs while it runs (the debug panel's overrides). */
   tune(values: Values): void;
-  /** While held, its moving values stand at the values last given to `tune`; released, they move again (the debug panel's "Moves off"). */
+  /** While held, its moving values stand at the values last given to `tune`; released, they move again (the debug panel's "Moves" key, off). */
   hold?(on: boolean): void;
   /** While held, these values move in place of the instance's own (the debug panel's boxes); each stands where `tune` last put it once taken off the list. */
   moveWhileHeld?(values: readonly MovingValue[]): void;

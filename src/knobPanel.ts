@@ -108,7 +108,7 @@ export class KnobPanel {
   private moving = new Map<string, MovingValue>();
   /** While the moves are off: the values whose box is ticked, each moving by the kick; empty otherwise. */
   private kicked = new Map<string, MovingValue>();
-  /** The "Moves off" switch; this load only. */
+  /** The "Moves" key switched off; this load only. */
   private movesOff = false;
 
   constructor(
@@ -118,14 +118,14 @@ export class KnobPanel {
   ) {
     this.root.classList.toggle('on', enabled);
     this.root.innerHTML = `
-      <button type="button" class="fold" aria-expanded="true">knobs</button>
+      <button type="button" class="key fold" aria-expanded="true">knobs</button>
       <div class="body">
         <div class="head"></div>
         <div class="buttons">
-          <button type="button" data-do="again" title="Start this algorithm again now, every value drawn from your min..max">Draw again</button>
-          <button type="button" data-do="copy" title="Copy every random knob's min and max, and every fixed value, as text">Copy</button>
+          <button type="button" class="key" data-do="again" title="Start this algorithm again now, every value drawn from your min..max">Draw again</button>
+          <button type="button" class="key" data-do="copy" title="Copy every random knob's min and max, and every fixed value, as text">Copy</button>
+          <button type="button" class="key" data-do="moves" aria-pressed="true" title="Lit: the values move. Off: nothing moves, every value stays where it is and its sliders work like any other knob's. Not remembered across loads.">Moves</button>
         </div>
-        <label class="switch" title="Nothing moves: every value stays where it is and its sliders work like any other knob's. Not remembered across loads."><input type="checkbox" data-do="moves"> Moves off</label>
         <textarea readonly rows="6" hidden></textarea>
         <div class="list"></div>
       </div>`;
@@ -139,14 +139,16 @@ export class KnobPanel {
     });
     this.root.querySelector('[data-do=again]')!.addEventListener('click', onDrawAgain);
     this.root.querySelector('[data-do=copy]')!.addEventListener('click', () => void this.copy());
-    this.root.querySelector<HTMLInputElement>('[data-do=moves]')!.addEventListener('change', (e) => {
-      this.setMovesOff((e.target as HTMLInputElement).checked);
+    const moves = this.root.querySelector<HTMLButtonElement>('[data-do=moves]')!;
+    moves.addEventListener('click', () => {
+      this.setMovesOff(!this.movesOff);
+      moves.setAttribute('aria-pressed', String(!this.movesOff));
     });
   }
 
   /**
    * What a new instance is asked for: its moving values walk inside the min..max set here. It has them while
-   * "Moves off" is on too (held, see `show`), so that turning the switch off again starts them.
+   * the "Moves" key is off too (held, see `show`), so that lighting it again starts them.
    */
   options(def: AlgorithmDef): CreateOptions {
     return {

@@ -465,7 +465,7 @@ html.compact #bar.drawer-open #drawer {
   display: block;
 }
 
-/* ?debug only: the running algorithm's random values, on the left under the overlay. */
+/* ?debug only: the running algorithm's random values, on the left under the overlay; a panel like the band's, with its keys. */
 #knobs {
   position: fixed;
   top: calc(var(--band-h) + 110px);
@@ -474,8 +474,10 @@ html.compact #bar.drawer-open #drawer {
   width: min(340px, calc(100vw - 24px));
   display: none;
   flex-direction: column;
-  border-radius: 10px;
+  border-radius: var(--radius);
   background: var(--panel);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   font: 11px/1.3 ui-monospace, monospace;
   user-select: text;
   -webkit-user-select: text;
@@ -490,18 +492,13 @@ html.compact #bar.drawer-open #drawer {
 #knobs.folded .body {
   display: none;
 }
-#knobs button {
-  font: inherit;
-  color: var(--fg);
-  background: rgba(255, 255, 255, 0.1);
-  border: 0;
-  border-radius: 5px;
-  padding: 4px 7px;
-  cursor: pointer;
+#knobs .key {
+  font: 13px/1.4 system-ui, sans-serif;
 }
 #knobs .fold {
+  flex: none;
   align-self: flex-end;
-  margin: 6px;
+  margin: var(--gap);
 }
 #knobs .body {
   display: flex;
@@ -512,8 +509,8 @@ html.compact #bar.drawer-open #drawer {
 #knobs .buttons {
   display: flex;
   flex-wrap: wrap;
-  gap: 5px;
-  margin: 6px 0;
+  gap: var(--gap);
+  margin: 6px 0 var(--gap);
 }
 #knobs textarea {
   font: inherit;
@@ -535,10 +532,6 @@ html.compact #bar.drawer-open #drawer {
   align-items: center;
   gap: 1px 6px;
   margin-bottom: 8px;
-}
-#knobs .switch {
-  display: block;
-  margin: 0 0 8px;
 }
 #knobs .knob.movable .name {
   color: #b7c6d4;
