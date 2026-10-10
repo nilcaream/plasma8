@@ -147,6 +147,14 @@ describe('maze.frag', () => {
     expect(card).toContain('box(q, vec2(0.5 * k, 0.5))');
   });
 
+  it('grows a shrink\'s new drawing from the kick while the old one shrinks, not after it has gone', () => {
+    const shrink = /kind == T_SHRINK\) \{([\s\S]*?)\n  \}/.exec(source)![1]!;
+    expect(shrink).toContain('max(1.0 - t, THINNEST)');
+    expect(shrink).toContain('max(t, THINNEST)');
+    // one drawing at a time, switched half way through the turn, is what it was
+    expect(shrink).not.toContain('rot2(b)');
+  });
+
   it('starts a wipe at the drawing, so it moves through the lines from the kick, and ends it past the farthest a tile\'s light reaches', () => {
     expect(source).toContain(`const float WIPE_REACH = ${WIPE_REACH};`);
     // from WIPE_REACH out it crossed 0.6 of a tile of nothing at its fastest, and only then the lines, all at once

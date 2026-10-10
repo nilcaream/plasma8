@@ -118,8 +118,11 @@ float tileGlow(vec2 p, vec2 c, float aa) {
     return max(face, glow(abs(box(q, vec2(0.5 * k, 0.5))), aa) * CARD_EDGE * (1.0 - k));
   }
   if (kind == T_SHRINK) {
-    float k = max(abs(1.0 - 2.0 * t), THINNEST);
-    return glow(tileLines(rot2(b) * (q / k)) * k, aa);
+    // the old drawing shrinks into the middle while the new one grows out of it, both from the kick; the new one
+    // only appearing once the old was gone, at a fifth of the flip, read as a late start
+    float ko = max(1.0 - t, THINNEST);
+    float kn = max(t, THINNEST);
+    return max(glow(tileLines(rot2(a) * (q / ko)) * ko, aa), glow(tileLines(rot2(a + QUARTER) * (q / kn)) * kn, aa));
   }
   vec2 was = rot2(a) * q;
   vec2 will = rot2(a + QUARTER) * q;
