@@ -42,7 +42,7 @@ describe('motionTimeFor', () => {
   });
 
   it('is on for every algorithm', () => {
-    expect(ALGORITHMS.filter((a) => a.steadySpeed).map((a) => a.name)).toEqual(['domain-warped-noise', 'plasma', 'julia-kaleidoscope', 'tunnel']);
+    expect(ALGORITHMS.filter((a) => a.steadySpeed).map((a) => a.name)).toEqual(['domain-warped-noise', 'plasma', 'maze', 'julia-kaleidoscope', 'tunnel']);
     expect(ALGORITHMS.filter((a) => !a.steadySpeed)).toEqual([]);
   });
 });

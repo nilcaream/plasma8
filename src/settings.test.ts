@@ -96,7 +96,7 @@ describe('settingPatch', () => {
 
   it('switches an algorithm off and on again, and keeps the lit ones in the order of the buttons', () => {
     const off = settingPatch(DEFAULT_SETTINGS, 'plays', 'plasma');
-    expect(off).toEqual({ plays: ['tunnel', 'domain-warped-noise', 'julia-kaleidoscope'] });
+    expect(off).toEqual({ plays: ['tunnel', 'domain-warped-noise', 'julia-kaleidoscope', 'maze'] });
     const again = settingPatch({ ...DEFAULT_SETTINGS, ...off }, 'plays', 'plasma');
     expect(again).toEqual({ plays: PLAYABLE });
   });
@@ -140,7 +140,7 @@ describe('loadSettings and saveSettings', () => {
     const first = loadSettings(() => storage);
     Object.assign(first, settingPatch(first, 'source', 'detect'), settingPatch(first, 'min', '8'), settingPatch(first, 'plays', 'tunnel'));
     saveSettings(first, () => storage);
-    expect(loadSettings(() => storage)).toMatchObject({ source: 'detect', minBars: 8, maxBars: 8, plays: ['plasma', 'domain-warped-noise', 'julia-kaleidoscope'] });
+    expect(loadSettings(() => storage)).toMatchObject({ source: 'detect', minBars: 8, maxBars: 8, plays: ['plasma', 'domain-warped-noise', 'julia-kaleidoscope', 'maze'] });
   });
 
   it('reads a store an older version wrote with the metronome in it, and leaves the metronome out', () => {

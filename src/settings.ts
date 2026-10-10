@@ -6,7 +6,7 @@ import { DEFAULT_RANGE, isBarLength, pushRange, type BarLength } from './visualL
 export type TempoSource = 'tap' | 'detect';
 
 /** The algorithms the panel's toggles switch, in the order of the buttons. */
-export const PLAYABLE: readonly string[] = ['plasma', 'tunnel', 'domain-warped-noise', 'julia-kaleidoscope'];
+export const PLAYABLE: readonly string[] = ['plasma', 'tunnel', 'domain-warped-noise', 'julia-kaleidoscope', 'maze'];
 
 /** The detect sync, in milliseconds, either way: the most the visuals' beat may fall earlier (+) or later (-) than the detected one. */
 export const SYNC_LIMIT = 100;

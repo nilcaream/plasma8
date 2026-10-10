@@ -2,11 +2,12 @@ import type { AlgorithmDef } from '../algorithm';
 import { pickByIntensity } from '../pick';
 import type { Rng } from '../rng';
 import { julia } from './julia';
+import { maze } from './maze';
 import { plasma } from './plasma';
 import { tunnel } from './tunnel';
 import { warpNoise } from './warpNoise';
 
-export const ALGORITHMS: readonly AlgorithmDef[] = [warpNoise, plasma, julia, tunnel];
+export const ALGORITHMS: readonly AlgorithmDef[] = [warpNoise, plasma, maze, julia, tunnel];
 
 /**
  * The next algorithm to run: the one asked for by name, every time, else a

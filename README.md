@@ -1,6 +1,6 @@
 # plasma8
 
-Fullscreen generative visuals in the browser, driven by the tempo of the music, tapped by you or heard through the microphone. Four WebGL 2 algorithms (plasma, tunnel, domain-warped noise, Julia kaleidoscope) change on the beat; every load draws a fresh random look.
+Fullscreen generative visuals in the browser, driven by the tempo of the music, tapped by you or heard through the microphone. Five WebGL 2 algorithms (plasma, tunnel, domain-warped noise, Julia kaleidoscope, a maze of tiles that turn on the beat) change on the beat; every load draws a fresh random look.
 
 **Live: [plasma8.nilcaream.com](https://plasma8.nilcaream.com)**
 
@@ -22,7 +22,7 @@ Fullscreen generative visuals in the browser, driven by the tempo of the music, 
   - *Tempo*: Tap or Detect. *Continuous* and *Sync*: see Detect above.
   - *Min bars* and *Max bars*: how long a visual runs, 1, 2, 4, 8 or 16 bars (2 to 4 by default). Every change draws the length of the next visual from this range, each length in it equally likely, and the change lands on beat 1. Moving one end past the other moves the other along. The visual on the screen keeps the length it drew.
   - The **tapping widget** (it shows as part of the panel, and 3.5 s after the last tap outside the band it fades): four dots fill on the first taps of a run; then a strip shows each tap left (early) or right (late) of the beat mark, the taps the tempo is fitted to bright and older ones fading, with the tempo and its standard error under it (`132.31 +/- 0.41`, green below ±0.5). While the source is Detect it shows the detect display instead, and only with the panel.
-  - *What plays*: Plasma, Tunnel, Noise and Julia, all lit by default. Press one to switch it off or on; the last one lit stays on. With one lit, that algorithm plays alone, in a new variant of itself at every change; with several, each change picks one of the lit ones at random. If the one on the screen is switched off, another lit one takes its place at once.
+  - *What plays*: Plasma, Tunnel, Noise, Julia and Maze, all lit by default. Press one to switch it off or on; the last one lit stays on. With one lit, that algorithm plays alone, in a new variant of itself at every change; with several, each change picks one of the lit ones at random. If the one on the screen is switched off, another lit one takes its place at once.
   - *Intensity*: soft to hard. It sets the speed (from ×1 at 0 to ×1.75 at 1), how far and how sharply the colour and shape values swing between their edges on the kick, snare and crash, how often a change between algorithms is a cut rather than a fade, and which algorithm is likely next (the harder ones at a high setting). It does not set the flash; Strobe does.
   - *Strobe*: 0 is off. Above 0 the picture brightens on the beat voices (kick, snare, crash), by more as the slider rises.
 - A press in the band also prints one block to the browser console: what is on the screen (algorithm, seed, transition, tempo and place in the bar, intensity, strobe, the moving values, the flash and its voices) and the flash peaks of the last 5 s with their times. When something looks wrong, press the band and copy that block.
@@ -32,7 +32,7 @@ Fullscreen generative visuals in the browser, driven by the tempo of the music, 
 
 | Parameter | Effect |
 | --- | --- |
-| `algo=plasma`, `tunnel`, `domain-warped-noise`, `julia-kaleidoscope` | Keep this algorithm and never change |
+| `algo=plasma`, `tunnel`, `domain-warped-noise`, `julia-kaleidoscope`, `maze` | Keep this algorithm and never change |
 | `intensity=0..1` | Start at this intensity instead of the remembered one |
 | `strobe=0..1` | Start at this strobe instead of the remembered one |
 | `bpm=60..180` | Start the free-running Tap clock at this tempo (above 180 it is halved: 200 starts at 100) |

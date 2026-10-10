@@ -67,7 +67,7 @@ describe('the panel names', () => {
 describe('the algorithms', () => {
   it('have distinct names and homes from soft to hard', () => {
     expect(new Set(ALGORITHMS.map((a) => a.name)).size).toBe(ALGORITHMS.length);
-    expect(ALGORITHMS.map((a) => a.name)).toEqual(['domain-warped-noise', 'plasma', 'julia-kaleidoscope', 'tunnel']);
+    expect(ALGORITHMS.map((a) => a.name)).toEqual(['domain-warped-noise', 'plasma', 'maze', 'julia-kaleidoscope', 'tunnel']);
     const homes = ALGORITHMS.map((a) => a.home);
     expect([...homes].sort((a, b) => a - b)).toEqual(homes);
     for (const h of homes) {

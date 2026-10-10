@@ -5,8 +5,8 @@
  * shut when the panel fades. The layout itself is in src/style.css, under `html.compact`.
  */
 
-/** The viewport width from which the one-row panel fits. */
-export const ONE_ROW_WIDTH = 1701;
+/** The viewport width from which the one-row panel fits: 1775.5 px measured at 1920x1080 with the five What plays keys (1701.3 with four). */
+export const ONE_ROW_WIDTH = 1776;
 
 /** Whether a viewport `width` (CSS pixels) is too narrow for the one-row panel. */
 export function isCompact(width: number): boolean {
