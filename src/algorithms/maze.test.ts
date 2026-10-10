@@ -51,10 +51,18 @@ describe('mazeFlipping', () => {
       const step = mazeFlipping(new MazeFlips(createRng(3)));
       step(v, frame(intensity, 4.9), [], false);
       expect(step(v, frame(intensity, 5), [], false).u_turn).toBe(0);
-      expect(step(v, frame(intensity, 5.25), [], false).u_turn).toBeCloseTo(0.5, 9);
+      expect(step(v, frame(intensity, 5.25), [], false).u_turn).toBeCloseTo(0.875, 9);
       expect(step(v, frame(intensity, 5.5), [], false).u_turn).toBe(1);
       expect(step(v, frame(intensity, 5.9), [], false).u_turn).toBe(1);
     }
+  });
+
+  it('moves a tile most on the kick: over half the turn is done an eighth of a beat after it, so the flip is seen on the kick, not on the off-beat', () => {
+    const v = drawKnobs(MAZE_KNOBS, createRng(3));
+    const step = mazeFlipping(new MazeFlips(createRng(3)));
+    step(v, frame(1, 6.9), [], false);
+    step(v, frame(1, 7), [], false);
+    expect(step(v, frame(1, 7.125), [], false).u_turn).toBeGreaterThan(0.5);
   });
 
   it('flips nothing new while the moves are held', () => {

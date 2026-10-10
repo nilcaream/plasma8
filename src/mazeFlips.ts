@@ -9,7 +9,6 @@
  * kept here and handed to the shader as a texture.
  */
 
-import { stroke } from './crossfader';
 import type { Rng } from './rng';
 
 export const STATE_SIZE = 256;
@@ -88,9 +87,15 @@ export class MazeFlips {
     this.changed = true;
   }
 
-  /** The eased share of the turn done now: 0 on the beat, 1 TURN_BEATS later. */
+  /**
+   * The share of the turn done now: 0 on the beat, 1 TURN_BEATS later. It is fastest on the beat and slows to land, the
+   * way the metronome's dot falls off (1 − phase)³: a turn eased in both ends moved least on the beat and settled half a
+   * beat after it, so the eye took the flip to fall on the off-beat.
+   */
   done(beats: number): number {
-    return this.beat === undefined ? 0 : stroke((beats - this.beat) / TURN_BEATS);
+    if (this.beat === undefined) return 0;
+    const x = Math.min(1, Math.max(0, (beats - this.beat) / TURN_BEATS));
+    return 1 - (1 - x) ** 3;
   }
 
   /** True once after every change: the texture needs uploading. */
