@@ -6,7 +6,7 @@
  * microphone is finding the tempo or the mouse pointer is in the band: the count starts when they stop. The band, the row the panel
  * occupies across the full width, panels and the gaps between them alike, is the one part of
  * the page a press is not a press on: it is no tempo tap and no bar 1, it only brings the
- * panel back. With ?debug the band is outlined and the panel is up from the load and never fades.
+ * panel back. With ?debug the panel is up from the load and never fades.
  */
 
 /** The panel stays this long after the last touch, then fades. */
@@ -61,7 +61,6 @@ export class Band {
   private inside = false;
   /** Escape put the panel away: neither the microphone nor the pointer holds it up until the next touch. */
   private dismissed = false;
-  private outline: HTMLElement | undefined;
 
   /** `onPress` is called on every press in the band. */
   constructor(
@@ -127,21 +126,6 @@ export class Band {
       // keys are taps unless the focus is in here, so give the focus back
       if (!shown && this.hasTarget(document.activeElement)) (document.activeElement as HTMLElement).blur();
     }
-    if (this.debug) this.drawOutline();
     return shown;
-  }
-
-  private drawOutline(): void {
-    if (!this.outline) {
-      this.outline = document.createElement('div');
-      this.outline.className = 'tap-outline';
-      document.body.appendChild(this.outline);
-    }
-    const r = this.root.getBoundingClientRect();
-    this.outline.style.left = `${r.left}px`;
-    this.outline.style.top = `${r.top}px`;
-    this.outline.style.width = `${r.width}px`;
-    this.outline.style.height = `${r.height}px`;
-    this.outline.dataset.label = `band ${Math.round(r.width)}x${Math.round(r.height)}: no taps`;
   }
 }

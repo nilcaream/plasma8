@@ -668,25 +668,6 @@ html.compact #bar.drawer-open #drawer {
   font-variant-numeric: tabular-nums;
 }
 
-/* ?debug only: the outline of each area where a tap is not a tempo tap */
-.tap-outline {
-  position: fixed;
-  z-index: 5;
-  box-sizing: border-box;
-  border: 1px dashed #ff3df2;
-  pointer-events: none;
-}
-.tap-outline::after {
-  content: attr(data-label);
-  position: absolute;
-  left: 2px;
-  top: 1px;
-  font: 10px/1.2 ui-monospace, monospace;
-  color: #ff3df2;
-  white-space: nowrap;
-  text-shadow: 0 0 2px #000;
-}
-
 #fatal {
   position: fixed;
   inset: 0;
