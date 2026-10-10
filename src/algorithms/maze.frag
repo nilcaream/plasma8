@@ -31,6 +31,8 @@ const float HALO = 0.3;       // how bright the soft light round a line is
 const float HALO_FALL = 9.0;  // how fast that light falls off, per tile
 const float RIPPLE_SPREAD = 0.6;
 const float WIPE_REACH = 1.1;
+const float WIPE_ARCS = 0.35;  // past this far from the middle a tile's two arc drawings lie within a line's width of each other
+const float WIPE_CROSS = 0.9;  // the share of the eased turn a wipe takes to cross the drawing; the rest sweeps the glow
 const float THINNEST = 0.02;  // the least a squashed or shrunk drawing is scaled by, so it never divides by 0
 const float CARD_EDGE = 1.0;  // how bright a turning card's edge is when it stands edge-on, against a line
 const float CARD_DIM = 0.3;   // how bright a card's drawing is edge-on, turned away from the light
@@ -123,11 +125,14 @@ float tileGlow(vec2 p, vec2 c, float aa) {
   vec2 will = rot2(a + QUARTER) * q;
   if (kind == T_DRAW) return glow(min(tilePart(was, t, 1.0), tilePart(will, 0.0, t)), aa);
   if (kind == T_WIPE) {
-    // the edge sweeps across the tile, one of four ways by the tile's own number: the new drawing behind it, the old ahead.
-    // It starts and ends WIPE_REACH from the middle, past the round ends and the glow the tile throws over its edges, so
-    // the tile is wholly old at the start and wholly new at the end.
+    // the edge sweeps across the tile, one of four ways by the tile's own number: the new drawing behind it, the old ahead,
+    // each shown up to a half width past it. It starts where the two drawings first differ, two half widths and a pixel
+    // clear, so it moves through the lines from the kick, and crosses them in WIPE_CROSS of the turn; then it goes on to
+    // WIPE_REACH, past the round ends and the glow the tile throws over its edges, so the tile lands wholly new.
     vec2 dir = rot2(QUARTER * floor(hash12(c + 0.5) * 4.0)) * vec2(1.0, 0.0);
-    float e = dot(q, dir) - WIPE_REACH * (2.0 * t - 1.0);
+    float from = (u_style < 0.5 ? WIPE_ARCS : 0.5) + 2.0 * u_width + aa;
+    float at = t < WIPE_CROSS ? mix(-from, from, t / WIPE_CROSS) : mix(from, WIPE_REACH, (t - WIPE_CROSS) / (1.0 - WIPE_CROSS));
+    float e = dot(q, dir) - at;
     return glow(min(max(tileLines(will), e), max(tileLines(was), -e)), aa);
   }
   // T_FADE

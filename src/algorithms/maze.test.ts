@@ -147,12 +147,16 @@ describe('maze.frag', () => {
     expect(card).toContain('box(q, vec2(0.5 * k, 0.5))');
   });
 
-  it('starts and ends a wipe past the farthest a tile\'s light reaches, so it lands wholly on the new drawing', () => {
+  it('starts a wipe at the drawing, so it moves through the lines from the kick, and ends it past the farthest a tile\'s light reaches', () => {
     expect(source).toContain(`const float WIPE_REACH = ${WIPE_REACH};`);
-    expect(source).toContain('WIPE_REACH * (2.0 * t - 1.0)');
+    // from WIPE_REACH out it crossed 0.6 of a tile of nothing at its fastest, and only then the lines, all at once
+    expect(source).toContain('mix(-from, from, t / WIPE_CROSS)');
+    expect(source).toContain('mix(from, WIPE_REACH, (t - WIPE_CROSS) / (1.0 - WIPE_CROSS))');
     const haloFall = Number(/const float HALO_FALL = ([\d.]+);/.exec(source)![1]);
     const widest = MAZE_KNOBS.find((k) => k.key === 'width')!.wide[1];
     // half a tile, the widest line's round end, and its halo down to a twentieth of its light
     expect(WIPE_REACH).toBeGreaterThanOrEqual(0.5 + widest + Math.log(20) / haloFall);
+    // its start, even for the widest line, lies inside where it ends
+    expect(0.5 + 2 * widest).toBeLessThan(WIPE_REACH);
   });
 });
