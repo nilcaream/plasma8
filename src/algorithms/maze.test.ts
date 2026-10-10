@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { FrameInputs } from '../algorithm';
 import { drawKnobs } from '../knobs';
-import { MazeFlips, RIPPLE_SPREAD, STATE_SIZE, TRANSITIONS } from '../mazeFlips';
+import { MazeFlips, RIPPLE_SPREAD, STATE_SIZE, TRANSITIONS, WIPE_REACH } from '../mazeFlips';
 import { createRng } from '../rng';
 import { MAZE_KNOBS, MAZE_MOVING, drawMazeMoving, drawMazeParams, mazeFlipping, transitionsOf } from './maze';
 import source from './maze.frag?raw';
@@ -137,5 +137,14 @@ describe('maze.frag', () => {
   it('numbers the transitions as TRANSITIONS lists them, and ripples by the same spread', () => {
     TRANSITIONS.forEach((name, i) => expect(source).toContain(`const int T_${name.toUpperCase()} = ${i};`));
     expect(source).toContain(`const float RIPPLE_SPREAD = ${RIPPLE_SPREAD};`);
+  });
+
+  it('starts and ends a wipe past the farthest a tile\'s light reaches, so it lands wholly on the new drawing', () => {
+    expect(source).toContain(`const float WIPE_REACH = ${WIPE_REACH};`);
+    expect(source).toContain('WIPE_REACH * (2.0 * t - 1.0)');
+    const haloFall = Number(/const float HALO_FALL = ([\d.]+);/.exec(source)![1]);
+    const widest = MAZE_KNOBS.find((k) => k.key === 'width')!.wide[1];
+    // half a tile, the widest line's round end, and its halo down to a twentieth of its light
+    expect(WIPE_REACH).toBeGreaterThanOrEqual(0.5 + widest + Math.log(20) / haloFall);
   });
 });

@@ -30,6 +30,7 @@ const float LINE_GLOW = 1.2;  // how bright the lines are
 const float HALO = 0.3;       // how bright the soft light round a line is
 const float HALO_FALL = 9.0;  // how fast that light falls off, per tile
 const float RIPPLE_SPREAD = 0.6;
+const float WIPE_REACH = 1.1;
 const float THINNEST = 0.02;  // the least a squashed or shrunk drawing is scaled by, so it never divides by 0
 
 const int T_ROTATE = 0;
@@ -111,9 +112,11 @@ float tileGlow(vec2 p, vec2 c, float aa) {
   vec2 will = rot2(a + QUARTER) * q;
   if (kind == T_DRAW) return glow(min(tilePart(was, t, 1.0), tilePart(will, 0.0, t)), aa);
   if (kind == T_WIPE) {
-    // the edge sweeps across the tile, one of four ways by the tile's own number: the new drawing behind it, the old ahead
+    // the edge sweeps across the tile, one of four ways by the tile's own number: the new drawing behind it, the old ahead.
+    // It starts and ends WIPE_REACH from the middle, past the round ends and the glow the tile throws over its edges, so
+    // the tile is wholly old at the start and wholly new at the end.
     vec2 dir = rot2(QUARTER * floor(hash12(c + 0.5) * 4.0)) * vec2(1.0, 0.0);
-    float e = dot(q, dir) - (t - 0.5);
+    float e = dot(q, dir) - WIPE_REACH * (2.0 * t - 1.0);
     return glow(min(max(tileLines(will), e), max(tileLines(was), -e)), aa);
   }
   // T_FADE

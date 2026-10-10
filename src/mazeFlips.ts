@@ -59,6 +59,14 @@ export type Transition = (typeof TRANSITIONS)[number];
 /** The share of the turn a ripple's outermost tile waits before it starts. */
 export const RIPPLE_SPREAD = 0.6;
 
+/**
+ * How far from a tile's middle, in tiles, a wipe's edge starts and ends: past the farthest the tile's light reaches (half
+ * a tile, the widest line's round end and its halo down to a twentieth), so the tile is wholly old at the start and wholly
+ * new at the end. An edge that swept only the tile itself (±0.5) left the old line ends and glow over its edges until the
+ * next kick landed the flip.
+ */
+export const WIPE_REACH = 1.1;
+
 /** The share of a turn done at x of it (0..1): fastest at the start, the way the metronome's dot falls off (1 − phase)³. */
 export const attack = (x: number): number => 1 - (1 - Math.min(1, Math.max(0, x))) ** 3;
 
