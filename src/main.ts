@@ -5,6 +5,7 @@ import { Band, metronomeShown, micHoldsPanel } from './band';
 import { DEFAULT_SHAPE, flash } from './beatVoices';
 import { TapClock, clampBpm, type ClockReading } from './clock';
 import { DetectClock } from './detectClock';
+import { Drawer } from './drawer';
 import { beatInputs } from './drive';
 import { FlashPeaks, amountsText, formatDump, movingText } from './dump';
 import { FlashLimiter } from './flashLimit';
@@ -173,6 +174,8 @@ function main(): void {
       }),
     );
   });
+  // on a screen too narrow for the one-row panel, a key opens the panels below the first row (src/drawer.ts)
+  new Drawer();
   const metronome = new Metronome();
   const debug = new DebugOverlay(params.debug, seedText);
   const remember = (patch: Partial<Settings>): void => {

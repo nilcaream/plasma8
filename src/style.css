@@ -344,6 +344,89 @@ body.idle * {
   opacity: 0.35;
 }
 
+/*
+ * The drawer (src/drawer.ts). While the one-row panel fits, the drawer is transparent and the key is gone: the panels sit in the
+ * band in the order metronome, the first five of the drawer, the tapping widget, the rest. When it does not fit (`html.compact`)
+ * the first row is the metronome, the tapping widget and the key, and the key opens the other panels in rows below it. Every
+ * panel keeps the size it has in the one row.
+ */
+#drawer {
+  display: contents;
+}
+#drawer-key {
+  display: none;
+}
+#metronome {
+  order: 0;
+}
+#drawer > :nth-child(-n + 5) {
+  order: 1;
+}
+#tap-widget {
+  order: 2;
+}
+#drawer > :nth-child(n + 6) {
+  order: 3;
+}
+
+html.compact #bar {
+  height: auto;
+  justify-content: flex-start;
+}
+html.compact #tap-widget {
+  order: 1;
+  flex: 0 1 180px;
+  min-width: 0;
+}
+html.compact #drawer-key {
+  order: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  width: var(--part-h);
+  padding: 0;
+  border: 0;
+  color: var(--fg);
+  cursor: pointer;
+}
+html.compact #drawer-key:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+#drawer-key svg {
+  width: 28px;
+  height: 28px;
+}
+#drawer-key .close-icon,
+#drawer-key[aria-expanded='true'] .open-icon {
+  display: none;
+}
+#drawer-key[aria-expanded='true'] .close-icon {
+  display: block;
+}
+html.compact #drawer {
+  order: 3;
+  display: none;
+}
+/* open: the panels flow into rows below the first row; a drawer taller than the screen scrolls under it */
+html.compact #bar.drawer-open {
+  flex-wrap: wrap;
+  align-content: flex-start;
+}
+html.compact #bar.drawer-open #drawer {
+  display: flex;
+  flex: 1 0 100%;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: var(--gap);
+  max-height: calc(100dvh - var(--band-h) - var(--gap) - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  touch-action: pan-y;
+  pointer-events: none;
+  scrollbar-width: none;
+}
+
 /* The microphone: a red dot bottom left, on while it listens, also when the panel has faded; a note beside it when it could not be opened. */
 #mic-dot {
   position: fixed;
