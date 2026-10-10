@@ -1,8 +1,8 @@
 /**
  * The maze's flips. A flip is a discrete event, not a moving value: on every beat a
  * number of clusters of neighbouring tiles, set by the intensity, each turn a quarter
- * turn together: rotating over TURN_BEATS from the beat, or at once on it, drawn on every
- * beat. Only small clusters flip at intensity 0, any size at 1. The beat is the kick (kick
+ * turn together, by one of the TRANSITIONS drawn on every beat, starting on it and done
+ * TURN_BEATS later. Only small clusters flip at intensity 0, any size at 1. The beat is the kick (kick
  * on every beat, src/beatVoices.ts); the beat voices' amounts (A.*) play no part.
  *
  * What the flips have turned so far lives in a grid of tiles that wraps every
@@ -41,9 +41,26 @@ export const CLUSTER_SHAPES: readonly { readonly name: string; readonly cells: r
   { name: '4x4', cells: square(-1, 2) },
 ];
 
-/** How a flip changes its tiles, drawn on every kick, each equally likely: a quarter turn over TURN_BEATS, or at once. */
-export const TRANSITIONS = ['rotate', 'instant'] as const;
+/**
+ * How a flip changes its tiles from the old drawing to the new (a quarter turn of it), drawn on every kick, each equally
+ * likely; every one starts on the kick, fastest there, and is done TURN_BEATS later. maze.frag draws them by their place
+ * in this list (its T_* numbers).
+ * - rotate: the tile turns a quarter turn.
+ * - card: the tile squashes to a line, as a card turned on its edge, and opens with the new drawing.
+ * - ripple: the tiles of a cluster turn one after another, from its middle outward.
+ * - shrink: the old lines shrink into the tile's middle and the new ones grow out of it.
+ * - draw: the new lines are traced along their length while the old ones erase.
+ * - wipe: the new drawing sweeps across the tile from one edge.
+ * - fade: the old drawing fades out as the new one fades in.
+ */
+export const TRANSITIONS = ['rotate', 'card', 'ripple', 'shrink', 'draw', 'wipe', 'fade'] as const;
 export type Transition = (typeof TRANSITIONS)[number];
+
+/** The share of the turn a ripple's outermost tile waits before it starts. */
+export const RIPPLE_SPREAD = 0.6;
+
+/** The share of a turn done at x of it (0..1): fastest at the start, the way the metronome's dot falls off (1 − phase)³. */
+export const attack = (x: number): number => 1 - (1 - Math.min(1, Math.max(0, x))) ** 3;
 
 /** How many clusters flip on a beat and how big they may be: `clustersAt1` at intensity 1, none at 0; up to `tilesAt0` tiles at 0, any size at 1. */
 export interface FlipRule {
@@ -88,6 +105,15 @@ export function pickShape(shapes: typeof CLUSTER_SHAPES, rng: Rng): (typeof CLUS
   return shapes[shapes.length - 1]!;
 }
 
+/** How far each tile of a shape lies from the shape's middle: 0 there, 1 at its farthest tile, 0 for a single tile. */
+export function rippleDelays(cells: readonly Cell[]): number[] {
+  const mx = cells.reduce((s, [x]) => s + x, 0) / cells.length;
+  const my = cells.reduce((s, [, y]) => s + y, 0) / cells.length;
+  const far = cells.map(([x, y]) => Math.hypot(x - mx, y - my));
+  const most = Math.max(...far);
+  return far.map((d) => (most > 0 ? d / most : 0));
+}
+
 /** Where a tile lies in the grid that wraps. */
 export const gridIndex = (x: number, y: number): number => {
   const w = (n: number): number => ((n % STATE_SIZE) + STATE_SIZE) % STATE_SIZE;
@@ -99,6 +125,8 @@ export class MazeFlips {
   readonly rest = new Uint8Array(STATE_SIZE * STATE_SIZE);
   /** The tiles turning since `beat`, by grid index. */
   turning: number[] = [];
+  /** How far each turning tile lies from the middle of its cluster, 0 there to 1 at its farthest tile: when a ripple reaches it. */
+  readonly delays = new Map<number, number>();
   /** The beat the turning tiles started on; undefined before the first frame. */
   beat: number | undefined;
   /** How the tiles of this beat change, drawn with them. */
@@ -106,7 +134,11 @@ export class MazeFlips {
   /** Whether rest or turning changed since the last `takeChanged`. */
   private changed = true;
 
-  constructor(private readonly rng: Rng) {}
+  /** `transitions` are the kinds drawn from on every kick, each equally likely: all of them unless one is forced. */
+  constructor(
+    private readonly rng: Rng,
+    private readonly transitions: readonly Transition[] = TRANSITIONS,
+  ) {}
 
   /**
    * Takes the time: on a new beat the turning tiles land and new clusters start to turn, none while `held` (Moves off).
@@ -118,21 +150,23 @@ export class MazeFlips {
     const first = this.beat === undefined;
     for (const i of this.turning) this.rest[i] = this.rest[i]! ^ 1;
     this.turning = first || held ? [] : this.draw(intensity, window, rule);
-    this.transition = this.rng.pick(TRANSITIONS);
+    this.transition = this.rng.pick(this.transitions);
     this.beat = n;
     this.changed = true;
   }
 
+  /** The share of the time of the turn gone now, in a straight line: 0 on the beat, 1 TURN_BEATS later. */
+  progress(beats: number): number {
+    return this.beat === undefined ? 0 : Math.min(1, Math.max(0, (beats - this.beat) / TURN_BEATS));
+  }
+
   /**
-   * The share of the turn done now: 0 on the beat, 1 TURN_BEATS later. It is fastest on the beat and slows to land, the
-   * way the metronome's dot falls off (1 − phase)³: a turn eased in both ends moved least on the beat and settled half a
-   * beat after it, so the eye took the flip to fall on the off-beat. An instant flip is whole on the beat.
+   * The share of the turn done now: 0 on the beat, 1 TURN_BEATS later. It is fastest on the beat and slows to land
+   * (`attack`): a turn eased in both ends moved least on the beat and settled half a beat after it, so the eye took the
+   * flip to fall on the off-beat.
    */
   done(beats: number): number {
-    if (this.beat === undefined) return 0;
-    if (this.transition === 'instant') return 1;
-    const x = Math.min(1, Math.max(0, (beats - this.beat) / TURN_BEATS));
-    return 1 - (1 - x) ** 3;
+    return attack(this.progress(beats));
   }
 
   /** True once after every change: the texture needs uploading. */
@@ -142,32 +176,39 @@ export class MazeFlips {
     return was;
   }
 
-  /** The grid as RG bytes: R the rest, G the tiles turning now. */
+  /** The grid as RGBA bytes: R the rest, G the tiles turning now, B how far a turning tile lies from its cluster's middle. */
   fill(out: Uint8Array): void {
     for (let i = 0; i < this.rest.length; i++) {
-      out[2 * i] = this.rest[i]! * 255;
-      out[2 * i + 1] = 0;
+      out[4 * i] = this.rest[i]! * 255;
+      out[4 * i + 1] = 0;
+      out[4 * i + 2] = 0;
+      out[4 * i + 3] = 255;
     }
-    for (const i of this.turning) out[2 * i + 1] = 255;
+    for (const i of this.turning) {
+      out[4 * i + 1] = 255;
+      out[4 * i + 2] = Math.round((this.delays.get(i) ?? 0) * 255);
+    }
   }
 
   /** The tiles of this beat's clusters, each at a random place on screen and a random quarter turn, the bigger shapes likelier; a tile two clusters share turns once. */
   private draw(intensity: number, window: TileWindow, rule: FlipRule): number[] {
     const shapes = shapesAt(intensity, rule);
-    const tiles = new Set<number>();
+    this.delays.clear();
     const count = clusterCount(intensity, rule, this.rng);
     for (let c = 0; c < count; c++) {
       const shape = pickShape(shapes, this.rng);
       const turns = Math.floor(this.rng.next() * 4);
       const x = window.x0 + Math.floor(this.rng.next() * (window.x1 - window.x0 + 1));
       const y = window.y0 + Math.floor(this.rng.next() * (window.y1 - window.y0 + 1));
-      for (const [dx, dy] of shape.cells) {
+      const delay = rippleDelays(shape.cells);
+      shape.cells.forEach(([dx, dy], k) => {
         let [u, v] = [dx, dy];
         for (let t = 0; t < turns; t++) [u, v] = [-v, u];
-        tiles.add(gridIndex(x + u, y + v));
-      }
+        const i = gridIndex(x + u, y + v);
+        if (!this.delays.has(i)) this.delays.set(i, delay[k]!);
+      });
     }
-    return [...tiles];
+    return [...this.delays.keys()];
   }
 }
 

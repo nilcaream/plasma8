@@ -1,7 +1,7 @@
 import type { AlgorithmDef, FrameInputs } from '../algorithm';
 import { GAIN_RANGE, amountKnobs, relativeAmountsOf } from '../beatVoices';
 import { drawBounds, drawKnobs, fixed, int, range, triple, unit, vec, type Knob, type Values } from '../knobs';
-import { CLUSTER_SHAPES, MazeFlips, STATE_SIZE, tileWindow } from '../mazeFlips';
+import { CLUSTER_SHAPES, MazeFlips, STATE_SIZE, TRANSITIONS, tileWindow } from '../mazeFlips';
 import { drawLists, listLabels, type MovingList, type MovingValue } from '../moving';
 import type { Rng } from '../rng';
 import { shaderAlgorithm, type DrawHook, type ShaderParams } from '../shaderAlgorithm';
@@ -81,18 +81,18 @@ export function mazeFlipping(flips: MazeFlips): (v: Values, inputs: FrameInputs,
     const p = mazeParams(v);
     const window = tileWindow(v.cells!, p.u_pan as number[], p.u_offset as number[], inputs.time, inputs.width, inputs.height, inputs.view);
     flips.update(inputs.beats, inputs.intensity, window, { clustersAt1: v.clustersAt1!, tilesAt0: v.tilesAt0! }, held);
-    return { u_turn: flips.done(inputs.beats) };
+    return { u_turn: flips.done(inputs.beats), u_progress: flips.progress(inputs.beats), u_transition: TRANSITIONS.indexOf(flips.transition) };
   };
 }
 
 /** The flips' grid as a texture of the instance's own: uploaded when it changed, bound for every draw. */
 function flipsTexture(gl: WebGL2RenderingContext, flips: MazeFlips): DrawHook {
   const texture = gl.createTexture();
-  const bytes = new Uint8Array(STATE_SIZE * STATE_SIZE * 2);
+  const bytes = new Uint8Array(STATE_SIZE * STATE_SIZE * 4);
   gl.bindTexture(gl.TEXTURE_2D, texture);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RG8, STATE_SIZE, STATE_SIZE, 0, gl.RG, gl.UNSIGNED_BYTE, bytes);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, STATE_SIZE, STATE_SIZE, 0, gl.RGBA, gl.UNSIGNED_BYTE, bytes);
   const samplers = new Map<WebGLProgram, WebGLUniformLocation | null>();
   return {
     bind: (gl, program) => {
@@ -100,8 +100,7 @@ function flipsTexture(gl: WebGL2RenderingContext, flips: MazeFlips): DrawHook {
       gl.bindTexture(gl.TEXTURE_2D, texture);
       if (flips.takeChanged()) {
         flips.fill(bytes);
-        gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
-        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, STATE_SIZE, STATE_SIZE, gl.RG, gl.UNSIGNED_BYTE, bytes);
+        gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, STATE_SIZE, STATE_SIZE, gl.RGBA, gl.UNSIGNED_BYTE, bytes);
       }
       if (!samplers.has(program)) samplers.set(program, gl.getUniformLocation(program, 'u_state'));
       gl.uniform1i(samplers.get(program)!, STATE_UNIT);

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { FrameInputs } from '../algorithm';
 import { drawKnobs } from '../knobs';
-import { MazeFlips, STATE_SIZE } from '../mazeFlips';
+import { MazeFlips, RIPPLE_SPREAD, STATE_SIZE, TRANSITIONS } from '../mazeFlips';
 import { createRng } from '../rng';
 import { MAZE_KNOBS, MAZE_MOVING, drawMazeMoving, drawMazeParams, mazeFlipping } from './maze';
 import source from './maze.frag?raw';
@@ -70,21 +70,25 @@ describe('mazeFlipping', () => {
     expect(rotatingFrom(7, 1)(7.125)).toBeGreaterThan(0.5);
   });
 
-  it('draws the transition on every kick, a rotation or an instant change, each about half the time; an instant one is whole on the kick', () => {
+  it('draws the transition on every kick, each kind about equally often, and every one starts on the kick', () => {
     const v = drawKnobs(MAZE_KNOBS, createRng(8));
     const flips = new MazeFlips(createRng(8));
     const step = mazeFlipping(flips);
     step(v, frame(1, 0.5), [], false);
-    let instant = 0;
-    for (let b = 1; b <= 400; b++) {
-      const turn = step(v, frame(1, b), [], false).u_turn;
-      if (flips.transition === 'instant') {
-        instant++;
-        expect(turn).toBe(1);
-      } else expect(turn).toBe(0);
+    const seen = new Map<number, number>();
+    const kicks = 1400;
+    for (let b = 1; b <= kicks; b++) {
+      const u = step(v, frame(1, b), [], false);
+      expect(u.u_turn).toBe(0);
+      expect(u.u_progress).toBe(0);
+      seen.set(u.u_transition as number, (seen.get(u.u_transition as number) ?? 0) + 1);
     }
-    expect(instant / 400).toBeGreaterThan(0.4);
-    expect(instant / 400).toBeLessThan(0.6);
+    expect([...seen.keys()].sort()).toEqual(TRANSITIONS.map((_, i) => i));
+    for (const count of seen.values()) expect(count / kicks).toBeCloseTo(1 / TRANSITIONS.length, 1);
+  });
+
+  it('has no instant change: every kind takes the time of a turn', () => {
+    expect(TRANSITIONS).not.toContain('instant');
   });
 
   it('flips nothing new while the moves are held', () => {
@@ -120,6 +124,11 @@ describe('mazeFlipping', () => {
 
 describe('maze.frag', () => {
   it('wraps the flips\' grid at the size the flips keep it', () => {
-    expect(source).toContain(`mod(cell, ${STATE_SIZE}.0)`);
+    expect(source).toContain(`mod(c, ${STATE_SIZE}.0)`);
+  });
+
+  it('numbers the transitions as TRANSITIONS lists them, and ripples by the same spread', () => {
+    TRANSITIONS.forEach((name, i) => expect(source).toContain(`const int T_${name.toUpperCase()} = ${i};`));
+    expect(source).toContain(`const float RIPPLE_SPREAD = ${RIPPLE_SPREAD};`);
   });
 });

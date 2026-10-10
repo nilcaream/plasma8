@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CLUSTER_SHAPES, MazeFlips, STATE_SIZE, clusterCount, gridIndex, pickShape, shapesAt, tileWindow, type FlipRule } from './mazeFlips';
+import { CLUSTER_SHAPES, MazeFlips, STATE_SIZE, attack, clusterCount, gridIndex, pickShape, rippleDelays, shapesAt, tileWindow, type FlipRule } from './mazeFlips';
 import { createRng } from './rng';
 
 const RULE: FlipRule = { clustersAt1: 10, tilesAt0: 2 };
@@ -79,16 +79,45 @@ describe('MazeFlips', () => {
     }
   });
 
-  it('fills the grid as R the rest and G the tiles turning now', () => {
+  it('fills the grid as R the rest, G the tiles turning now and B how far each lies from its cluster\'s middle', () => {
     const flips = new MazeFlips(createRng(6));
     flips.update(0.5, 1, WINDOW, RULE);
     flips.update(1, 1, WINDOW, RULE);
     flips.update(2, 1, WINDOW, RULE);
-    const out = new Uint8Array(STATE_SIZE * STATE_SIZE * 2);
+    const out = new Uint8Array(STATE_SIZE * STATE_SIZE * 4);
     flips.fill(out);
-    for (const i of flips.turning) expect(out[2 * i + 1]).toBe(255);
+    for (const i of flips.turning) {
+      expect(out[4 * i + 1]).toBe(255);
+      expect(out[4 * i + 2]).toBe(Math.round(flips.delays.get(i)! * 255));
+    }
+    expect(flips.turning.some((i) => out[4 * i + 2]! > 0)).toBe(true);
     const rested = flips.rest.findIndex((r) => r === 1);
-    expect(out[2 * rested]).toBe(255);
+    expect(out[4 * rested]).toBe(255);
+  });
+
+  it('draws only the transitions it is given: one, when one is forced', () => {
+    const flips = new MazeFlips(createRng(7), ['card']);
+    flips.update(0.5, 1, WINDOW, RULE);
+    for (let b = 1; b < 20; b++) {
+      flips.update(b, 1, WINDOW, RULE);
+      expect(flips.transition).toBe('card');
+    }
+  });
+});
+
+describe('rippleDelays and attack', () => {
+  it('puts the middle of a shape at 0 and its farthest tiles at 1', () => {
+    expect(rippleDelays([[0, 0]])).toEqual([0]);
+    const plus = rippleDelays(CLUSTER_SHAPES.find((s) => s.name === 'plus')!.cells);
+    expect(Math.min(...plus)).toBe(0);
+    expect(Math.max(...plus)).toBe(1);
+  });
+
+  it('is fastest at the start and whole at the end', () => {
+    expect(attack(0)).toBe(0);
+    expect(attack(0.25)).toBeGreaterThan(0.5);
+    expect(attack(1)).toBe(1);
+    expect(attack(2)).toBe(1);
   });
 });
 
