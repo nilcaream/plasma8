@@ -540,25 +540,6 @@ html.compact #bar.drawer-open #drawer {
   display: block;
   margin: 0 0 8px;
 }
-#knobs .pick {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 6px 0 0;
-}
-#knobs .pick select {
-  flex: 1;
-  min-width: 0;
-  font: inherit;
-  color: var(--fg);
-  background: rgba(255, 255, 255, 0.1);
-  border: 0;
-  border-radius: 5px;
-  padding: 4px 7px;
-}
-#knobs .pick option {
-  color: #000;
-}
 #knobs .knob.movable .name {
   color: #b7c6d4;
   font-weight: 400;

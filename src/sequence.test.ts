@@ -38,7 +38,7 @@ const PHRASES = { min: 4, max: 16 } as const;
 describe('visual length', () => {
   const lengths = (rng: Rng, range?: LengthRange): number[] => {
     const seen = new Set<number>();
-    for (let i = 0; i < 400; i++) seen.add(new Sequencer(rng, 0, false, range).segment.bars);
+    for (let i = 0; i < 400; i++) seen.add(new Sequencer(rng, 0, range).segment.bars);
     return [...seen].sort((a, b) => a - b);
   };
 
@@ -56,7 +56,7 @@ describe('visual length', () => {
     const rng = createRng(9);
     const count = new Map<number, number>();
     for (let i = 0; i < 6000; i++) {
-      const bars = new Sequencer(rng, 0, false, { min: 2, max: 16 }).segment.bars;
+      const bars = new Sequencer(rng, 0, { min: 2, max: 16 }).segment.bars;
       count.set(bars, (count.get(bars) ?? 0) + 1);
     }
     expect([...count.keys()].sort((a, b) => a - b)).toEqual([2, 4, 8, 16]);
@@ -64,7 +64,7 @@ describe('visual length', () => {
   });
 
   it('takes a new range from the next change, and the visual that runs keeps its length', () => {
-    const seq = new Sequencer(scripted(0.0, 0.0), 0, false, { min: 4, max: 4 });
+    const seq = new Sequencer(scripted(0.0, 0.0), 0, { min: 4, max: 4 });
     seq.setRange({ min: 1, max: 1 });
     expect(seq.segment.bars).toBe(4);
     const seen = drive(seq, 0, 24);
@@ -75,7 +75,7 @@ describe('visual length', () => {
 describe('Sequencer change', () => {
   it('prepares one bar ahead and changes exactly on beat 1 after the phrase', () => {
     // 8 bars; then a cut
-    const seq = new Sequencer(scripted(0.4, 0.0), 0, false, PHRASES);
+    const seq = new Sequencer(scripted(0.4, 0.0), 0, PHRASES);
     const seen = drive(seq, 0, 40);
     expect(seen.prepare).toEqual([28]);
     expect(seen.change).toEqual([32]);
@@ -84,7 +84,7 @@ describe('Sequencer change', () => {
 
   it('fades over the last two beats at intensity 1 and lands at 1 on beat 1', () => {
     // 4 bars; then a fade (0.99 is not a cut) of two beats (0.9)
-    const seq = new Sequencer(scripted(0.0, 0.99, 0.9), 0, false, PHRASES);
+    const seq = new Sequencer(scripted(0.0, 0.99, 0.9), 0, PHRASES);
     const seen = drive(seq, 0, 17, 0, 1);
     expect(seen.change).toEqual([16]);
     const fades = seen.fades;
@@ -96,7 +96,7 @@ describe('Sequencer change', () => {
   });
 
   it('fades over the last beat only when it draws one beat at intensity 1', () => {
-    const seq = new Sequencer(scripted(0.0, 0.99, 0.1), 0, false, PHRASES);
+    const seq = new Sequencer(scripted(0.0, 0.99, 0.1), 0, PHRASES);
     const seen = drive(seq, 0, 17, 0, 1);
     expect(seen.fades[0]![0]).toBeCloseTo(15.05);
     expect(seen.change).toEqual([16]);
@@ -104,7 +104,7 @@ describe('Sequencer change', () => {
 
   it('fades over the whole last bar at intensity 0 and lands on beat 1, whatever it draws', () => {
     for (const draw of [0.1, 0.9]) {
-      const seq = new Sequencer(scripted(0.0, 0.99, draw), 0, false, PHRASES);
+      const seq = new Sequencer(scripted(0.0, 0.99, draw), 0, PHRASES);
       const seen = drive(seq, 0, 17, 0, 0);
       expect(seq.change).toBeUndefined(); // landed
       expect(seen.change).toEqual([16]);
@@ -115,7 +115,7 @@ describe('Sequencer change', () => {
   });
 
   it('starts the next phrase on the bar of the change', () => {
-    const seq = new Sequencer(scripted(0.0, 0.0), 0, false, PHRASES);
+    const seq = new Sequencer(scripted(0.0, 0.0), 0, PHRASES);
     drive(seq, 0, 16);
     expect(seq.segment.startBar).toBe(4);
     expect(seq.barsLeft(16)).toBe(4);
@@ -123,7 +123,7 @@ describe('Sequencer change', () => {
   });
 
   it('prepares and changes in the same frame when the clock jumps past the change', () => {
-    const seq = new Sequencer(scripted(0.0, 0.0), 0, false, PHRASES);
+    const seq = new Sequencer(scripted(0.0, 0.0), 0, PHRASES);
     seq.update(1, 0, 0.5);
     expect(seq.update(20, 0, 0.5)).toEqual({ prepare: true, change: true, fade: 0 });
   });
@@ -132,7 +132,7 @@ describe('Sequencer change', () => {
 describe('Sequencer fresh count (a press that is beat 1 of bar 1)', () => {
   it('starts the next visual at once, made in that frame, and counts its length from the new bar 1', () => {
     // 4 bars; a fresh count in bar 3 changes then, and the next change is 4 bars after the press
-    const seq = new Sequencer(scripted(0.0, 0.0), 0, false, PHRASES);
+    const seq = new Sequencer(scripted(0.0, 0.0), 0, PHRASES);
     drive(seq, 0, 9);
     expect(seq.update(0, 1, 0.5)).toEqual({ prepare: true, change: true, fade: 0 });
     expect(seq.segment).toEqual({ startBar: 0, bars: 4 });
@@ -142,22 +142,16 @@ describe('Sequencer fresh count (a press that is beat 1 of bar 1)', () => {
 
   it('does not make a second visual when one was prepared already', () => {
     // a cut prepared one bar ahead, then the press
-    const seq = new Sequencer(scripted(0.0, 0.0), 0, false, PHRASES);
+    const seq = new Sequencer(scripted(0.0, 0.0), 0, PHRASES);
     drive(seq, 0, 13);
     expect(seq.change).toBeDefined();
     expect(seq.update(0, 1, 0.5)).toEqual({ prepare: false, change: true, fade: 0 });
   });
 
   it('lands a fade under way at once', () => {
-    const seq = new Sequencer(scripted(0.0, 0.99, 0.9), 0, false, PHRASES);
+    const seq = new Sequencer(scripted(0.0, 0.99, 0.9), 0, PHRASES);
     drive(seq, 0, 15);
     expect(seq.update(0, 1, 0.5)).toEqual({ prepare: false, change: true, fade: 0 });
-  });
-
-  it('is ignored while the sequencer is held', () => {
-    const seq = new Sequencer(scripted(0.0), 0, true, PHRASES);
-    drive(seq, 0, 3);
-    expect(seq.update(0, 1, 0.5)).toEqual({ prepare: false, change: false, fade: 0 });
   });
 });
 
@@ -186,40 +180,13 @@ describe('cuts and fades', () => {
   });
 });
 
-describe('a held Sequencer (an algorithm forced by name)', () => {
-  it('never prepares, fades or changes, over many bars, fresh tap counts and any intensity', () => {
-    const held = new Sequencer(createRng(4), 0, true);
-    const free = new Sequencer(createRng(4));
-    let changes = 0;
-    for (let f = 0; f < 64 * 4 * 30; f++) {
-      const beats = f / 30;
-      const run = beats < 100 ? 0 : 1;
-      const step = held.update(beats, run, (f % 100) / 100);
-      expect(step).toEqual({ prepare: false, change: false, fade: 0 });
-      if (free.update(beats, run, 0.5).change) changes++;
-    }
-    expect(changes).toBeGreaterThan(3);
-    expect(held.barsLeft(10)).toBe(Infinity);
-  });
-
-  it('holds from the moment it is engaged, dropping a change already prepared', () => {
-    const seq = new Sequencer(scripted(0), 0, false, PHRASES);
-    expect(seq.segment.bars).toBe(4);
+describe('a released Sequencer (the algorithm on screen switched off)', () => {
+  it('drops a change already prepared and starts a whole new phrase from the bar it is released in', () => {
+    const seq = new Sequencer(scripted(0), 0, PHRASES);
     expect(drive(seq, 0, 12.5).prepare).toEqual([12]);
     expect(seq.change).toBeDefined();
-    seq.engage();
-    expect(seq.hold).toBe(true);
-    expect(seq.change).toBeUndefined();
-    const seen = drive(seq, 12.55, 200);
-    expect(seen.prepare).toEqual([]);
-    expect(seen.change).toEqual([]);
-  });
-
-  it('hands back to the sequencer with a whole new phrase from the bar it is released in', () => {
-    const seq = new Sequencer(scripted(0), 0, true, PHRASES);
-    drive(seq, 0, 53);
     seq.release(53.5);
-    expect(seq.hold).toBe(false);
+    expect(seq.change).toBeUndefined();
     expect(seq.segment).toEqual({ startBar: 13, bars: 4 });
     expect(seq.barsLeft(53.5)).toBe(4);
     const seen = drive(seq, 53.5, 70);

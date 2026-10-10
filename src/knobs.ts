@@ -189,17 +189,6 @@ export function drawFrom(knob: Knob, r: UserRange, rng: Rng): number {
   return rng.range(r.min, r.max);
 }
 
-export interface AlgorithmOption {
-  /** What the picker reports: an algorithm's name, or '' for the sequencer. */
-  value: string;
-  label: string;
-}
-
-/** The "Algorithm" picker's options: "changes" (the sequencer picks) first, then each algorithm by its name. */
-export function algorithmOptions(names: readonly string[]): AlgorithmOption[] {
-  return [{ value: '', label: 'changes' }, ...names.map((name) => ({ value: name, label: name }))];
-}
-
 const num = (n: number): string => (Number.isInteger(n) ? String(n) : n.toFixed(3));
 
 /** The ranges as plain text to paste back, one knob a line: min and max of the drawn ones, then the value of each fixed one. */

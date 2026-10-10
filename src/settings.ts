@@ -70,6 +70,11 @@ export function sanitizeSettings(raw: unknown): Settings {
   return out;
 }
 
+/** What `?algo=` starts the page with: that algorithm lit alone in "What plays"; nothing for a name the panel does not have. */
+export function playsAlone(algo: string | undefined): Partial<Settings> {
+  return algo !== undefined && PLAYABLE.includes(algo) ? { plays: [algo] } : {};
+}
+
 /**
  * What pressing a panel button changes. A button carries the name of its setting and its value (`source` `tap`, `continuous`
  * `on`, `min` `4`, `plays` `tunnel`); undefined for one this does not know. Min and max push each other (src/visualLength.ts).

@@ -7,7 +7,7 @@ import { toBpm } from './clock';
 import { clamp01 } from './settings';
 
 export interface DebugParams {
-  /** Force this algorithm by name. */
+  /** Light this algorithm alone in "What plays", by name. */
   algo?: string;
   /** Start with this intensity instead of the remembered one. */
   intensity?: number;

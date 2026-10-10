@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ALGORITHMS } from './algorithms';
 import {
-  algorithmOptions, drawBounds, drawFrom, drawKnob, drawKnobs, fixed, fixedGroups, formatRanges, int, setFixed, isChoice, pick, range, setMax, setMin, setValue, settle, share,
+  drawBounds, drawFrom, drawKnob, drawKnobs, fixed, fixedGroups, formatRanges, int, setFixed, isChoice, pick, range, setMax, setMin, setValue, settle, share,
   startRange, step, type Knob, type UserRange,
 } from './knobs';
 import { createRng } from './rng';
@@ -204,14 +204,5 @@ describe('formatRanges', () => {
       'scale  min   0.900  max   2.500',
       'ribs   min       4  max       7',
     ]);
-  });
-});
-
-describe('algorithmOptions', () => {
-  it('puts "changes" first, then every algorithm under its own name', () => {
-    const options = algorithmOptions(ALGORITHMS.map((a) => a.name));
-    expect(options[0]).toEqual({ value: '', label: 'changes' });
-    expect(options.slice(1).map((o) => o.value)).toEqual(ALGORITHMS.map((a) => a.name));
-    expect(options.slice(1).every((o) => o.label === o.value)).toBe(true);
   });
 });

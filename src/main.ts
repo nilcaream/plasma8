@@ -1,5 +1,5 @@
 import './style.css';
-import { ALGORITHMS, chooseAlgorithm } from './algorithms';
+import { chooseAlgorithm } from './algorithms';
 import type { Algorithm, AlgorithmDef, FrameInputs } from './algorithm';
 import { Band, metronomeShown, micHoldsPanel } from './band';
 import { DEFAULT_SHAPE, flash } from './beatVoices';
@@ -18,7 +18,7 @@ import { HoldWatch } from './press';
 import { parseDebugParams } from './query';
 import { createRng, formatSeed, freshSeed } from './rng';
 import { Sequencer, type Change } from './sequence';
-import { loadSettings, saveSettings, type Settings } from './settings';
+import { loadSettings, playsAlone, saveSettings, type Settings } from './settings';
 import { MotionClock, motionRate, motionTimeFor, steadyRate } from './motion';
 import { movingAt } from './moving';
 import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } from './stage';
@@ -50,11 +50,15 @@ function main(): void {
   const params = parseDebugParams(location.search);
 
   // Remembered settings; a pinned debug value starts the page but is only remembered once the user moves it.
+  // ?algo= lights that one algorithm alone in "What plays".
   const remembered = loadSettings();
+  const alone = playsAlone(params.algo);
+  if (params.algo !== undefined && !alone.plays) console.warn(`[plasma8] unknown algorithm "${params.algo}", the lit ones play`);
   const live: Settings = {
     ...remembered,
     ...(params.intensity !== undefined && { intensity: params.intensity }),
     ...(params.strobe !== undefined && { strobe: params.strobe }),
+    ...alone,
   };
 
   const canvas = document.getElementById('stage') as HTMLCanvasElement;
@@ -66,23 +70,12 @@ function main(): void {
   const seedText = formatSeed(seed);
   const rng = createRng(seed);
   // ?debug: a slider for every value the running algorithm drew; "Draw again" starts it afresh at once
-  const known = ALGORITHMS.find((a) => a.name === params.algo);
-  // the algorithm held by name (?algo= or the panel's picker); undefined: the changes pick
-  let forced = params.algo;
-  const knobPanel = new KnobPanel(
-    params.debug,
-    seedText,
-    () => {
-      current.algorithm.dispose();
-      current = create(current.def);
-      knobPanel.show(current);
-      console.info(`[plasma8] ${current.def.name} drawn again; seed ${seedText}`);
-    },
-    ALGORITHMS.map((a) => a.name),
-    known?.name,
-    (name) => pick(name),
-  );
-  let warned = false;
+  const knobPanel = new KnobPanel(params.debug, seedText, () => {
+    current.algorithm.dispose();
+    current = create(current.def);
+    knobPanel.show(current);
+    console.info(`[plasma8] ${current.def.name} drawn again; seed ${seedText}`);
+  });
   // every value it draws at start: from the code's ranges, or from the debug panel's min..max once moved
   const create = (def: AlgorithmDef): Running => {
     const values = knobPanel.start(def, rng);
@@ -94,24 +87,16 @@ function main(): void {
     return { def, values, algorithm };
   };
   // the panel's "What plays": the lit algorithms are the pool, a random one at each change (one lit: a new variant of it)
-  const make = (intensity: number, running?: AlgorithmDef): Running => {
-    const { def, unknown } = chooseAlgorithm(forced, intensity, rng, running, live.plays);
-    if (unknown && !warned) {
-      warned = true;
-      console.warn(`[plasma8] unknown algorithm "${params.algo}", picking at random`);
-    }
-    return create(def);
-  };
+  const make = (intensity: number, running?: AlgorithmDef): Running => create(chooseAlgorithm(intensity, rng, running, live.plays));
   const announce = (r: Running, bars: number, how: string): void => {
     const voices = amountsText(r.algorithm.amounts?.());
     console.info(
-      `[plasma8] ${r.def.name} (home ${r.def.home.toFixed(2)}) ${how}; ${Number.isFinite(bars) ? `next change in ${bars} bars` : 'held, no change'}; seed ${seedText}; voices ${voices}; moves ${movingText(r.algorithm.moving)}`,
+      `[plasma8] ${r.def.name} (home ${r.def.home.toFixed(2)}) ${how}; next change in ${bars} bars; seed ${seedText}; voices ${voices}; moves ${movingText(r.algorithm.moving)}`,
     );
   };
 
   const stage = new Stage(gl);
-  // an algorithm forced by name never changes: it keeps its draw until "Draw again" or a reload
-  const sequencer = new Sequencer(rng, 0, known !== undefined, { min: live.minBars, max: live.maxBars });
+  const sequencer = new Sequencer(rng, 0, { min: live.minBars, max: live.maxBars });
   const motion = new MotionClock();
   const steady = new MotionClock();
   let current = make(live.intensity);
@@ -126,23 +111,6 @@ function main(): void {
   let detectClock = new DetectClock(performance.now());
   let starts = 0;
   const reading = (now: number): ClockReading => (live.source === 'tap' ? tapClock.read(now) : detectClock.read(now));
-  // the panel's picker: an algorithm switches in at once with fresh values and is held like ?algo=; "changes" gives it back to the sequencer
-  const pick = (name: string | undefined): void => {
-    forced = name;
-    if (name === undefined) {
-      sequencer.release(reading(performance.now()).beats);
-      console.info(`[plasma8] changes back on; ${current.def.name} stays until the next one`);
-      return;
-    }
-    sequencer.engage();
-    incoming?.algorithm.dispose();
-    incoming = undefined;
-    look = undefined;
-    current.algorithm.dispose();
-    current = create(ALGORITHMS.find((a) => a.name === name)!);
-    knobPanel.show(current);
-    announce(current, Infinity, 'picked and held');
-  };
   const flashLimiter = new FlashLimiter();
 
   const tapWidget = new TapWidget();

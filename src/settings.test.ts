@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, PLAYABLE, STORAGE_KEY, SYNC_LIMIT, loadSettings, sanitizeSettings, saveSettings, settingPatch, syncLabel, type Settings } from './settings';
+import { DEFAULT_SETTINGS, PLAYABLE, STORAGE_KEY, SYNC_LIMIT, loadSettings, playsAlone, sanitizeSettings, saveSettings, settingPatch, syncLabel, type Settings } from './settings';
 
 function fakeStorage(initial?: string) {
   const data = new Map<string, string>();
@@ -123,6 +123,14 @@ describe('settingPatch', () => {
     expect(settingPatch(DEFAULT_SETTINGS, 'plays', '')).toBeUndefined();
     expect(settingPatch(DEFAULT_SETTINGS, 'plays', 'changes')).toBeUndefined();
     expect(settingPatch(DEFAULT_SETTINGS, 'volume', '11')).toBeUndefined();
+  });
+});
+
+describe('playsAlone (?algo=)', () => {
+  it('lights the named algorithm alone, and changes nothing for a name the panel does not have', () => {
+    for (const name of PLAYABLE) expect(playsAlone(name)).toEqual({ plays: [name] });
+    expect(playsAlone('no-such')).toEqual({});
+    expect(playsAlone(undefined)).toEqual({});
   });
 });
 

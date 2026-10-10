@@ -32,11 +32,11 @@ Fullscreen generative visuals in the browser, driven by the tempo of the music, 
 
 | Parameter | Effect |
 | --- | --- |
-| `algo=plasma`, `tunnel`, `domain-warped-noise`, `julia-kaleidoscope`, `maze` | Keep this algorithm and never change |
+| `algo=plasma`, `tunnel`, `domain-warped-noise`, `julia-kaleidoscope`, `maze` | Light this algorithm alone in "What plays", a new variant of it at every change, until the panel lights another |
 | `intensity=0..1` | Start at this intensity instead of the remembered one |
 | `strobe=0..1` | Start at this strobe instead of the remembered one |
 | `bpm=60..180` | Start the free-running Tap clock at this tempo (above 180 it is halved: 200 starts at 100) |
-| `debug` | Show an overlay, a panel with a slider for every random value of the running algorithm and an Algorithm dropdown to hold one |
+| `debug` | Show an overlay, a panel with a slider for every random value of the running algorithm |
 | `transition=rotate`, `card`, `ripple`, `shrink`, `draw`, `wipe`, `fade`, or a comma list | With `debug` only: the maze's flips change their tiles only this way (or these ways) |
 
 There is no parameter for the random seed; the overlay shows the one in use.
