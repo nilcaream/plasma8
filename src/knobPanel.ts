@@ -97,7 +97,6 @@ const show = (v: number): string => (Number.isInteger(v) ? String(v) : v.toFixed
 export class KnobPanel {
   private readonly root = document.getElementById('knobs') as HTMLElement;
   private readonly list: HTMLElement;
-  private readonly head: HTMLElement;
   private readonly copied: HTMLTextAreaElement;
   /** The user's min and max by algorithm name and knob; this load only. */
   private readonly saved = new Map<string, Map<string, { min: number; max: number }>>();
@@ -113,14 +112,11 @@ export class KnobPanel {
 
   constructor(
     private readonly enabled: boolean,
-    private readonly seed: string,
     onDrawAgain: () => void,
   ) {
     this.root.classList.toggle('on', enabled);
     this.root.innerHTML = `
-      <button type="button" class="key fold" aria-expanded="true">knobs</button>
       <div class="body">
-        <div class="head"></div>
         <div class="buttons">
           <button type="button" class="key" data-do="again" title="Start this algorithm again now, every value drawn from your min..max">Draw again</button>
           <button type="button" class="key" data-do="copy" title="Copy every random knob's min and max, and every fixed value, as text">Copy</button>
@@ -129,14 +125,8 @@ export class KnobPanel {
         <textarea readonly rows="6" hidden></textarea>
         <div class="list"></div>
       </div>`;
-    this.head = this.root.querySelector('.head')!;
     this.list = this.root.querySelector('.list')!;
     this.copied = this.root.querySelector('textarea')!;
-    const fold = this.root.querySelector<HTMLButtonElement>('.fold')!;
-    fold.addEventListener('click', () => {
-      const open = !this.root.classList.toggle('folded');
-      fold.setAttribute('aria-expanded', String(open));
-    });
     this.root.querySelector('[data-do=again]')!.addEventListener('click', onDrawAgain);
     this.root.querySelector('[data-do=copy]')!.addEventListener('click', () => void this.copy());
     const moves = this.root.querySelector<HTMLButtonElement>('[data-do=moves]')!;
@@ -203,7 +193,6 @@ export class KnobPanel {
       this.ranges[knob.key] = setValue(knob, r, r.value);
     }
     this.tune();
-    this.head.textContent = `${s.def.name}  seed ${this.seed}`;
     if (!same) this.build([...s.def.knobs, ...SHARED_KNOBS], s.def.movable);
     for (const r of this.rows) {
       this.mark(r);

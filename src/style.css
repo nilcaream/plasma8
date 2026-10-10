@@ -469,32 +469,22 @@ html.compact #bar.drawer-open #drawer {
 #knobs.on {
   display: flex;
 }
-#knobs.folded {
-  bottom: auto;
-  width: auto;
-}
-#knobs.folded .body {
-  display: none;
-}
 #knobs .key {
   font: 13px/1.4 system-ui, sans-serif;
-}
-#knobs .fold {
-  flex: none;
-  align-self: flex-end;
-  margin: var(--gap);
 }
 #knobs .body {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 0 10px 10px;
+  padding: var(--gap);
 }
+/* the head: one row of three keys of one width, the whole width of the panel */
 #knobs .buttons {
-  display: flex;
-  flex-wrap: wrap;
+  flex: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--gap);
-  margin: 6px 0 var(--gap);
+  margin-bottom: var(--gap);
 }
 #knobs textarea {
   font: inherit;

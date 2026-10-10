@@ -70,7 +70,7 @@ function main(): void {
   const seedText = formatSeed(seed);
   const rng = createRng(seed);
   // ?debug: a slider for every value the running algorithm drew; "Draw again" starts it afresh at once
-  const knobPanel = new KnobPanel(params.debug, seedText, () => {
+  const knobPanel = new KnobPanel(params.debug, () => {
     current.algorithm.dispose();
     current = create(current.def);
     knobPanel.show(current);
