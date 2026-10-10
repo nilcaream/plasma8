@@ -110,50 +110,6 @@ export class Metronome {
   }
 }
 
-/** What the ?debug overlay shows besides the clock. */
-export interface DebugInfo {
-  name: string;
-  home: number;
-  /** Bars before the next change, counting the bar under way. */
-  barsLeft: number;
-  /** How the next change goes, once it is decided: "cut", "fade 2 beats". */
-  change: string | undefined;
-  intensity: number;
-  /** The strobe slider: the flash's size and shape. */
-  strobe: number;
-  /** Motion speed against the algorithm's designed speed. */
-  rate: number;
-}
-
-/** The ?debug overlay. */
-export class DebugOverlay {
-  private readonly root = byId('debug');
-  private text = '';
-
-  constructor(
-    private readonly enabled: boolean,
-    private readonly seed: string,
-  ) {
-    this.root.classList.toggle('on', enabled);
-  }
-
-  update(r: ClockReading, info: DebugInfo): void {
-    if (!this.enabled) return;
-    const next = `next change in ${info.barsLeft} bar${info.barsLeft === 1 ? '' : 's'}${info.change ? ` (${info.change})` : ''}`;
-    const text = [
-      `${info.name}  home ${info.home.toFixed(2)}`,
-      next,
-      `bar ${r.bar + 1}  beat ${r.beatInBar + 1}`,
-      `intensity ${info.intensity.toFixed(2)}  speed x${info.rate.toFixed(2)}  strobe ${info.strobe === 0 ? 'off' : info.strobe.toFixed(2)}`,
-      `seed ${this.seed}`,
-    ].join('\n');
-    if (text !== this.text) {
-      this.text = text;
-      this.root.textContent = text;
-    }
-  }
-}
-
 export function showFatal(message: string): void {
   const el = byId('fatal');
   el.textContent = message;

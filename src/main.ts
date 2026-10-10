@@ -25,7 +25,7 @@ import { Stage, TRANSITION_STYLES, drawTransitionLook, type TransitionLook } fro
 import { detectView } from './detectView';
 import { Sureness } from './sure';
 import { TapWidget, widgetView, type WidgetView } from './tapWidget';
-import { DebugOverlay, Metronome, Panel, Sliders, showFatal } from './ui';
+import { Metronome, Panel, Sliders, showFatal } from './ui';
 import { viewScale } from './view';
 
 interface Running {
@@ -146,7 +146,6 @@ function main(): void {
   // on a screen too narrow for the one-row panel, a key opens the panels below the first row (src/drawer.ts)
   new Drawer();
   const metronome = new Metronome();
-  const debug = new DebugOverlay(params.debug, seedText);
   const remember = (patch: Partial<Settings>): void => {
     Object.assign(live, patch);
     Object.assign(remembered, patch);
@@ -388,16 +387,6 @@ function main(): void {
     metronome.show(metronomeShown(widget.visible, panelUp));
     panel.showMic(mic.listening, mic.error ? `The microphone could not be opened (${mic.error}).` : '');
     metronome.update(r);
-    debug.update(r, {
-      name: current.def.name,
-      home: current.def.home,
-      barsLeft: sequencer.barsLeft(r.beats),
-      change: describeChange(sequencer.change, look),
-      intensity,
-      strobe: live.strobe,
-      // the speed the picture really runs at: a steady-speed algorithm keeps its own clock
-      rate: current.def.steadySpeed ? steadyRate(intensity) : rate,
-    });
     // what an end-to-end run reads (the /tempo/ page has its own __tempo)
     (window as unknown as { __plasma8: unknown }).__plasma8 = {
       settings: live, listening: mic.listening, arming: mic.arming, error: mic.error, sure: sure.sure,

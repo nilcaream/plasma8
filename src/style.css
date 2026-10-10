@@ -449,22 +449,6 @@ html.compact #bar.drawer-open #drawer {
   pointer-events: none;
 }
 
-#debug {
-  position: fixed;
-  top: calc(var(--band-h) + 4px);
-  left: calc(env(safe-area-inset-left, 0px) + 12px);
-  display: none;
-  padding: 4px 8px;
-  border-radius: 6px;
-  background: rgba(0, 0, 0, 0.55);
-  font: 12px/1.4 ui-monospace, monospace;
-  pointer-events: none;
-  white-space: pre;
-}
-#debug.on {
-  display: block;
-}
-
 /* ?debug only: the running algorithm's random values, on the left under the overlay; a panel like the band's, with its keys. */
 #knobs {
   position: fixed;

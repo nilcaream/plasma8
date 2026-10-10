@@ -15,7 +15,7 @@ export interface DebugParams {
   strobe?: number;
   /** Start the free-running clock at this tempo (above 180 it is halved, as for taps); taps still change it. */
   bpm?: number;
-  /** Show the overlay with the algorithm's name and the bar count. */
+  /** Show the knobs panel. */
   debug: boolean;
   /** With debug only: the kinds of the maze's flips to draw from, by name (`transition=card` or `card,ripple`); all of them when left out. */
   transitions?: string[];
