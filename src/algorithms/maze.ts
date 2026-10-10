@@ -47,7 +47,7 @@ export const MAZE_KNOBS: readonly Knob[] = [
   // fixed in code: the flash gain
   fixed('flashGain', 1, GAIN_RANGE, 'follows the beat'),
   // fixed in code: the clusters that flip on a beat at intensity 1, and the most tiles a cluster has at intensity 0
-  { ...fixed('clustersAt1', 10, [0, 40], FLIPS), whole: true },
+  { ...fixed('clustersAt1', 16, [0, 40], FLIPS), whole: true },
   { ...fixed('tilesAt0', 2, [1, CLUSTER_SHAPES[CLUSTER_SHAPES.length - 1]!.cells.length], FLIPS), whole: true },
 ];
 

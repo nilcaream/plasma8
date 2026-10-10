@@ -45,24 +45,46 @@ describe('the maze\'s moving values', () => {
 });
 
 describe('mazeFlipping', () => {
-  it('starts the turn on the beat and lands it half a beat later, at every intensity', () => {
+  /** A step that has taken beat `n`, its flip made a rotation whatever was drawn. */
+  const rotatingFrom = (n: number, intensity: number) => {
     const v = drawKnobs(MAZE_KNOBS, createRng(3));
+    const flips = new MazeFlips(createRng(3));
+    const step = mazeFlipping(flips);
+    step(v, frame(intensity, n - 0.1), [], false);
+    step(v, frame(intensity, n), [], false);
+    flips.transition = 'rotate';
+    return (beats: number) => step(v, frame(intensity, beats), [], false).u_turn;
+  };
+
+  it('starts a rotation on the beat and lands it half a beat later, at every intensity', () => {
     for (const intensity of [0.2, 1]) {
-      const step = mazeFlipping(new MazeFlips(createRng(3)));
-      step(v, frame(intensity, 4.9), [], false);
-      expect(step(v, frame(intensity, 5), [], false).u_turn).toBe(0);
-      expect(step(v, frame(intensity, 5.25), [], false).u_turn).toBeCloseTo(0.875, 9);
-      expect(step(v, frame(intensity, 5.5), [], false).u_turn).toBe(1);
-      expect(step(v, frame(intensity, 5.9), [], false).u_turn).toBe(1);
+      const turn = rotatingFrom(5, intensity);
+      expect(turn(5)).toBe(0);
+      expect(turn(5.25)).toBeCloseTo(0.875, 9);
+      expect(turn(5.5)).toBe(1);
+      expect(turn(5.9)).toBe(1);
     }
   });
 
   it('moves a tile most on the kick: over half the turn is done an eighth of a beat after it, so the flip is seen on the kick, not on the off-beat', () => {
-    const v = drawKnobs(MAZE_KNOBS, createRng(3));
-    const step = mazeFlipping(new MazeFlips(createRng(3)));
-    step(v, frame(1, 6.9), [], false);
-    step(v, frame(1, 7), [], false);
-    expect(step(v, frame(1, 7.125), [], false).u_turn).toBeGreaterThan(0.5);
+    expect(rotatingFrom(7, 1)(7.125)).toBeGreaterThan(0.5);
+  });
+
+  it('draws the transition on every kick, a rotation or an instant change, each about half the time; an instant one is whole on the kick', () => {
+    const v = drawKnobs(MAZE_KNOBS, createRng(8));
+    const flips = new MazeFlips(createRng(8));
+    const step = mazeFlipping(flips);
+    step(v, frame(1, 0.5), [], false);
+    let instant = 0;
+    for (let b = 1; b <= 400; b++) {
+      const turn = step(v, frame(1, b), [], false).u_turn;
+      if (flips.transition === 'instant') {
+        instant++;
+        expect(turn).toBe(1);
+      } else expect(turn).toBe(0);
+    }
+    expect(instant / 400).toBeGreaterThan(0.4);
+    expect(instant / 400).toBeLessThan(0.6);
   });
 
   it('flips nothing new while the moves are held', () => {
@@ -76,6 +98,10 @@ describe('mazeFlipping', () => {
     }
   });
 
+  it('flips at most 16 clusters a kick by default', () => {
+    expect(drawKnobs(MAZE_KNOBS, createRng(1)).clustersAt1).toBe(16);
+  });
+
   it('flips about clustersAt1 clusters a beat at intensity 1, over the tiles on screen', () => {
     const v = drawKnobs(MAZE_KNOBS, createRng(6));
     const flips = new MazeFlips(createRng(6));
@@ -86,9 +112,9 @@ describe('mazeFlipping', () => {
       step(v, frame(1, b), [], false);
       tiles += flips.turning.length;
     }
-    // ten clusters of 1 to 9 tiles (5 on average), fewer where two overlap
-    expect(tiles / 50).toBeGreaterThan(20);
-    expect(tiles / 50).toBeLessThan(60);
+    // sixteen clusters of 1 to 16 tiles (about 10.6 on average, the bigger ones likelier), fewer where two overlap
+    expect(tiles / 50).toBeGreaterThan(60);
+    expect(tiles / 50).toBeLessThan(260);
   });
 });
 

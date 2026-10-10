@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CLUSTER_SHAPES, MazeFlips, STATE_SIZE, clusterCount, gridIndex, shapesAt, tileWindow, type FlipRule } from './mazeFlips';
+import { CLUSTER_SHAPES, MazeFlips, STATE_SIZE, clusterCount, gridIndex, pickShape, shapesAt, tileWindow, type FlipRule } from './mazeFlips';
 import { createRng } from './rng';
 
 const RULE: FlipRule = { clustersAt1: 10, tilesAt0: 2 };
@@ -22,11 +22,21 @@ describe('clusterCount', () => {
   });
 });
 
-describe('shapesAt', () => {
-  it('allows only clusters of up to tilesAt0 tiles at 0, and every shape at 1', () => {
+describe('shapesAt and pickShape', () => {
+  it('allows only clusters of up to tilesAt0 tiles at 0, up to 3x3 from 0.25, and every shape at 1, up to 4x4', () => {
     expect(shapesAt(0, RULE).map((s) => s.name)).toEqual(['single', 'domino']);
+    expect(shapesAt(0.25, RULE).map((s) => s.name)).toEqual(['single', 'domino', 'L', '2x2', 'plus', '3x3']);
+    expect(shapesAt(0.5, RULE).map((s) => s.name)).toEqual(['single', 'domino', 'L', '2x2', 'plus', '3x3']);
     expect(shapesAt(1, RULE)).toEqual(CLUSTER_SHAPES);
-    expect(shapesAt(0.5, RULE).map((s) => s.name)).toEqual(['single', 'domino', 'L', '2x2', 'plus']);
+    expect(CLUSTER_SHAPES.map((s) => s.cells.length)).toEqual([1, 2, 3, 4, 5, 9, 13, 16]);
+  });
+
+  it('picks the bigger shapes likelier, so a cluster at 0.5 has over 5 tiles on average', () => {
+    const rng = createRng(9);
+    const shapes = shapesAt(0.5, RULE);
+    let tiles = 0;
+    for (let i = 0; i < 4000; i++) tiles += pickShape(shapes, rng).cells.length;
+    expect(tiles / 4000).toBeGreaterThan(5);
   });
 });
 
@@ -60,11 +70,11 @@ describe('MazeFlips', () => {
       for (const i of flips.turning) {
         const x = i % STATE_SIZE;
         const y = Math.floor(i / STATE_SIZE);
-        // a cluster reaches at most one tile past its place
-        expect(x).toBeGreaterThanOrEqual(99);
-        expect(x).toBeLessThanOrEqual(111);
-        expect(y).toBeGreaterThanOrEqual(39);
-        expect(y).toBeLessThanOrEqual(46);
+        // a cluster reaches at most two tiles past its place
+        expect(x).toBeGreaterThanOrEqual(98);
+        expect(x).toBeLessThanOrEqual(112);
+        expect(y).toBeGreaterThanOrEqual(38);
+        expect(y).toBeLessThanOrEqual(47);
       }
     }
   });
