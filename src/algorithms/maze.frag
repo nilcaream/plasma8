@@ -104,7 +104,7 @@ float tileGlow(vec2 p, vec2 c, float aa) {
   float t = u_turn;
   int kind = int(u_transition + 0.5);
   if (kind == T_RIPPLE) {
-    // the middle of the cluster turns on the beat, its farthest tile RIPPLE_SPREAD of the time later
+    // the tiles nearest the middle of the cluster turn on the beat, its farthest RIPPLE_SPREAD of the time later
     t = attack((u_progress - RIPPLE_SPREAD * s.b) / (1.0 - RIPPLE_SPREAD));
     kind = T_ROTATE;
   }

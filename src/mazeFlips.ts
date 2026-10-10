@@ -64,10 +64,10 @@ export type Transition = (typeof TRANSITIONS)[number];
 export const RIPPLE_SPREAD = 0.4;
 
 /**
- * How far from a tile's middle, in tiles, a wipe's edge starts and ends: past the farthest the tile's light reaches (half
- * a tile, the widest line's round end and its halo down to a twentieth), so the tile is wholly old at the start and wholly
- * new at the end. An edge that swept only the tile itself (±0.5) left the old line ends and glow over its edges until the
- * next kick landed the flip.
+ * How far from a tile's middle, in tiles, a wipe's edge ends: past the farthest the tile's light reaches (half a tile,
+ * the widest line's round end and its halo down to a twentieth), so the tile is wholly new at the end. An edge that swept
+ * only the tile itself (±0.5) left the old line ends and glow over its edges until the next kick landed the flip. It
+ * starts at the drawing (maze.frag), so it moves through the lines from the kick.
  */
 export const WIPE_REACH = 1.1;
 
@@ -142,7 +142,7 @@ export class MazeFlips {
   readonly rest = new Uint8Array(STATE_SIZE * STATE_SIZE);
   /** The tiles turning since `beat`, by grid index. */
   turning: number[] = [];
-  /** How far each turning tile lies from the middle of its cluster, 0 there to 1 at its farthest tile: when a ripple reaches it. */
+  /** How far each turning tile lies from the middle of its cluster, 0 at its nearest tiles to 1 at its farthest: when a ripple reaches it. */
   readonly delays = new Map<number, number>();
   /** The beat the turning tiles started on; undefined before the first frame. */
   beat: number | undefined;

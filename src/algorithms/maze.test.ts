@@ -141,7 +141,7 @@ describe('maze.frag', () => {
 
   it('closes a card in step with the turn, fastest on the kick, and shows its edge so a diagonal does not merely lean', () => {
     const card = /kind == T_CARD\) \{([\s\S]*?)\n  \}/.exec(source)![1]!;
-    // the width a straight line in the eased turn, as shrink's; cos(πt) of it closed slowly after the kick, then all at once
+    // the width a straight line in the eased turn; cos(πt) of it closed slowly after the kick, then all at once
     expect(card).toContain('abs(1.0 - 2.0 * t)');
     expect(card).not.toContain('cos(');
     expect(card).toContain('box(q, vec2(0.5 * k, 0.5))');
