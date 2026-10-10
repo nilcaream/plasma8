@@ -267,7 +267,6 @@ export class KnobPanel {
       h.innerHTML = `<b>${text}</b><span>${note}</span>`;
       this.list.appendChild(h);
     };
-    heading('Random per instance', 'drawn from min..max at every start');
     const drawn: Row[] = [];
     knobSections(knobs.filter((k) => !isFixed(k)), movable).forEach((section, i) => {
       if (i > 0) this.list.appendChild(document.createElement('hr'));
